@@ -1,0 +1,82 @@
+/* ============================================================
+   COLORS — mapped 1:1 from the Android app's TroLyColors
+   (ui/theme/Color.kt). "Ngọc bích" = jade, the signature hue.
+   ============================================================ */
+
+:root {
+  /* ---- Base palette (light) ---- */
+  --bg: #F7F9F7;          /* nền ngà lục nhạt — pale ivory-green app background */
+  --surface: #FFFFFF;     /* cards, bubbles, bars */
+  --ink: #16201C;         /* mực than lục — near-black green, primary text */
+  --ink-2: #5A6B64;       /* muted secondary text */
+  --placeholder: #9AA8A1; /* input placeholder / faint meta */
+
+  --jade: #0E7A5F;        /* ngọc bích — primary brand color */
+  --jade-deep: #0A5C48;   /* pressed / on-soft text / code text */
+  --jade-soft: #E3F2EC;   /* tinted fills: AI accents, chips, icon tiles */
+
+  --amber: #E8A33D;       /* pin star, local-model badge accent */
+  --line: #E4EAE6;        /* hairline borders, dividers */
+  --danger: #C94F3D;      /* destructive text, error dot */
+
+  /* ---- Status surfaces ---- */
+  --warn-bg: #FBF1DE;     /* offline banner / local badge fill */
+  --warn-border: #F0DDB6;
+  --warn-ink: #7A5413;
+  --warn-ink-2: #9A6A1B;
+  --failed-bg: #F9E8E4;   /* failed-to-send bubble */
+  --failed-border: #EFC9C0;
+  --danger-soft: #F9E8E4; /* destructive icon tile */
+
+  /* ---- Semantic aliases — prefer these in components ---- */
+  --text-primary: var(--ink);
+  --text-secondary: var(--ink-2);
+  --text-on-jade: #FFFFFF;
+  --text-accent: var(--jade-deep);
+
+  --surface-app: var(--bg);
+  --surface-card: var(--surface);
+  --surface-accent: var(--jade-soft);
+
+  --border-default: var(--line);
+  --border-focus: var(--jade);
+
+  --action-primary: var(--jade);
+  --action-primary-press: var(--jade-deep);
+
+  --bubble-user-bg: var(--jade);
+  --bubble-user-ink: #FFFFFF;
+  --bubble-ai-bg: var(--surface);
+  --bubble-ai-ink: var(--ink);
+}
+
+/* ============================================================
+   DARK THEME — DarkTroLyColors. Apply on a [data-theme="dark"]
+   scope (or <html data-theme="dark">).
+   ============================================================ */
+
+[data-theme="dark"] {
+  --bg: #101613;
+  --surface: #1A211D;
+  --ink: #E8EFEA;
+  --ink-2: #9FB0A8;
+  --placeholder: #6B7A73;
+
+  --jade: #1E9A78;
+  --jade-deep: #7BD3B8;
+  --jade-soft: #1E3A31;
+
+  --amber: #E8A33D;
+  --line: #2A332E;
+  --danger: #E0705E;
+
+  --warn-bg: #33291A;
+  --warn-border: #4D4023;
+  --warn-ink: #E5C387;
+  --warn-ink-2: #C2A05C;
+  --failed-bg: #3A2622;
+  --failed-border: #57342C;
+  --danger-soft: #3A2622;
+
+  --text-on-jade: #FFFFFF;
+}

@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&amp;display=block">
+<style>
+@font-face{font-family:"Be Vietnam Pro";font-weight:400;src:url("assets/fonts/be_vietnam_pro_regular.ttf") format("truetype");font-display:swap}
+@font-face{font-family:"Be Vietnam Pro";font-weight:500;src:url("assets/fonts/be_vietnam_pro_medium.ttf") format("truetype");font-display:swap}
+@font-face{font-family:"Be Vietnam Pro";font-weight:600;src:url("assets/fonts/be_vietnam_pro_semibold.ttf") format("truetype");font-display:swap}
+@font-face{font-family:"Be Vietnam Pro";font-weight:700;src:url("assets/fonts/be_vietnam_pro_bold.ttf") format("truetype");font-display:swap}
+@font-face{font-family:"Be Vietnam Pro";font-weight:800;src:url("assets/fonts/be_vietnam_pro_extrabold.ttf") format("truetype");font-display:swap}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{font-family:"Be Vietnam Pro",system-ui,sans-serif;color:#16201C;background:#F7F9F7;-webkit-font-smoothing:antialiased}
+.material-symbols-rounded{font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24}
+input:focus{outline:none}
+@keyframes authFade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+[style*="animation:authFade"]{opacity:1}
+@keyframes floatA{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}
+@keyframes floatB{0%,100%{transform:translateY(0)}50%{transform:translateY(11px)}}
+</style>
+</helmet>
+
+<div style="display:flex;min-height:100vh;width:100%;background:#F7F9F7;font-size:14px">
+
+  <!-- ============ BRAND PANEL ============ -->
+  <div style="width:46%;flex:none;position:relative;overflow:hidden;background:linear-gradient(160deg,#28409E 0%,#3B5BDB 58%,#4D6BE8 100%);color:#fff;display:flex;flex-direction:column;padding:48px 52px">
+    <div style="position:absolute;width:340px;height:340px;border-radius:50%;background:rgba(255,255,255,.07);top:-90px;right:-70px;animation:floatA 9s ease-in-out infinite"></div>
+    <div style="position:absolute;width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,.05);bottom:60px;left:-60px;animation:floatB 11s ease-in-out infinite"></div>
+    <div style="position:absolute;width:140px;height:140px;border-radius:34px;background:rgba(169,185,242,.18);bottom:-30px;right:90px;transform:rotate(22deg);animation:floatB 8s ease-in-out infinite"></div>
+
+    <div style="position:relative;display:flex;align-items:center;gap:11px">
+      <div style="width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none"><path d="M12 12 L12 5 M12 12 L6 17 M12 12 L18 17" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="12" r="2.7" fill="#fff"/><circle cx="12" cy="5" r="1.9" fill="#fff"/><circle cx="6" cy="17" r="1.9" fill="#fff"/><circle cx="18" cy="17" r="1.9" fill="#fff"/></svg>
+      </div>
+      <div style="font-weight:800;font-size:22px;letter-spacing:-.4px">AgentAIOS</div>
+    </div>
+
+    <div style="position:relative;margin-top:auto;margin-bottom:auto;max-width:420px">
+      <div style="display:inline-flex;align-items:center;gap:7px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.2);padding:6px 13px;border-radius:99px;font-size:12px;font-weight:600;margin-bottom:22px">✨ Nền tảng điều phối Agent AI</div>
+      <h1 style="font-size:38px;line-height:1.18;font-weight:800;letter-spacing:-.8px;margin:0 0 18px">Vận hành đội ngũ<br>agent AI của bạn<br>tại một nơi.</h1>
+      <p style="font-size:15px;line-height:1.6;color:rgba(255,255,255,.82);margin:0 0 30px">Channel, knowledge, workflow và thiết bị — tất cả trong một workspace duy nhất cho doanh nghiệp của bạn.</p>
+
+      <div style="display:flex;flex-direction:column;gap:15px">
+        <sc-for list="{{ perks }}" as="p" hint-placeholder-count="3">
+          <div style="display:flex;align-items:center;gap:13px">
+            <div style="width:34px;height:34px;flex:none;border-radius:10px;background:rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center;font-size:16px">{{ p.icon }}</div>
+            <div>
+              <div style="font-size:13.5px;font-weight:700">{{ p.title }}</div>
+              <div style="font-size:12px;color:rgba(255,255,255,.68)">{{ p.sub }}</div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ FORM PANEL ============ -->
+  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;min-width:0">
+    <div style="width:100%;max-width:404px">
+
+      <!-- tabs -->
+      <div style="display:flex;background:#EEF1F6;border-radius:14px;padding:5px;margin-bottom:28px">
+        <button onClick="{{ goLogin }}" style="flex:1;border:none;cursor:pointer;font:inherit;font-size:13.5px;font-weight:700;padding:10px;border-radius:10px;transition:all .18s;background:{{ loginTabBg }};color:{{ loginTabFg }};box-shadow:{{ loginTabShadow }}">Đăng nhập</button>
+        <button onClick="{{ goRegister }}" style="flex:1;border:none;cursor:pointer;font:inherit;font-size:13.5px;font-weight:700;padding:10px;border-radius:10px;transition:all .18s;background:{{ regTabBg }};color:{{ regTabFg }};box-shadow:{{ regTabShadow }}">Đăng ký</button>
+      </div>
+
+      <div key="{{ mode }}" style="animation:authFade .3s ease forwards">
+        <h2 style="font-size:25px;font-weight:800;letter-spacing:-.5px;margin:0 0 7px">{{ heading }}</h2>
+        <p style="font-size:13.5px;color:#5A6B64;margin:0 0 26px;line-height:1.5">{{ subheading }}</p>
+
+        <!-- social -->
+        <div style="display:flex;gap:11px;margin-bottom:22px">
+          <button onClick="{{ socialAuth }}" style="flex:1;display:flex;align-items:center;justify-content:center;gap:9px;background:#fff;border:1px solid #E4EAE6;border-radius:11px;padding:11px;font:inherit;font-size:13px;font-weight:600;color:#16201C;cursor:pointer" style-hover="background:#F7F9F7;border-color:#CFDAD4">
+            <span style="font-size:15px;font-weight:800;color:#4285F4">G</span> Google
+          </button>
+          <button onClick="{{ socialAuth }}" style="flex:1;display:flex;align-items:center;justify-content:center;gap:9px;background:#fff;border:1px solid #E4EAE6;border-radius:11px;padding:11px;font:inherit;font-size:13px;font-weight:600;color:#16201C;cursor:pointer" style-hover="background:#F7F9F7;border-color:#CFDAD4">
+            <span style="font-size:15px">🪪</span> SSO
+          </button>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:22px">
+          <div style="flex:1;height:1px;background:#E4EAE6"></div>
+          <span style="font-size:11.5px;color:#9AA8A1;font-weight:500">hoặc dùng email</span>
+          <div style="flex:1;height:1px;background:#E4EAE6"></div>
+        </div>
+
+        <form onSubmit="{{ onSubmit }}" style="display:flex;flex-direction:column;gap:16px">
+          <!-- name (register only) -->
+          <sc-if value="{{ isRegister }}" hint-placeholder-val="{{ false }}">
+            <label style="display:block">
+              <span style="display:block;font-size:12.5px;font-weight:600;color:#16201C;margin-bottom:7px">Họ và tên</span>
+              <div style="position:relative">
+                <span class="material-symbols-rounded" style="position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:19px;color:#9AA8A1">person</span>
+                <input value="{{ form.name }}" onInput="{{ setName }}" type="text" placeholder="Nguyễn Văn A" style="width:100%;border:1.5px solid #E4EAE6;border-radius:11px;padding:12px 13px 12px 41px;font:inherit;font-size:14px;background:#fff" style-focus="border-color:#3B5BDB;box-shadow:0 0 0 3px rgba(59,91,219,.12)" />
+              </div>
+            </label>
+          </sc-if>
+
+          <label style="display:block">
+            <span style="display:block;font-size:12.5px;font-weight:600;color:#16201C;margin-bottom:7px">Email công ty</span>
+            <div style="position:relative">
+              <span class="material-symbols-rounded" style="position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:19px;color:#9AA8A1">mail</span>
+              <input value="{{ form.email }}" onInput="{{ setEmail }}" type="email" placeholder="ban@congty.vn" style="width:100%;border:1.5px solid {{ emailBorder }};border-radius:11px;padding:12px 13px 12px 41px;font:inherit;font-size:14px;background:#fff" style-focus="border-color:#3B5BDB;box-shadow:0 0 0 3px rgba(59,91,219,.12)" />
+            </div>
+            <sc-if value="{{ emailError }}" hint-placeholder-val="{{ false }}">
+              <span style="display:block;font-size:11.5px;color:#C94F3D;margin-top:6px">{{ emailError }}</span>
+            </sc-if>
+          </label>
+
+          <label style="display:block">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px">
+              <span style="font-size:12.5px;font-weight:600;color:#16201C">Mật khẩu</span>
+              <sc-if value="{{ isLogin }}" hint-placeholder-val="{{ true }}">
+                <a onClick="{{ forgot }}" style="font-size:11.5px;color:#3B5BDB;font-weight:600;cursor:pointer;text-decoration:none">Quên mật khẩu?</a>
+              </sc-if>
+            </div>
+            <div style="position:relative">
+              <span class="material-symbols-rounded" style="position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:19px;color:#9AA8A1">lock</span>
+              <input value="{{ form.password }}" onInput="{{ setPassword }}" type="{{ pwType }}" placeholder="••••••••" style="width:100%;border:1.5px solid #E4EAE6;border-radius:11px;padding:12px 41px;font:inherit;font-size:14px;background:#fff" style-focus="border-color:#3B5BDB;box-shadow:0 0 0 3px rgba(59,91,219,.12)" />
+              <button type="button" onClick="{{ togglePw }}" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);border:none;background:transparent;cursor:pointer;color:#9AA8A1;display:flex;padding:5px"><span class="material-symbols-rounded" style="font-size:19px">{{ pwIcon }}</span></button>
+            </div>
+            <sc-if value="{{ isRegister }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;gap:5px;margin-top:9px">
+                <sc-for list="{{ strengthBars }}" as="b" hint-placeholder-count="4">
+                  <div style="flex:1;height:4px;border-radius:99px;background:{{ b.color }}"></div>
+                </sc-for>
+              </div>
+              <span style="display:block;font-size:11px;color:#5A6B64;margin-top:6px">{{ strengthLabel }}</span>
+            </sc-if>
+          </label>
+
+          <!-- remember / terms -->
+          <sc-if value="{{ isLogin }}" hint-placeholder-val="{{ true }}">
+            <label style="display:flex;align-items:center;gap:9px;cursor:pointer;user-select:none;font-size:12.5px;color:#5A6B64;margin-top:-2px">
+              <span onClick="{{ toggleRemember }}" style="width:19px;height:19px;border-radius:6px;border:1.5px solid {{ rememberBorder }};background:{{ rememberBg }};display:flex;align-items:center;justify-content:center;flex:none;transition:all .15s"><span class="material-symbols-rounded" style="font-size:15px;color:#fff;opacity:{{ rememberOpacity }}">check</span></span>
+              Ghi nhớ đăng nhập trong 30 ngày
+            </label>
+          </sc-if>
+          <sc-if value="{{ isRegister }}" hint-placeholder-val="{{ false }}">
+            <label style="display:flex;align-items:flex-start;gap:9px;cursor:pointer;user-select:none;font-size:12px;color:#5A6B64;line-height:1.5;margin-top:-2px">
+              <span onClick="{{ toggleTerms }}" style="width:19px;height:19px;margin-top:1px;border-radius:6px;border:1.5px solid {{ termsBorder }};background:{{ termsBg }};display:flex;align-items:center;justify-content:center;flex:none;transition:all .15s"><span class="material-symbols-rounded" style="font-size:15px;color:#fff;opacity:{{ termsOpacity }}">check</span></span>
+              <span>Tôi đồng ý với <a style="color:#3B5BDB;font-weight:600;text-decoration:none">Điều khoản dịch vụ</a> và <a style="color:#3B5BDB;font-weight:600;text-decoration:none">Chính sách bảo mật</a> của AgentAIOS.</span>
+            </label>
+          </sc-if>
+
+          <button type="submit" style="width:100%;border:none;cursor:pointer;font:inherit;font-size:14.5px;font-weight:700;color:#fff;background:#3B5BDB;border-radius:12px;padding:13px;margin-top:4px;box-shadow:0 6px 18px rgba(59,91,219,.28);display:flex;align-items:center;justify-content:center;gap:8px;transition:background .15s" style-hover="background:#28409E">
+            {{ submitLabel }}<span class="material-symbols-rounded" style="font-size:19px">arrow_forward</span>
+          </button>
+        </form>
+
+        <p style="text-align:center;font-size:13px;color:#5A6B64;margin:24px 0 0">
+          {{ switchPrompt }} <a onClick="{{ switchMode }}" style="color:#3B5BDB;font-weight:700;cursor:pointer;text-decoration:none">{{ switchAction }}</a>
+        </p>
+      </div>
+    </div>
+
+    <div style="margin-top:38px;font-size:11.5px;color:#9AA8A1;display:flex;align-items:center;gap:16px">
+      <span>© 2026 AgentAIOS</span><span>·</span><a style="color:#9AA8A1;text-decoration:none">Bảo mật</a><span>·</span><a style="color:#9AA8A1;text-decoration:none">Hỗ trợ</a>
+    </div>
+  </div>
+
+  <!-- toast -->
+  <sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;bottom:26px;left:50%;transform:translateX(-50%);background:#16201C;color:#fff;padding:12px 20px;border-radius:12px;font-size:13px;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,.22);z-index:50;display:flex;align-items:center;gap:9px;animation:authFade .25s ease forwards"><span class="material-symbols-rounded" style="font-size:18px;color:#7FE6B0">check_circle</span>{{ toast }}</div>
+  </sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = {
+    mode: 'login',
+    showPw: false,
+    remember: true,
+    terms: false,
+    emailTouched: false,
+    form: { name:'', email:'', password:'' },
+    toast: ''
+  };
+
+  setName    = (e)=>this.setState(s=>({form:{...s.form,name:e.target.value}}));
+  setEmail   = (e)=>this.setState(s=>({form:{...s.form,email:e.target.value},emailTouched:true}));
+  setPassword= (e)=>this.setState(s=>({form:{...s.form,password:e.target.value}}));
+  togglePw   = ()=>this.setState(s=>({showPw:!s.showPw}));
+  toggleRemember = ()=>this.setState(s=>({remember:!s.remember}));
+  toggleTerms    = ()=>this.setState(s=>({terms:!s.terms}));
+
+  goLogin    = ()=>this.setState({mode:'login'});
+  goRegister = ()=>this.setState({mode:'register'});
+  switchMode = ()=>this.setState(s=>({mode:s.mode==='login'?'register':'login'}));
+
+  forgot     = ()=>this.fireToast('Đã gửi liên kết đặt lại mật khẩu tới email của bạn');
+  socialAuth = ()=>this.fireToast('Đang chuyển hướng đăng nhập…');
+
+  fireToast=(msg)=>{ clearTimeout(this._t); this.setState({toast:msg}); this._t=setTimeout(()=>this.setState({toast:''}),2600); };
+
+  emailValid=(em)=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em);
+
+  pwScore=(pw)=>{ let s=0; if(pw.length>=8)s++; if(/[A-Z]/.test(pw))s++; if(/[0-9]/.test(pw))s++; if(/[^A-Za-z0-9]/.test(pw))s++; return s; };
+
+  onSubmit=(e)=>{
+    e.preventDefault();
+    const {mode,form,terms}=this.state;
+    if(!this.emailValid(form.email)){ this.setState({emailTouched:true}); return; }
+    if(mode==='register'){
+      if(!form.name.trim()){ this.fireToast('Vui lòng nhập họ và tên'); return; }
+      if(!terms){ this.fireToast('Vui lòng đồng ý với điều khoản'); return; }
+      this.fireToast('Tạo tài khoản thành công! Đang thiết lập workspace…');
+    } else {
+      this.fireToast('Đăng nhập thành công! Đang vào workspace…');
+    }
+  };
+
+  renderVals(){
+    const {mode,showPw,remember,terms,form,emailTouched,toast}=this.state;
+    const isLogin=mode==='login', isRegister=mode==='register';
+    const tabOn={bg:'#fff',fg:'#16201C',shadow:'0 1px 4px rgba(22,32,28,.1)'};
+    const tabOff={bg:'transparent',fg:'#5A6B64',shadow:'none'};
+    const L=isLogin?tabOn:tabOff, R=isRegister?tabOn:tabOff;
+
+    const score=this.pwScore(form.password);
+    const sColors=['#E4EAE6','#E4EAE6','#E4EAE6','#E4EAE6'];
+    const sFill=['#C94F3D','#E8A33D','#E8A33D','#0A7B52'];
+    for(let i=0;i<score;i++) sColors[i]=sFill[Math.min(score-1,3)];
+    const sLabels=['Quá yếu','Yếu','Trung bình','Khá mạnh','Mạnh'];
+    const strengthLabel=form.password?('Độ mạnh: '+sLabels[score]):'Dùng 8+ ký tự, gồm chữ hoa, số và ký tự đặc biệt';
+
+    const emailBad = emailTouched && form.email && !this.emailValid(form.email);
+
+    return {
+      mode, isLogin, isRegister, toast,
+      perks:[
+        {icon:'🗂️',title:'Channel & Phòng làm việc',sub:'Tổ chức hội thoại theo dự án'},
+        {icon:'📚',title:'Knowledge có kiểm duyệt',sub:'Agent học từ tài liệu của bạn'},
+        {icon:'⚡',title:'Workflow & Cron tự động',sub:'Lên lịch tác vụ chạy 24/7'}
+      ],
+      loginTabBg:L.bg, loginTabFg:L.fg, loginTabShadow:L.shadow,
+      regTabBg:R.bg, regTabFg:R.fg, regTabShadow:R.shadow,
+      heading: isLogin?'Chào mừng trở lại':'Tạo tài khoản mới',
+      subheading: isLogin?'Đăng nhập để tiếp tục vào workspace của bạn.':'Bắt đầu miễn phí — không cần thẻ tín dụng.',
+      form,
+      setName:this.setName, setEmail:this.setEmail, setPassword:this.setPassword,
+      pwType: showPw?'text':'password',
+      pwIcon: showPw?'visibility_off':'visibility',
+      togglePw:this.togglePw,
+      emailBorder: emailBad?'#C94F3D':'#E4EAE6',
+      emailError: emailBad?'Email không hợp lệ':'',
+      strengthBars:sColors.map(c=>({color:c})),
+      strengthLabel,
+      remember,
+      rememberBg: remember?'#3B5BDB':'#fff',
+      rememberBorder: remember?'#3B5BDB':'#CFDAD4',
+      rememberOpacity: remember?1:0,
+      toggleRemember:this.toggleRemember,
+      terms,
+      termsBg: terms?'#3B5BDB':'#fff',
+      termsBorder: terms?'#3B5BDB':'#CFDAD4',
+      termsOpacity: terms?1:0,
+      toggleTerms:this.toggleTerms,
+      submitLabel: isLogin?'Đăng nhập':'Tạo tài khoản',
+      switchPrompt: isLogin?'Chưa có tài khoản?':'Đã có tài khoản?',
+      switchAction: isLogin?'Đăng ký ngay':'Đăng nhập',
+      switchMode:this.switchMode,
+      goLogin:this.goLogin, goRegister:this.goRegister,
+      onSubmit:this.onSubmit, forgot:this.forgot, socialAuth:this.socialAuth
+    };
+  }
+}
+</script>
+</body>
+</html>

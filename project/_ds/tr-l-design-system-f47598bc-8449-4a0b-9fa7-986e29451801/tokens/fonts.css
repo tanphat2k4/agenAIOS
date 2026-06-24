@@ -1,0 +1,39 @@
+/* Be Vietnam Pro — the app's only typeface. Bundled TTFs (weights 400–800).
+   Designed by Ltogether Studio; renders Vietnamese diacritics cleanly.
+   Freely available on Google Fonts. */
+
+@font-face {
+  font-family: "Be Vietnam Pro";
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  src: url("../assets/fonts/be_vietnam_pro_regular.ttf") format("truetype");
+}
+@font-face {
+  font-family: "Be Vietnam Pro";
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+  src: url("../assets/fonts/be_vietnam_pro_medium.ttf") format("truetype");
+}
+@font-face {
+  font-family: "Be Vietnam Pro";
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+  src: url("../assets/fonts/be_vietnam_pro_semibold.ttf") format("truetype");
+}
+@font-face {
+  font-family: "Be Vietnam Pro";
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  src: url("../assets/fonts/be_vietnam_pro_bold.ttf") format("truetype");
+}
+@font-face {
+  font-family: "Be Vietnam Pro";
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+  src: url("../assets/fonts/be_vietnam_pro_extrabold.ttf") format("truetype");
+}

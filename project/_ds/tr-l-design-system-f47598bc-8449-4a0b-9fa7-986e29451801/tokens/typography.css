@@ -1,0 +1,38 @@
+/* ============================================================
+   TYPOGRAPHY — Be Vietnam Pro across the board.
+   Scale derived from the app's Type.kt + per-screen overrides.
+   sp → px 1:1 (Android sp ≈ px at default density).
+   ============================================================ */
+
+:root {
+  --font-sans: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  /* ---- Weights (the five bundled cuts) ---- */
+  --fw-regular: 400;   /* @kind other */
+  --fw-medium: 500;    /* @kind other */
+  --fw-semibold: 600;  /* @kind other */
+  --fw-bold: 700;      /* @kind other */
+  --fw-extrabold: 800; /* @kind other */
+
+  /* ---- Font sizes ---- */
+  --fs-micro: 10px;      /* bubble meta (time · model) */
+  --fs-eyebrow: 11px;    /* uppercase section labels, day divider */
+  --fs-caption: 11.5px;  /* chat action labels, think toggle */
+  --fs-small: 12px;      /* card sub-text, settings sub */
+  --fs-chip: 12.5px;     /* suggestion chips */
+  --fs-label: 13px;      /* labelLarge — buttons, badges row */
+  --fs-body: 14px;       /* bodyMedium — bubbles, list items */
+  --fs-body-lg: 15px;    /* bodyLarge — composer input */
+  --fs-title: 17px;      /* titleLarge — app-bar / screen titles */
+  --fs-hero: 25px;       /* welcome greeting */
+
+  /* ---- Line heights ---- */
+  --lh-tight: 1.2;       /* @kind other */
+  --lh-snug: 1.4;        /* @kind other */
+  --lh-body: 1.5;        /* @kind other */
+
+  /* ---- Letter spacing ---- */
+  --ls-eyebrow: 0.8px;   /* uppercase group labels */
+  --ls-normal: 0;        /* @kind other */
+}

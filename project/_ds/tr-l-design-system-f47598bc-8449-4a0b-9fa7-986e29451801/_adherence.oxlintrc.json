@@ -1,0 +1,355 @@
+{
+  "plugins": [
+    "react",
+    "import"
+  ],
+  "rules": {
+    "react/forbid-elements": [
+      "warn",
+      {
+        "forbid": []
+      }
+    ],
+    "no-restricted-imports": [
+      "warn",
+      {
+        "patterns": [
+          {
+            "group": [
+              "components/chat/**",
+              "components/core/**",
+              "components/layout/**",
+              "ui_kits/app/**"
+            ],
+            "message": "Import design-system components from 'index.js', not component internals."
+          }
+        ]
+      }
+    ],
+    "no-restricted-syntax": [
+      "warn",
+      {
+        "selector": "Literal[value=/#[0-9a-fA-F]{3,8}\\b/]",
+        "message": "Raw hex color — use a design-system color token via var()."
+      },
+      {
+        "selector": "Literal[value=/\\b\\d+px\\b/]",
+        "message": "Raw px value — use a design-system spacing token via var()."
+      },
+      {
+        "selector": "Literal[value=/font-family\\s*:\\s*(?!['\\\"]?(?:Be Vietnam Pro))/i]",
+        "message": "Font not provided by the design system. Available: Be Vietnam Pro."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='AppBar'] > JSXAttribute > JSXIdentifier[name!=/^(?:left|center|right|title|style|key|ref|className|style|children)$/]",
+        "message": "<AppBar> doesn't accept that prop. Declared props: left, center, right, title, style."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Badge'] > JSXAttribute > JSXIdentifier[name!=/^(?:tone|children|style|key|ref|className|style|children)$/]",
+        "message": "<Badge> doesn't accept that prop. Declared props: tone, children, style."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Badge'] > JSXAttribute[name.name='tone'] > Literal[value!=/^(?:cloud|local|danger|neutral)$/]",
+        "message": "<Badge> tone must be one of 'cloud' | 'local' | 'danger' | 'neutral'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Button'] > JSXAttribute > JSXIdentifier[name!=/^(?:variant|size|pill|full|disabled|leading|children|style|key|ref|className|style|children)$/]",
+        "message": "<Button> doesn't accept that prop. Declared props: variant, size, pill, full, disabled, leading, children, style."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Button'] > JSXAttribute[name.name='variant'] > Literal[value!=/^(?:primary|secondary|ghost|danger)$/]",
+        "message": "<Button> variant must be one of 'primary' | 'secondary' | 'ghost' | 'danger'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Button'] > JSXAttribute[name.name='size'] > Literal[value!=/^(?:sm|md|lg)$/]",
+        "message": "<Button> size must be one of 'sm' | 'md' | 'lg'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Card'] > JSXAttribute > JSXIdentifier[name!=/^(?:children|padded|onClick|style|key|ref|className|style|children)$/]",
+        "message": "<Card> doesn't accept that prop. Declared props: children, padded, onClick, style."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='ChatBubble'] > JSXAttribute > JSXIdentifier[name!=/^(?:from|children|meta|failed|actions|style|key|ref|className|style|children)$/]",
+        "message": "<ChatBubble> doesn't accept that prop. Declared props: from, children, meta, failed, actions, style."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='ChatBubble'] > JSXAttribute[name.name='from'] > Literal[value!=/^(?:user|ai)$/]",
+        "message": "<ChatBubble> from must be one of 'user' | 'ai'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Chip'] > JSXAttribute > JSXIdentifier[name!=/^(?:active|children|onClick|style|key|ref|className|style|children)$/]",
+        "message": "<Chip> doesn't accept that prop. Declared props: active, children, onClick, style."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Composer'] > JSXAttribute > JSXIdentifier[name!=/^(?:value|onChange|placeholder|enabled|showEmoji|deepThink|onDeepThink|sendIcon|onSend|onFocus|style|key|ref|className|style|children)$/]",
+        "message": "<Composer> doesn't accept that prop. Declared props: value, onChange, placeholder, enabled, showEmoji, deepThink, onDeepThink, sendIcon, onSend, onFocus, style."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='DayDivider'] > JSXAttribute > JSXIdentifier[name!=/^(?:children|style|key|ref|className|style|children)$/]",
+        "message": "<DayDivider> doesn't accept that prop. Declared props: children, style."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='IconButton'] > JSXAttribute > JSXIdentifier[name!=/^(?:children|onClick|size|style|key|ref|className|style|children)$/]",
+        "message": "<IconButton> doesn't accept that prop. Declared props: children, onClick, size, style."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='ListRow'] > JSXAttribute > JSXIdentifier[name!=/^(?:emoji|iconBg|title|subtitle|titleColor|trailing|onClick|style|key|ref|className|style|children)$/]",
+        "message": "<ListRow> doesn't accept that prop. Declared props: emoji, iconBg, title, subtitle, titleColor, trailing, onClick, style."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='ModelChip'] > JSXAttribute > JSXIdentifier[name!=/^(?:name|sub|dotColor|onClick|style|key|ref|className|style|children)$/]",
+        "message": "<ModelChip> doesn't accept that prop. Declared props: name, sub, dotColor, onClick, style."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Toggle'] > JSXAttribute > JSXIdentifier[name!=/^(?:checked|onChange|disabled|style|key|ref|className|style|children)$/]",
+        "message": "<Toggle> doesn't accept that prop. Declared props: checked, onChange, disabled, style."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='TypingIndicator'] > JSXAttribute > JSXIdentifier[name!=/^(?:style|key|ref|className|style|children)$/]",
+        "message": "<TypingIndicator> doesn't accept that prop. Declared props: style."
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": [
+        "**/index.js"
+      ],
+      "rules": {
+        "no-restricted-imports": "off"
+      }
+    }
+  ],
+  "x-omelette": {
+    "components": {
+      "AppBar": {
+        "replaces": []
+      },
+      "Badge": {
+        "replaces": []
+      },
+      "Button": {
+        "replaces": []
+      },
+      "Card": {
+        "replaces": []
+      },
+      "ChatBubble": {
+        "replaces": []
+      },
+      "Chip": {
+        "replaces": []
+      },
+      "Composer": {
+        "replaces": []
+      },
+      "DayDivider": {
+        "replaces": []
+      },
+      "IconButton": {
+        "replaces": []
+      },
+      "ListRow": {
+        "replaces": []
+      },
+      "ModelChip": {
+        "replaces": []
+      },
+      "Toggle": {
+        "replaces": []
+      },
+      "TypingIndicator": {
+        "replaces": []
+      }
+    },
+    "tokens": [
+      "--action-primary",
+      "--action-primary-press",
+      "--amber",
+      "--appbar-pad-x",
+      "--appbar-pad-y",
+      "--bg",
+      "--border-default",
+      "--border-focus",
+      "--bubble-ai-bg",
+      "--bubble-ai-ink",
+      "--bubble-user-bg",
+      "--bubble-user-ink",
+      "--danger",
+      "--danger-soft",
+      "--dur-fast",
+      "--dur-toggle",
+      "--dur-typing",
+      "--ease-standard",
+      "--failed-bg",
+      "--failed-border",
+      "--font-mono",
+      "--font-sans",
+      "--fs-body",
+      "--fs-body-lg",
+      "--fs-caption",
+      "--fs-chip",
+      "--fs-eyebrow",
+      "--fs-hero",
+      "--fs-label",
+      "--fs-micro",
+      "--fs-small",
+      "--fs-title",
+      "--fw-bold",
+      "--fw-extrabold",
+      "--fw-medium",
+      "--fw-regular",
+      "--fw-semibold",
+      "--gutter",
+      "--ink",
+      "--ink-2",
+      "--jade",
+      "--jade-deep",
+      "--jade-soft",
+      "--lh-body",
+      "--lh-snug",
+      "--lh-tight",
+      "--line",
+      "--ls-eyebrow",
+      "--ls-normal",
+      "--placeholder",
+      "--radius-bubble",
+      "--radius-full",
+      "--radius-lg",
+      "--radius-md",
+      "--radius-pill",
+      "--radius-sheet",
+      "--radius-sm",
+      "--radius-tile",
+      "--radius-xl",
+      "--radius-xs",
+      "--shadow-card",
+      "--shadow-fab",
+      "--shadow-sheet",
+      "--shadow-thumb",
+      "--space-1",
+      "--space-10",
+      "--space-12",
+      "--space-14",
+      "--space-2",
+      "--space-3",
+      "--space-4",
+      "--space-5",
+      "--space-6",
+      "--space-7",
+      "--space-8",
+      "--space-9",
+      "--surface",
+      "--surface-accent",
+      "--surface-app",
+      "--surface-card",
+      "--tap-icon-btn",
+      "--tap-min",
+      "--tap-send",
+      "--text-accent",
+      "--text-on-jade",
+      "--text-primary",
+      "--text-secondary",
+      "--warn-bg",
+      "--warn-border",
+      "--warn-ink",
+      "--warn-ink-2"
+    ],
+    "tokenKinds": {
+      "--bg": "color",
+      "--surface": "color",
+      "--ink": "color",
+      "--ink-2": "color",
+      "--placeholder": "color",
+      "--jade": "color",
+      "--jade-deep": "color",
+      "--jade-soft": "color",
+      "--amber": "color",
+      "--line": "color",
+      "--danger": "color",
+      "--warn-bg": "color",
+      "--warn-border": "color",
+      "--warn-ink": "color",
+      "--warn-ink-2": "color",
+      "--failed-bg": "color",
+      "--failed-border": "color",
+      "--danger-soft": "color",
+      "--text-primary": "font",
+      "--text-secondary": "font",
+      "--text-on-jade": "font",
+      "--text-accent": "font",
+      "--surface-app": "color",
+      "--surface-card": "color",
+      "--surface-accent": "color",
+      "--border-default": "color",
+      "--border-focus": "color",
+      "--action-primary": "color",
+      "--action-primary-press": "color",
+      "--bubble-user-bg": "color",
+      "--bubble-user-ink": "color",
+      "--bubble-ai-bg": "color",
+      "--bubble-ai-ink": "color",
+      "--font-sans": "font",
+      "--font-mono": "font",
+      "--fw-regular": "other",
+      "--fw-medium": "other",
+      "--fw-semibold": "other",
+      "--fw-bold": "other",
+      "--fw-extrabold": "other",
+      "--fs-micro": "spacing",
+      "--fs-eyebrow": "spacing",
+      "--fs-caption": "spacing",
+      "--fs-small": "spacing",
+      "--fs-chip": "spacing",
+      "--fs-label": "spacing",
+      "--fs-body": "spacing",
+      "--fs-body-lg": "spacing",
+      "--fs-title": "spacing",
+      "--fs-hero": "spacing",
+      "--lh-tight": "other",
+      "--lh-snug": "other",
+      "--lh-body": "other",
+      "--ls-eyebrow": "spacing",
+      "--ls-normal": "other",
+      "--space-1": "spacing",
+      "--space-2": "spacing",
+      "--space-3": "spacing",
+      "--space-4": "spacing",
+      "--space-5": "spacing",
+      "--space-6": "spacing",
+      "--space-7": "spacing",
+      "--space-8": "spacing",
+      "--space-9": "spacing",
+      "--space-10": "spacing",
+      "--space-12": "spacing",
+      "--space-14": "spacing",
+      "--gutter": "spacing",
+      "--appbar-pad-y": "spacing",
+      "--appbar-pad-x": "spacing",
+      "--radius-xs": "radius",
+      "--radius-sm": "radius",
+      "--radius-md": "radius",
+      "--radius-tile": "radius",
+      "--radius-lg": "radius",
+      "--radius-xl": "radius",
+      "--radius-bubble": "radius",
+      "--radius-sheet": "radius",
+      "--radius-pill": "radius",
+      "--radius-full": "radius",
+      "--tap-icon-btn": "spacing",
+      "--tap-send": "spacing",
+      "--tap-min": "spacing",
+      "--shadow-thumb": "shadow",
+      "--shadow-fab": "shadow",
+      "--shadow-sheet": "shadow",
+      "--shadow-card": "shadow",
+      "--ease-standard": "other",
+      "--dur-fast": "other",
+      "--dur-toggle": "other",
+      "--dur-typing": "other"
+    },
+    "fontFamilies": [
+      "Be Vietnam Pro"
+    ]
+  }
+}

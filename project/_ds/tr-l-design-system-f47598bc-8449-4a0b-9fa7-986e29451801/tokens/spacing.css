@@ -1,0 +1,54 @@
+/* ============================================================
+   SPACING, RADII, SHADOWS — distilled from the Compose layouts.
+   The app uses a loose 2px-step rhythm; these are the values
+   that actually recur across screens.
+   ============================================================ */
+
+:root {
+  /* ---- Spacing scale ---- */
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 6px;
+  --space-4: 8px;
+  --space-5: 10px;
+  --space-6: 12px;
+  --space-7: 14px;   /* default bubble/card padding-x */
+  --space-8: 16px;   /* screen gutter */
+  --space-9: 18px;
+  --space-10: 20px;
+  --space-12: 24px;
+  --space-14: 28px;  /* welcome screen gutter */
+
+  --gutter: 16px;          /* standard horizontal screen padding */
+  --appbar-pad-y: 10px;
+  --appbar-pad-x: 14px;
+
+  /* ---- Corner radii ---- */
+  --radius-xs: 6px;     /* bubble "tail" corner, small clickables */
+  --radius-sm: 8px;     /* pill button on light, small chips */
+  --radius-md: 12px;    /* icon tiles, dialog fields */
+  --radius-tile: 14px;  /* model / history icon tiles, chips */
+  --radius-lg: 16px;    /* cards, banners, settings groups */
+  --radius-xl: 18px;    /* hero logo tile, FAB */
+  --radius-bubble: 22px;/* chat bubble body */
+  --radius-sheet: 26px; /* bottom sheet + composer pill */
+  --radius-pill: 99px;  /* chips, toggles, model chip, search */
+  --radius-full: 9999px;
+
+  /* ---- Hit targets (min touch sizes from the app) ---- */
+  --tap-icon-btn: 42px;  /* app-bar circular icon button */
+  --tap-send: 46px;      /* composer send FAB */
+  --tap-min: 44px;       /* platform minimum */
+
+  /* ---- Elevation ---- */
+  --shadow-thumb: 0 1px 2px rgba(22, 32, 28, 0.28);          /* toggle thumb (2dp) */
+  --shadow-fab: 0 6px 16px rgba(10, 92, 72, 0.28);           /* FAB / floating (8dp) */
+  --shadow-sheet: 0 -8px 28px rgba(22, 32, 28, 0.12);        /* bottom sheet lift */
+  --shadow-card: 0 1px 2px rgba(22, 32, 28, 0.04);           /* subtle card rest */
+
+  /* ---- Motion ---- */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);   /* @kind other */
+  --dur-fast: 120ms;     /* @kind other */
+  --dur-toggle: 180ms;   /* @kind other */
+  --dur-typing: 600ms;   /* @kind other */
+}

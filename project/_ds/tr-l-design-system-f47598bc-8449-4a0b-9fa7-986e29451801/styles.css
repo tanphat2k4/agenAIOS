@@ -1,0 +1,9 @@
+/* ============================================================
+   Trợ Lý — Design System global entry point.
+   Consumers link THIS one file. Keep it @import-only.
+   ============================================================ */
+
+@import "tokens/fonts.css";
+@import "tokens/colors.css";
+@import "tokens/typography.css";
+@import "tokens/spacing.css";
