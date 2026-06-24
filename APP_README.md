@@ -56,5 +56,6 @@ The floating 🎨 button (bottom-right) reshapes the whole app via CSS variables
 **nav tone** (Theo nhấn / Than chì / Mực).
 
 ## Auth page
-The prototype's separate login/register screen lives at
-[`project/ZyAgents Auth.dc.html`](project/ZyAgents%20Auth.dc.html) and has not yet been ported to React.
+Ported to [`src/screens/Auth.tsx`](src/screens/Auth.tsx). The app boots to the login/register
+screen; a successful login or register enters the workspace, and "Đăng xuất" (in Tài khoản)
+returns to it. (Auth is mock — any valid-looking email submits.)

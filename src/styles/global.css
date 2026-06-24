@@ -49,6 +49,12 @@ body {
   70% { box-shadow: 0 0 0 8px rgba(59,91,219,0); }
   100% { box-shadow: 0 0 0 0 rgba(59,91,219,0); }
 }
+@keyframes authFade { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes floatA { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-14px); } }
+@keyframes floatB { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(11px); } }
+
+/* Auth input focus ring (inline styles can't express :focus) */
+.auth-field:focus { border-color: #3B5BDB !important; box-shadow: 0 0 0 3px rgba(59,91,219,.12); }
 
 /* ===== Hover reveal helpers ===== */
 .chrow .delbtn { opacity: 0; transition: opacity .12s; }

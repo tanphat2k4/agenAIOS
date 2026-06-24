@@ -9,6 +9,8 @@ try {
   const { ViewRouter } = await vite.ssrLoadModule('/src/screens/ViewRouter.tsx')
   const { NavRail } = await vite.ssrLoadModule('/src/components/NavRail.tsx')
   const { PersonCardPopover } = await vite.ssrLoadModule('/src/components/PersonCardPopover.tsx')
+  const { Auth } = await vite.ssrLoadModule('/src/screens/Auth.tsx')
+  try { renderToStaticMarkup(React.createElement(Auth)); console.log('ok   auth') } catch (e) { fail++; console.error('FAIL auth', e.message) }
 
   const views = ['channels', 'rooms', 'cron', 'knowledge', 'editor', 'workflow', 'overview', 'agents', 'mcp', 'tasks', 'devices', 'logs', 'perms', 'billing', 'users', 'notifs', 'language', 'profile']
   // overlays to exercise per view to render modal code paths

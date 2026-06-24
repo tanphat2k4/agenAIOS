@@ -57,6 +57,7 @@ export interface Attach { icon: string; name: string; label: string }
 
 export interface AppState {
   // navigation
+  authed: boolean
   view: ViewName
   toast: string | null
   // overlay = single-modal slot; some screens use dedicated fields
@@ -221,6 +222,7 @@ type Get = () => AppState & AppActions
 
 export interface AppActions {
   set: (p: Partial<AppState>) => void
+  setAuthed: (v: boolean) => void
   setView: (v: ViewName) => void
   fireToast: (msg: string) => void
   closeOverlay: () => void
@@ -485,6 +487,7 @@ export interface AppActions {
 }
 
 const initial: AppState = {
+  authed: false,
   view: 'channels',
   toast: null,
   overlay: null,
@@ -540,6 +543,7 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
   ...initial,
 
   set: (p) => set(p),
+  setAuthed: (v) => set({ authed: v }),
   setView: (v) => set({ view: v }),
   fireToast: (msg) => {
     set({ toast: msg })
@@ -696,7 +700,7 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
   revokeSession: (id) => { set((s) => ({ profileSessions: s.profileSessions.filter((x) => x.id !== id) })); get().fireToast('Đã đăng xuất thiết bị') },
   revokeAllSessions: () => { set((s) => ({ profileSessions: s.profileSessions.filter((x) => x.current) })); get().fireToast('Đã đăng xuất tất cả thiết bị khác') },
   askLogout: () => set({ overlay: 'logout' }),
-  doLogout: () => { set({ overlay: null }); get().fireToast('Đã đăng xuất khỏi AgentAIOS') },
+  doLogout: () => { set({ overlay: null, authed: false }); get().fireToast('Đã đăng xuất khỏi AgentAIOS') },
 
   // ---------- users ----------
   setUsersTab: (t) => set({ usersTab: t }),
