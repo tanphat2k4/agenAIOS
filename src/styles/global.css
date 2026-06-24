@@ -1,0 +1,61 @@
+/* ===== Fonts ===== */
+@font-face { font-family: "Be Vietnam Pro"; font-weight: 400; src: url("/fonts/be_vietnam_pro_regular.ttf") format("truetype"); font-display: swap; }
+@font-face { font-family: "Be Vietnam Pro"; font-weight: 500; src: url("/fonts/be_vietnam_pro_medium.ttf") format("truetype"); font-display: swap; }
+@font-face { font-family: "Be Vietnam Pro"; font-weight: 600; src: url("/fonts/be_vietnam_pro_semibold.ttf") format("truetype"); font-display: swap; }
+@font-face { font-family: "Be Vietnam Pro"; font-weight: 700; src: url("/fonts/be_vietnam_pro_bold.ttf") format("truetype"); font-display: swap; }
+@font-face { font-family: "Be Vietnam Pro"; font-weight: 800; src: url("/fonts/be_vietnam_pro_extrabold.ttf") format("truetype"); font-display: swap; }
+
+/* ===== Design tokens (Trợ Lý design system, indigo accent) ===== */
+:root {
+  --bg: #F7F9F7;
+  --surface: #FFFFFF;
+  --ink: #16201C;
+  --ink-2: #5A6B64;
+  --placeholder: #9AA8A1;
+  --jade: #3B5BDB;
+  --jade-deep: #28409E;
+  --jade-soft: #E8ECFB;
+  --amber: #E8A33D;
+  --line: #E4EAE6;
+  --danger: #C94F3D;
+  --warn-bg: #FBF1DE;
+  --warn-ink: #9A6A1B;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --nav-bg: #28409E;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+#root { height: 100vh; }
+body {
+  font-family: "Be Vietnam Pro", system-ui, sans-serif;
+  color: var(--ink);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+.material-symbols-rounded { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-thumb { background: #CFDAD4; border-radius: 99px; border: 2px solid transparent; background-clip: padding-box; }
+.railscroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,.18); }
+
+/* ===== Keyframes ===== */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pop { from { opacity: 0; transform: translateY(8px) scale(.985); } to { opacity: 1; transform: none; } }
+@keyframes msgIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes blink { 0%, 100% { opacity: .3; } 50% { opacity: 1; } }
+@keyframes wfpulse {
+  0% { box-shadow: 0 0 0 0 rgba(59,91,219,.45); }
+  70% { box-shadow: 0 0 0 8px rgba(59,91,219,0); }
+  100% { box-shadow: 0 0 0 0 rgba(59,91,219,0); }
+}
+
+/* ===== Hover reveal helpers ===== */
+.chrow .delbtn { opacity: 0; transition: opacity .12s; }
+.chrow:hover .delbtn { opacity: .85; }
+.chrow .delbtn:hover { opacity: 1; }
+
+/* button resets */
+button { font: inherit; }
+input, textarea, select { font: inherit; }
+a { color: inherit; }
