@@ -28,19 +28,19 @@ _TOOLS = ["analyze_vn_stock", "get_vn_stock_snapshot", "get_vn_news", "get_vn_ex
 
 # The 5 distinct pipeline agents — each owns one workflow step and runs one real 9Router call.
 _PIPELINE = [
-    {"id": "agent-ck-analyst", "name": "Analyst CK", "role": "Phân tích dữ liệu", "initial": "A", "color": "#3B5BDB",
+    {"id": "agent-ck-analyst", "name": "Analyst", "role": "Phân tích dữ liệu", "initial": "A", "color": "#3B5BDB",
      "io": "Thu thập + tóm tắt giá/tin/khối ngoại",
      "persona": "Bạn là Analyst — thu thập và tóm tắt dữ liệu thị trường (giá, chỉ báo kỹ thuật, tin tức, khối ngoại) từ dữ liệu được cung cấp. Nêu súc tích các điểm chính, KHÔNG bịa số."},
-    {"id": "agent-ck-research", "name": "Researcher CK", "role": "Tranh luận Bull/Bear", "initial": "R", "color": "#E8A33D",
+    {"id": "agent-ck-research", "name": "Researcher", "role": "Tranh luận Bull/Bear", "initial": "R", "color": "#E8A33D",
      "io": "Tranh luận mua vs bán",
      "persona": "Bạn là Researcher — tranh luận hai chiều: phe Mua (bull) và phe Bán (bear) dựa trên phần phân tích dữ liệu. Nêu luận điểm mạnh nhất mỗi phe."},
-    {"id": "agent-ck-trader", "name": "Trader CK", "role": "Quyết định giao dịch", "initial": "Tr", "color": "#0A7B52",
+    {"id": "agent-ck-trader", "name": "Trader", "role": "Quyết định giao dịch", "initial": "Tr", "color": "#0A7B52",
      "io": "Đề xuất quyết định",
      "persona": "Bạn là Trader — dựa trên tranh luận, đề xuất quyết định rõ ràng: MUA / BÁN / GIỮ, kèm vùng giá tham chiếu."},
-    {"id": "agent-ck-risk", "name": "Risk CK", "role": "Quản trị rủi ro", "initial": "Rk", "color": "#C94F3D",
+    {"id": "agent-ck-risk", "name": "Risk", "role": "Quản trị rủi ro", "initial": "Rk", "color": "#C94F3D",
      "io": "Đánh giá rủi ro",
      "persona": "Bạn là Risk Manager — đánh giá rủi ro của quyết định Trader (thanh khoản, biến động, vĩ mô) và đề xuất mức cắt lỗ."},
-    {"id": "agent-ck-portfolio", "name": "Portfolio CK", "role": "Quản lý danh mục", "initial": "P", "color": "#8B5CF6",
+    {"id": "agent-ck-portfolio", "name": "Portfolio", "role": "Quản lý danh mục", "initial": "P", "color": "#8B5CF6",
      "io": "Chốt khuyến nghị cuối",
      "persona": "Bạn là Portfolio Manager — chốt khuyến nghị cuối: Rating (Mua/Giữ/Bán), hành động cụ thể và tỷ trọng đề xuất. Kết bằng: 'Nghiên cứu, không phải lời khuyên đầu tư.'"},
 ]
@@ -90,7 +90,7 @@ def ensure_pipeline_agents(db: Session) -> list:
     """The 5 distinct pipeline agents as real Agent rows."""
     out = []
     for i, a in enumerate(_PIPELINE):
-        ag = db.scalar(select(Agent).where(Agent.name == a["name"]))
+        ag = db.get(Agent, a["id"])  # dedup by id so renames are handled
         if not ag:
             ag = Agent(
                 id=a["id"], name=a["name"], handle="@" + a["id"].replace("agent-ck-", ""), role=a["role"],
@@ -99,6 +99,8 @@ def ensure_pipeline_agents(db: Session) -> list:
                 bio=a["persona"], roomsList=["#chung-khoan"], recentTasks=[], sort=-2 - i,
             )
             db.add(ag)
+        else:
+            ag.name, ag.role, ag.initial, ag.color, ag.bio = a["name"], a["role"], a["initial"], a["color"], a["persona"]
         out.append(ag)
     db.commit()
     return out

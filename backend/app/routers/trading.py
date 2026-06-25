@@ -236,6 +236,8 @@ def ensure_channel(db: Session = Depends(get_db), current: User = Depends(get_cu
     add_channel_member(db, ch.id, name=current.name, initial=current.initial, color=current.color,
                        role="Owner" if getattr(current, "role", "") == "owner" else "Member", userId=current.id)
     add_channel_member(db, ch.id, name=_AGENT_NAME, initial=_AGENT_INITIAL, color=_AGENT_COLOR, role="Agent", isAgent=True)
+    for a in rec._PIPELINE:
+        add_channel_member(db, ch.id, name=a["name"], initial=a["initial"], color=a["color"], role="Agent", isAgent=True)
     rec.ensure_all(db)
     return _channel_dict(db, ch)
 
