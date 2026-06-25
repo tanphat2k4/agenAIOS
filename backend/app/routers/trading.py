@@ -12,6 +12,7 @@ from app.models.comms import Channel, Message
 from app.models.user import User
 from app.serialize import row_to_dict
 from app.services import ninerouter
+from app.services import trading_record as rec
 from app.services import tradingagents as ta
 
 router = APIRouter(prefix="/trading", tags=["trading"], dependencies=[Depends(get_current_user)])
@@ -24,23 +25,31 @@ _AGENT_COLOR = "#0A7B52"
 
 # ------------------------- fast tools (no LLM, sync) -------------------------
 @router.get("/snapshot/{ticker}")
-def snapshot(ticker: str):
-    return {"ticker": ticker, "text": ta.snapshot(ticker)}
+def snapshot(ticker: str, db: Session = Depends(get_db)):
+    text = ta.snapshot(ticker)
+    rec.record_mcp_call(db, "snapshot", ok=not text.startswith("Lỗi"))
+    return {"ticker": ticker, "text": text}
 
 
 @router.get("/news/{ticker}")
-def news(ticker: str, days: int = 7):
-    return {"ticker": ticker, "text": ta.news(ticker, days)}
+def news(ticker: str, days: int = 7, db: Session = Depends(get_db)):
+    text = ta.news(ticker, days)
+    rec.record_mcp_call(db, "news", ok=not text.startswith("Lỗi"))
+    return {"ticker": ticker, "text": text}
 
 
 @router.get("/extras/{ticker}")
-def extras(ticker: str):
-    return {"ticker": ticker, "text": ta.extras(ticker)}
+def extras(ticker: str, db: Session = Depends(get_db)):
+    text = ta.extras(ticker)
+    rec.record_mcp_call(db, "extras", ok=not text.startswith("Lỗi"))
+    return {"ticker": ticker, "text": text}
 
 
 @router.get("/macro")
-def macro():
-    return {"text": ta.macro()}
+def macro(db: Session = Depends(get_db)):
+    text = ta.macro()
+    rec.record_mcp_call(db, "macro", ok=not text.startswith("Lỗi"))
+    return {"text": text}
 
 
 # ------------------- full analysis (slow, LLM) — background -------------------
@@ -65,10 +74,21 @@ def start_analyze(body: AnalyzeIn):
     _jobs[key] = {"status": "running", "result": None}
 
     def work() -> None:
+        import time
+        t0 = time.time()
+        ok = True
         try:
-            _jobs[key] = {"status": "done", "result": ta.analyze(body.ticker, body.date)}
+            result = ta.analyze(body.ticker, body.date)
+            _jobs[key] = {"status": "done", "result": result}
+            ok = not result.startswith(("Lỗi", "Hết thời gian"))
         except Exception as exc:  # noqa: BLE001
             _jobs[key] = {"status": "error", "result": f"Lỗi: {exc}"}
+            ok = False
+        db = SessionLocal()
+        try:
+            rec.record_analysis(db, body.ticker, duration=f"{int(time.time() - t0)}s", ok=ok)
+        finally:
+            db.close()
 
     threading.Thread(target=work, daemon=True).start()
     return {"status": "running", "key": key, "result": None}
@@ -123,16 +143,23 @@ def _save_agent_msg(db: Session, channel_id: str, text: str) -> dict:
 
 
 def _bg_analyze(channel_id: str, ticker: str) -> None:
+    import time
+
     key = _key(ticker, None)
     _jobs[key] = {"status": "running", "result": None}
+    t0 = time.time()
     db = SessionLocal()
     try:
+        ok = True
         try:
             text = ta.analyze(ticker)
+            ok = not text.startswith(("Lỗi", "Hết thời gian"))
         except Exception as exc:  # noqa: BLE001
             text = f"Lỗi phân tích {ticker}: {exc}"
+            ok = False
         _save_agent_msg(db, channel_id, text)
         _jobs[key] = {"status": "done", "result": text}
+        rec.record_analysis(db, ticker, duration=f"{int(time.time() - t0)}s", ok=ok)
     finally:
         db.close()
 
@@ -171,6 +198,8 @@ def ensure_channel(db: Session = Depends(get_db), current: User = Depends(get_cu
     add_channel_member(db, ch.id, name=current.name, initial=current.initial, color=current.color,
                        role="Owner" if getattr(current, "role", "") == "owner" else "Member", userId=current.id)
     add_channel_member(db, ch.id, name=_AGENT_NAME, initial=_AGENT_INITIAL, color=_AGENT_COLOR, role="Agent", isAgent=True)
+    rec.ensure_mcp_server(db)
+    rec.ensure_analysis_workflow(db)
     return _channel_dict(db, ch)
 
 
@@ -198,6 +227,7 @@ def trading_chat(body: ChatIn, db: Session = Depends(get_db)):
             text = ta.extras(ticker)
         else:
             text = ta.macro()
+        rec.record_mcp_call(db, cmd, ok=not text.startswith("Lỗi"))
         return {"messages": [_save_agent_msg(db, cid, text)], "analyzing": None}
 
     # general question / follow-up → conversational reply via 9Router

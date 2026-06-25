@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { api } from '@/api/client'
 import { Hover } from '@/components/ui/Hover'
+import { useStore } from '@/store'
 
 const SUGGEST = ['FPT', 'VCB', 'HPG', 'VNM', 'MWG', 'SSI', 'VHM', 'VIB']
 
@@ -14,6 +15,7 @@ const ACTIONS: Action[] = [
 ]
 
 export function Trading() {
+  const refreshOps = useStore((s) => s.refreshTradingOps)
   const [ticker, setTicker] = useState('FPT')
   const [busy, setBusy] = useState(false)
   const [title, setTitle] = useState('')
@@ -32,6 +34,7 @@ export function Trading() {
             : `/trading/${key}/${encodeURIComponent(t)}`
       const r = await api.get(path)
       setResult(r.text || '(không có kết quả)')
+      refreshOps()
     } catch (e) {
       setResult('Lỗi: ' + (e instanceof Error ? e.message : 'unknown'))
     } finally {
@@ -53,6 +56,7 @@ export function Trading() {
           if (r.status === 'done' || r.status === 'error') {
             setResult(r.result || '(không có kết quả)')
             setBusy(false)
+            refreshOps()
           } else {
             setTimeout(poll, 3000)
           }

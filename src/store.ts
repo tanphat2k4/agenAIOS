@@ -477,6 +477,7 @@ export interface AppActions {
   replyTo: (name: string) => void
   sendMessage: () => void
   pollTradingAnalyze: (channelId: string, ticker: string) => void
+  refreshTradingOps: () => void
   toggleChatSearch: () => void
   onChatSearch: (v: string) => void
   confirmLeave: () => void
@@ -966,12 +967,18 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
       api.get(`/trading/analyze?ticker=${encodeURIComponent(ticker)}`).then((r) => {
         if (r.status === 'done' || r.status === 'error') {
           api.get(`/channels/${channelId}/messages`).then((msgs) => set((s) => ({ messages: { ...s.messages, [channelId]: msgs } }))).catch(() => {})
+          get().refreshTradingOps()
         } else {
           setTimeout(tick, 4000)
         }
       }).catch(() => {})
     }
     setTimeout(tick, 4000)
+  },
+  refreshTradingOps: () => {
+    Promise.all([api.get('/mcp'), api.get('/workflows'), api.get('/sessions'), api.get('/knowledge')])
+      .then(([mcp, workflows, sessions, knowledge]) => set({ mcpData: mcp, workflows, sessionsData: sessions, knowledgeData: knowledge }))
+      .catch(() => {})
   },
   toggleChatSearch: () => set((s) => ({ chatSearchOpen: !s.chatSearchOpen, chatSearch: '' })),
   onChatSearch: (v) => set({ chatSearch: v }),
