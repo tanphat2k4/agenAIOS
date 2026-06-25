@@ -21,3 +21,10 @@ def health():
 
 
 app.include_router(api_router)
+
+
+@app.on_event("startup")
+def _start_scheduler() -> None:
+    from app.services.scheduler import start_scheduler
+
+    start_scheduler()

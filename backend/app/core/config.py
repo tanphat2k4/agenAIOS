@@ -31,6 +31,11 @@ class Settings(BaseSettings):
     TRADINGAGENTS_CLI: str = r"D:\TradingAgents\repo\vn_cli.py"
     TRADINGAGENTS_CWD: str = r"D:\TradingAgents\repo"
 
+    # OpenClaw — run its agents via WSL CLI; the gateway delivers replies to Telegram.
+    OPENCLAW_ENABLED: bool = True
+    OPENCLAW_AGENT: str = "trading"
+    OPENCLAW_TELEGRAM_CHAT: str = "5389237483"
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]

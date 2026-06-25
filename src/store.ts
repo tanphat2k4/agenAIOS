@@ -480,6 +480,7 @@ export interface AppActions {
   sendMessage: () => void
   pollTradingAnalyze: (channelId: string, ticker: string) => void
   refreshTradingOps: () => void
+  refreshAfterReport: () => void
   toggleChatSearch: () => void
   onChatSearch: (v: string) => void
   confirmLeave: () => void
@@ -886,7 +887,31 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
   backToCronForm: () => set({ overlay: 'newCron' }),
   cronAskDelete: (id, e) => { e?.stopPropagation(); set({ cronDeleteTarget: id, overlay: 'cronDelete' }) },
   cronDoDelete: () => { const id = get().cronDeleteTarget; if (id) persist(api.del('/cron/' + id)); set((s) => ({ cronJobsData: s.cronJobsData.filter((j) => j.id !== id), overlay: null, cronDeleteTarget: null })) },
-  cronRunNow: (id, e) => { e?.stopPropagation(); persist(api.post(`/cron/${id}/run-now`)); set((s) => ({ cronJobsData: s.cronJobsData.map((j) => j.id === id ? { ...j, last: 'vừa xong' } : j) })) },
+  cronRunNow: (id, e) => {
+    e?.stopPropagation()
+    if (id === 'cron-morning-ck') {
+      get().fireToast('Đang chạy báo cáo sáng (OpenClaw → Telegram)…')
+      set((s) => ({ cronJobsData: s.cronJobsData.map((j) => j.id === id ? { ...j, last: 'đang chạy…' } : j) }))
+      api.post('/trading/morning-report').catch(() => {})
+      const poll = () => {
+        api.get('/trading/morning-report').then((r) => {
+          if (r.status === 'done' || r.status === 'error') {
+            get().fireToast(r.status === 'done' ? 'Báo cáo sáng đã gửi Telegram ✓' : 'Báo cáo sáng gặp lỗi')
+            get().refreshAfterReport()
+          } else { setTimeout(poll, 4000) }
+        }).catch(() => {})
+      }
+      setTimeout(poll, 4000)
+      return
+    }
+    persist(api.post(`/cron/${id}/run-now`))
+    set((s) => ({ cronJobsData: s.cronJobsData.map((j) => j.id === id ? { ...j, last: 'vừa xong' } : j) }))
+  },
+  refreshAfterReport: () => {
+    Promise.all([api.get('/notifs'), api.get('/cron'), api.get('/knowledge')])
+      .then(([notifs, cron, knowledge]) => set({ notifsData: notifs, cronJobsData: cron, knowledgeData: knowledge })).catch(() => {})
+    api.get('/channels/chung-khoan/messages').then((msgs) => set((s) => ({ messages: { ...s.messages, ['chung-khoan']: msgs } }))).catch(() => {})
+  },
   onCronField: (k, v) => set((s) => ({ cronForm: { ...s.cronForm, [k]: v } as CronForm })),
   toggleCronFormEnabled: () => set((s) => ({ cronForm: { ...s.cronForm, enabled: !s.cronForm.enabled } })),
   createCron: () => { const f = get().cronForm; const name = f.name.trim(); if (!name) return; persist(api.post('/cron', { name, target: f.target, freq: f.freq, time: f.time, dow: f.dow, interval: f.interval, enabled: f.enabled })); const job: CronJob = { id: uid('j'), name, target: f.target, expr: cronExprFrom(f), last: 'chưa chạy', next: 'in 30m', creator: 'Nguyễn Thiện Giang', creatorInitial: 'N', creatorColor: '#3B5BDB', enabled: f.enabled, spark: [20, 30, 25, 35, 28, 32, 30] }; set((s) => ({ cronJobsData: [job, ...s.cronJobsData], overlay: null })) },

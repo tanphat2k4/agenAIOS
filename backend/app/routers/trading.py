@@ -140,6 +140,35 @@ def pipeline_status(ticker: str):
     return {"status": job["status"], "result": job["result"]}
 
 
+# ----------------- morning report (P4) -----------------
+@router.post("/morning-report")
+def start_morning_report():
+    key = "morning|now"
+    job = _jobs.get(key)
+    if job and job["status"] == "running":
+        return {"status": "running"}
+    _jobs[key] = {"status": "running", "result": None}
+
+    def work() -> None:
+        from app.services import morning_report as mr
+
+        db = SessionLocal()
+        try:
+            _jobs[key] = {"status": "done", "result": mr.run_morning_report(db, manual=True)}
+        except Exception as exc:  # noqa: BLE001
+            _jobs[key] = {"status": "error", "result": f"Lỗi: {exc}"}
+        finally:
+            db.close()
+
+    threading.Thread(target=work, daemon=True).start()
+    return {"status": "running"}
+
+
+@router.get("/morning-report")
+def morning_report_status():
+    return _jobs.get("morning|now") or {"status": "idle", "result": None}
+
+
 # ----------------------- in-app trading chat (P2) -----------------------
 def ensure_trading_channel(db: Session) -> Channel:
     ch = db.get(Channel, TRADING_CHANNEL_ID)
@@ -239,6 +268,9 @@ def ensure_channel(db: Session = Depends(get_db), current: User = Depends(get_cu
     for a in rec._PIPELINE:
         add_channel_member(db, ch.id, name=a["name"], initial=a["initial"], color=a["color"], role="Agent", isAgent=True)
     rec.ensure_all(db)
+    from app.services import morning_report as mr
+
+    mr.ensure_morning_cron(db)
     return _channel_dict(db, ch)
 
 
