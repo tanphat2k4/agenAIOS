@@ -11,6 +11,9 @@ Recreated 1:1 from the HTML/CSS prototype in [`project/ZyAgents.dc.html`](projec
 - **React 18 + Vite + TypeScript** (strict)
 - **Zustand** for state (one store mirroring the prototype's state + handlers)
 - No CSS framework — design tokens as CSS variables, styles ported inline / via small UI primitives
+- **Real backend**: FastAPI + PostgreSQL + 9Router (see [`backend/README.md`](backend/README.md)). The
+  store now hydrates from the API and persists every mutation; agent chat in DMs is real (9Router).
+  Set `VITE_API_URL` to point at the API (default `http://localhost:8000`). Start the backend first.
 
 ## Run
 ```bash
