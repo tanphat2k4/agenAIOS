@@ -24,7 +24,18 @@ class KnowledgeIn(BaseModel):
 
 @router.get("")
 def list_knowledge(db: Session = Depends(get_db)):
-    return rows_to_list(db.scalars(select(KnowledgeEntry).order_by(KnowledgeEntry.sort, KnowledgeEntry.id)))
+    out = []
+    for k in db.scalars(select(KnowledgeEntry).order_by(KnowledgeEntry.sort, KnowledgeEntry.id)):
+        d = row_to_dict(k, exclude={"content"})  # keep the list light
+        d["hasContent"] = bool(k.content)
+        out.append(d)
+    return out
+
+
+@router.get("/{entry_id}")
+def get_knowledge(entry_id: str, db: Session = Depends(get_db)):
+    """Full entry incl. content (e.g. the analyze report text)."""
+    return row_to_dict(get_or_404(db, KnowledgeEntry, entry_id))
 
 
 @router.post("", status_code=201)

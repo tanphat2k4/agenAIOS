@@ -126,6 +126,8 @@ export interface KnowledgeEntry {
   private?: boolean
   avatars: { i: string; c: string }[]
   extra?: number
+  content?: string
+  hasContent?: boolean
 }
 
 export interface RoleMember {

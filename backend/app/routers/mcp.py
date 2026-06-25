@@ -59,6 +59,15 @@ def sync_mcp(db: Session = Depends(get_db)):
 @router.post("/{mcp_id}/test")
 def test_mcp(mcp_id: str, db: Session = Depends(get_db)):
     m = get_or_404(db, McpServer, mcp_id)
+    # tradingagents-vn is a real subprocess bridge → run an actual healthcheck
+    if mcp_id == "tradingagents-vn":
+        from app.services import tradingagents as ta
+
+        ok, detail = ta.healthcheck()
+        m.status = "connected" if ok else "error"
+        m.lastSync = "vừa xong"
+        db.commit()
+        return {"ok": ok, "detail": (f"✓ {m.name}: {detail}" if ok else f"✕ {m.name}: {detail}")}
     ok = m.status != "error"
     return {"ok": ok, "detail": (f"✓ Kết nối {m.name} OK" if ok else f"✕ Không kết nối được {m.name}")}
 

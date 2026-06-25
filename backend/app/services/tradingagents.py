@@ -100,3 +100,22 @@ def analyze(ticker: str, trade_date: str | None = None) -> str:
     """Full multi-agent analysis (slow, minutes; cached per ticker+date by the CLI)."""
     args = ["analyze", ticker] + ([trade_date] if trade_date else [])
     return _run(args, timeout=900)
+
+
+def healthcheck() -> tuple[bool, str]:
+    """Real, fast check: the configured Python can import the TradingAgents deps."""
+    if not settings.TRADINGAGENTS_ENABLED:
+        return False, "TRADINGAGENTS_ENABLED=false"
+    try:
+        proc = subprocess.run(
+            [settings.TRADINGAGENTS_PYTHON, "-c", "import vnstock, tradingagents; print('ok')"],
+            cwd=settings.TRADINGAGENTS_CWD, capture_output=True, text=True,
+            encoding="utf-8", errors="replace", timeout=40, env=_CLEAN_ENV,
+        )
+    except subprocess.TimeoutExpired:
+        return False, "healthcheck quá hạn (>40s)"
+    except FileNotFoundError:
+        return False, "không tìm thấy Python của TradingAgents (kiểm tra TRADINGAGENTS_PYTHON)"
+    if proc.returncode == 0 and "ok" in (proc.stdout or ""):
+        return True, "vnstock + tradingagents import OK"
+    return False, (proc.stderr or proc.stdout or "import lỗi").strip()[-200:]

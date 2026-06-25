@@ -77,16 +77,18 @@ def start_analyze(body: AnalyzeIn):
         import time
         t0 = time.time()
         ok = True
+        result = ""
         try:
             result = ta.analyze(body.ticker, body.date)
             _jobs[key] = {"status": "done", "result": result}
             ok = not result.startswith(("Lỗi", "Hết thời gian"))
         except Exception as exc:  # noqa: BLE001
-            _jobs[key] = {"status": "error", "result": f"Lỗi: {exc}"}
+            result = f"Lỗi: {exc}"
+            _jobs[key] = {"status": "error", "result": result}
             ok = False
         db = SessionLocal()
         try:
-            rec.record_analysis(db, body.ticker, duration=f"{int(time.time() - t0)}s", ok=ok)
+            rec.record_analysis(db, body.ticker, report=result, duration=f"{int(time.time() - t0)}s", ok=ok)
         finally:
             db.close()
 
@@ -159,7 +161,7 @@ def _bg_analyze(channel_id: str, ticker: str) -> None:
             ok = False
         _save_agent_msg(db, channel_id, text)
         _jobs[key] = {"status": "done", "result": text}
-        rec.record_analysis(db, ticker, duration=f"{int(time.time() - t0)}s", ok=ok)
+        rec.record_analysis(db, ticker, report=text, duration=f"{int(time.time() - t0)}s", ok=ok)
     finally:
         db.close()
 

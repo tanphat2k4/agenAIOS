@@ -11,6 +11,8 @@ All writers are defensive: a logging failure must never break the actual
 trading response, so callers wrap nothing — we swallow errors here.
 """
 
+import re
+
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -89,7 +91,27 @@ def record_mcp_call(db: Session, command: str, ok: bool = True) -> None:
         db.rollback()
 
 
-def record_analysis(db: Session, ticker: str, *, duration: str = "", model: str = "deep_think", ok: bool = True) -> None:
+_HEADER_RE = re.compile(r"^#{1,4}\s+(.+)$", re.M)
+_REC_RE = re.compile(r"(MUA|BÁN|GIỮ|NẮM GIỮ|HOLD|BUY|SELL|TÍCH LŨY|GIẢM TỶ TRỌNG|KHUYẾN NGHỊ)[^\n]{0,70}", re.I)
+
+
+def _log_from_report(report: str, ticker: str, ok: bool) -> list:
+    """Build genuine session-log lines from the real analyze output."""
+    t = now_hm()
+    out = [{"t": t, "lvl": "info", "msg": f"tradingagents-vn · analyze {ticker} (subprocess vn_cli.py)"}]
+    if not ok or not report:
+        out.append({"t": t, "lvl": "error", "msg": "Pipeline lỗi hoặc không trả kết quả"})
+        return out
+    for h in _HEADER_RE.findall(report)[:6]:
+        out.append({"t": t, "lvl": "debug", "msg": "§ " + h.strip()[:80]})
+    rec = _REC_RE.search(report)
+    if rec:
+        out.append({"t": t, "lvl": "info", "msg": "→ " + rec.group(0).strip()[:80]})
+    out.append({"t": t, "lvl": "info", "msg": f"Báo cáo {len(report):,} ký tự — đã lưu vào Kiến thức"})
+    return out
+
+
+def record_analysis(db: Session, ticker: str, *, report: str = "", duration: str = "", model: str = "deep_think", ok: bool = True) -> None:
     ticker = ticker.upper()
     try:
         # 1) workflow run
@@ -99,24 +121,20 @@ def record_analysis(db: Session, ticker: str, *, duration: str = "", model: str 
         w.runs24 = (w.runs24 or 0) + 1
         w.runState = "idle"
         w.steps = [{**s, "status": "done" if ok else "idle"} for s in (w.steps or [])]
-        # 2) session log
+        # 2) session log — lines derived from the real report
         db.add(SessionLog(
             id=uid("s"), agent=_AGENT[0], initial=_AGENT[1], color=_AGENT[2], room="#chung-khoan",
             model=model, modelType="local", status="done" if ok else "failed",
-            started=now_hm(), duration=duration, tokens="—",
-            log=[
-                {"t": now_hm(), "lvl": "info", "msg": f"Phân tích {ticker} qua tradingagents-vn"},
-                {"t": now_hm(), "lvl": "debug", "msg": "analyst → research → trader → risk → portfolio"},
-                {"t": now_hm(), "lvl": "info", "msg": "Hoàn tất — đã lưu báo cáo vào Kiến thức"},
-            ],
-            sort=_top_sort(db, SessionLog),
+            started=now_hm(), duration=duration, tokens=(f"~{len(report) // 4:,}" if report and ok else "—"),
+            log=_log_from_report(report, ticker, ok), sort=_top_sort(db, SessionLog),
         ))
-        # 3) knowledge catalog entry
-        db.add(KnowledgeEntry(
-            id=uid("kn"), type="knowledge", title=f"Phân tích {ticker} ({now_hm()})",
-            repo="trading/vn", ver="v1", time="vừa xong", private=False,
-            avatars=[{"i": _AGENT[1], "c": _AGENT[2]}], sort=_top_sort(db, KnowledgeEntry),
-        ))
+        # 3) knowledge entry — stores the FULL report text
+        if ok and report:
+            db.add(KnowledgeEntry(
+                id=uid("kn"), type="knowledge", title=f"Phân tích {ticker} ({now_hm()})",
+                repo="trading/vn", ver="v1", time="vừa xong", private=False,
+                avatars=[{"i": _AGENT[1], "c": _AGENT[2]}], content=report, sort=_top_sort(db, KnowledgeEntry),
+            ))
         # 4) the analyze tool call on the MCP server
         m = ensure_mcp_server(db)
         m.recentCalls = [{"tool": "analyze_vn_stock", "time": now_hm(), "ok": ok}, *(m.recentCalls or [])][:8]

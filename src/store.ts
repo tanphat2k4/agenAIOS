@@ -207,6 +207,7 @@ export interface AppState {
   knowledgeCategory: string
   knowCatOpen: boolean
   knowDeleteTarget: string | null
+  knowContent: { title: string; body: string } | null
   knowledgeQuery: string
   editorMode: string
   editorConfirm: string | null
@@ -449,6 +450,7 @@ export interface AppActions {
   knowDoDelete: () => void
   onKnowQuery: (v: string) => void
   openEditor: (entry?: KnowledgeEntry) => void
+  openKnowledgeContent: (entry: KnowledgeEntry) => void
   newEntry: () => void
   closeEditor: () => void
   askCancelEditor: () => void
@@ -554,7 +556,7 @@ const initial: AppState = {
   cronFilter: 'all',
   cronForm: { name: '', target: 'Sabo - Facebook Research', freq: 'daily', time: '08:00', dow: 1, interval: 30, enabled: true },
   editingCronId: null, cronDeleteTarget: null, cronJobsData: seed.cronJobsData as CronJob[],
-  knowledgeTab: 'library', knowledgeFilter: 'all', knowledgeCategory: 'all', knowCatOpen: false, knowDeleteTarget: null, knowledgeQuery: '',
+  knowledgeTab: 'library', knowledgeFilter: 'all', knowledgeCategory: 'all', knowCatOpen: false, knowDeleteTarget: null, knowContent: null, knowledgeQuery: '',
   editorMode: 'split', editorConfirm: null, editorType: 'knowledge', editorTitle: 'Chuẩn bị nội dung facebook',
   editorCategory: 'zy-novel', editorTags: 'php, slim4, backend', editorLoadMode: 'on_demand', editorVisibility: 'private',
   editorAgentsChecked: { lisa: true }, editorAgents: seed.editorAgents, editorText: seed.editorText,
@@ -901,6 +903,7 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
   knowDoDelete: () => { const t = get().knowDeleteTarget; const _ent = get().knowledgeData.find((k) => k.title === t); if (_ent?.id) persist(api.del('/knowledge/' + _ent.id)); set((s) => ({ knowledgeData: s.knowledgeData.filter((k) => k.title !== t), overlay: null, knowDeleteTarget: null })) },
   onKnowQuery: (v) => set({ knowledgeQuery: v }),
   openEditor: (entry) => { if (entry) set({ view: 'editor', editorTitle: entry.title, editorType: entry.type, editorCategory: entry.repo }); else set({ view: 'editor' }) },
+  openKnowledgeContent: (entry) => { if (!entry.id) return; set({ knowContent: { title: entry.title, body: 'Đang tải…' }, overlay: 'knowContent' }); api.get('/knowledge/' + entry.id).then((full) => set({ knowContent: { title: full.title, body: full.content || '(không có nội dung)' } })).catch(() => set({ knowContent: { title: entry.title, body: 'Lỗi khi tải nội dung.' } })) },
   newEntry: () => set({ view: 'editor', editorTitle: '', editorType: 'knowledge', editorText: '# Tiêu đề mới\n\nNội dung knowledge…' }),
   closeEditor: () => set({ view: 'knowledge', editorConfirm: null }),
   askCancelEditor: () => set({ editorConfirm: 'cancel' }),

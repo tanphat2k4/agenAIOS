@@ -88,7 +88,7 @@ export function Knowledge() {
     typeFg: (catColor[k.type] || catColor.note).fg,
     typeBg: (catColor[k.type] || catColor.note).bg,
     title: k.title, repo: k.repo, ver: k.ver, time: k.time, isPrivate: !!k.private,
-    onOpen: () => s.openEditor(k),
+    onOpen: () => (k.hasContent ? s.openKnowledgeContent(k) : s.openEditor(k)),
     onEdit: (e: React.MouseEvent) => s.knowEdit(k, e),
     onDuplicate: (e: React.MouseEvent) => s.knowDuplicate(k.title, e),
     onDelete: (e: React.MouseEvent) => s.knowAskDelete(k.title, e),
@@ -356,6 +356,25 @@ export function Knowledge() {
           onConfirm={s.knowDoDelete}
           onClose={s.closeOverlay}
         />
+      )}
+
+      {/* Analysis report viewer (full-text knowledge) */}
+      {s.overlay === 'knowContent' && s.knowContent && (
+        <Modal onClose={s.closeOverlay} width={720} bare radius={22} cardStyle={{ maxHeight: '86vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 22px', borderBottom: '1px solid var(--line)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 11, minWidth: 0 }}>
+              <span style={{ fontSize: 20 }}>📄</span>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 15.5, fontWeight: 800, letterSpacing: '-.2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.knowContent.title}</div>
+                <div style={{ fontSize: 11.5, color: 'var(--placeholder)' }}>Báo cáo phân tích · TradingAgents</div>
+              </div>
+            </div>
+            <CloseBtn onClick={s.closeOverlay} />
+          </div>
+          <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', background: 'var(--bg)' }}>
+            <div style={{ whiteSpace: 'pre-wrap', fontSize: 13, lineHeight: 1.65, color: 'var(--ink)', fontFamily: '"Be Vietnam Pro", system-ui' }}>{s.knowContent.body}</div>
+          </div>
+        </Modal>
       )}
     </>
   )

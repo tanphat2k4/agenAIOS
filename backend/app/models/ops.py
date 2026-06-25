@@ -74,6 +74,7 @@ class KnowledgeEntry(Base):
     private: Mapped[bool] = mapped_column(Boolean, default=False)
     avatars: Mapped[list] = mapped_column(JSON, default=list)
     extra: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    content: Mapped[str | None] = mapped_column(Text, nullable=True)  # full document text (e.g. analyze report)
     sort: Mapped[int] = mapped_column(Integer, default=0)
 
 
