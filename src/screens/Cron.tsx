@@ -44,16 +44,19 @@ export function Cron() {
   // ---- view-model (mirrors renderVals cron block) ----
   const enabledCount = s.cronJobsData.filter((j) => j.enabled).length
 
+  const runs24 = s.cronJobsData.reduce((a, j) => a + (j.spark || []).reduce((x, y) => x + y, 0), 0)
+  const scheduled = enabledCount
+
   const cronStats = [
     { icon: '⏰', label: 'Total cron jobs', value: s.cronJobsData.length, sub: s.cronJobsData.length + ' jobs cấu hình' },
     { icon: '▶', label: 'Active', value: enabledCount, sub: (s.cronJobsData.length - enabledCount) + ' disabled' },
-    { icon: '📈', label: 'Last 24h runs', value: 221, sub: '221 success · 0 failed' },
-    { icon: '🔔', label: 'Next 1h scheduled', value: 4, sub: 'jobs trong 1 giờ tới' },
+    { icon: '📈', label: 'Last 24h runs', value: runs24, sub: runs24 + ' success · 0 failed' },
+    { icon: '🔔', label: 'Next 1h scheduled', value: scheduled, sub: 'jobs trong 1 giờ tới' },
   ]
 
   const cronPills = [
-    { label: 'Scheduler', value: 'Active', fg: 'var(--jade-deep)', bg: 'var(--jade-soft)' },
-    { label: 'Next window', value: '4 jobs / 1h', fg: 'var(--jade-deep)', bg: 'var(--jade-soft)' },
+    { label: 'Scheduler', value: enabledCount > 0 ? 'Active' : 'Idle', fg: 'var(--jade-deep)', bg: 'var(--jade-soft)' },
+    { label: 'Next window', value: scheduled + ' jobs / 1h', fg: 'var(--jade-deep)', bg: 'var(--jade-soft)' },
     { label: 'Failure rate', value: '0%', fg: 'var(--jade-deep)', bg: 'var(--jade-soft)' },
   ]
 
@@ -109,7 +112,7 @@ export function Cron() {
           <div style={{ fontSize: 11.5, color: 'var(--placeholder)', marginBottom: 3 }}>Workspace › Cron &amp; flows</div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
             <span style={{ fontSize: 21, fontWeight: 800, letterSpacing: '-.4px' }}>Cron &amp; flows</span>
-            <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>1 thiết bị · 1 online</span>
+            <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>{s.devicesData.length} thiết bị · {s.devicesData.filter((d) => d.status === 'online').length} online</span>
           </div>
         </div>
         <Hover as="button" onClick={s.openNewCron}

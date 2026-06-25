@@ -3,6 +3,7 @@ import { Hover } from '@/components/ui/Hover'
 import { Modal } from '@/components/ui/Modal'
 import { ConfirmModal } from '@/screens/channels/ChannelModals'
 import type { KnowledgeEntry } from '@/types'
+import { MarkdownLite } from '@/components/MarkdownLite'
 
 const catColor: Record<string, { fg: string; bg: string }> = {
   knowledge: { fg: '#28409E', bg: '#E8ECFB' },
@@ -13,22 +14,7 @@ const catColor: Record<string, { fg: string; bg: string }> = {
   account: { fg: '#0E7490', bg: '#E0F2F4' },
 }
 
-const knowTabDefs = [
-  { key: 'library', label: 'Library', count: 39 },
-  { key: 'pending', label: 'Pending changes', count: 0 },
-  { key: 'overrides', label: 'Active overrides', count: 0 },
-  { key: 'trash', label: 'Trash', count: 26 },
-]
-
-const knowFilterDefs = [
-  { key: 'all', label: 'All', count: 39 },
-  { key: 'rule', label: 'Rules', count: 9 },
-  { key: 'skill', label: 'Skills', count: 2 },
-  { key: 'agent', label: 'Agents', count: 18 },
-  { key: 'knowledge', label: 'Knowledge', count: 10 },
-  { key: 'note', label: 'Notes', count: 0 },
-  { key: 'account', label: 'Accounts', count: 0 },
-]
+// tab/filter counts derive from real knowledgeData inside the component
 
 const ghostBtn: React.CSSProperties = {
   fontSize: 13.5, fontWeight: 600, color: 'var(--ink-2)', background: 'var(--bg)',
@@ -45,6 +31,24 @@ function CloseBtn({ onClick }: { onClick: () => void }) {
 
 export function Knowledge() {
   const s = useStore()
+
+  // ---- counts derived from real data ----
+  const kc = (ty: string) => s.knowledgeData.filter((k) => k.type === ty).length
+  const knowTabDefs = [
+    { key: 'library', label: 'Library', count: s.knowledgeData.length },
+    { key: 'pending', label: 'Pending changes', count: 0 },
+    { key: 'overrides', label: 'Active overrides', count: 0 },
+    { key: 'trash', label: 'Trash', count: 0 },
+  ]
+  const knowFilterDefs = [
+    { key: 'all', label: 'All', count: s.knowledgeData.length },
+    { key: 'rule', label: 'Rules', count: kc('rule') },
+    { key: 'skill', label: 'Skills', count: kc('skill') },
+    { key: 'agent', label: 'Agents', count: kc('agent') },
+    { key: 'knowledge', label: 'Knowledge', count: kc('knowledge') },
+    { key: 'note', label: 'Notes', count: kc('note') },
+    { key: 'account', label: 'Accounts', count: kc('account') },
+  ]
 
   // ---- computed view model (ported from renderVals) ----
   const knowTabs = knowTabDefs.map((t) => {
@@ -112,7 +116,7 @@ export function Knowledge() {
               <div style={{ fontSize: 11.5, color: 'var(--placeholder)', marginBottom: 3 }}>Workspace › Knowledge</div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
                 <span style={{ fontSize: 21, fontWeight: 800, letterSpacing: '-.4px' }}>Knowledge</span>
-                <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>39 item · 0 chờ duyệt · 0 hot-edit</span>
+                <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>{s.knowledgeData.length} item · 0 chờ duyệt · 0 hot-edit</span>
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
@@ -372,7 +376,7 @@ export function Knowledge() {
             <CloseBtn onClick={s.closeOverlay} />
           </div>
           <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', background: 'var(--bg)' }}>
-            <div style={{ whiteSpace: 'pre-wrap', fontSize: 13, lineHeight: 1.65, color: 'var(--ink)', fontFamily: '"Be Vietnam Pro", system-ui' }}>{s.knowContent.body}</div>
+            <MarkdownLite text={s.knowContent.body} />
           </div>
         </Modal>
       )}

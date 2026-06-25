@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { api } from '@/api/client'
 import { Hover } from '@/components/ui/Hover'
 import { useStore } from '@/store'
+import { MarkdownLite } from '@/components/MarkdownLite'
 
 const SUGGEST = ['FPT', 'VCB', 'HPG', 'VNM', 'MWG', 'SSI', 'VHM', 'VIB']
 
@@ -128,7 +129,7 @@ export function Trading() {
                 {busy && <span style={{ width: 9, height: 9, borderRadius: 99, background: 'var(--jade)', animation: 'wfpulse 1.6s infinite', flex: 'none' }} />}
                 <span style={{ fontSize: 14, fontWeight: 800, letterSpacing: '-.2px' }}>{title}</span>
               </div>
-              <div style={{ whiteSpace: 'pre-wrap', fontSize: 13, lineHeight: 1.65, color: 'var(--ink)', fontFamily: '"Be Vietnam Pro", system-ui' }}>{result}</div>
+              <MarkdownLite text={result} />
             </>
           ) : (
             <div style={{ height: 240, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, color: 'var(--placeholder)', textAlign: 'center' }}>
