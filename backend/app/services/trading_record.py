@@ -52,6 +52,38 @@ def _top_sort(db: Session, model) -> int:
     return (db.scalar(select(func.min(model.sort))) or 0) - 1
 
 
+def _md_inline(text: str) -> list:
+    """Parse **bold** into rich spans; drop stray * (italic) markers."""
+    spans: list = []
+    for part in re.split(r"(\*\*[^*]+\*\*)", text):
+        if not part:
+            continue
+        if part.startswith("**") and part.endswith("**"):
+            spans.append({"v": part[2:-2], "isBold": True})
+        else:
+            spans.append({"v": part.replace("*", ""), "isText": True})
+    return spans or [{"v": "", "isText": True}]
+
+
+def md_to_blocks(text: str) -> list:
+    """Lightweight markdown -> chat blocks so #/**/>/* don't show as raw chars.
+
+    Headers (# …) become a bold line; **bold** -> bold spans; `> quote` and
+    stray `*` markers are stripped. Used for agent messages posted to channels.
+    """
+    blocks: list = []
+    for line in (text or "").split("\n"):
+        t = line.rstrip()
+        h = re.match(r"^#{1,4}\s+(.*)", t)
+        if h:
+            blocks.append({"kind": "para", "rich": [{"v": h.group(1).replace("*", ""), "isBold": True}]})
+            continue
+        if t.startswith(">"):
+            t = t.lstrip("> ").rstrip()
+        blocks.append({"kind": "para", "rich": _md_inline(t)})
+    return blocks
+
+
 # ----------------------------- ensure scaffolding -----------------------------
 def ensure_mcp_server(db: Session) -> McpServer:
     m = db.get(McpServer, MCP_ID)

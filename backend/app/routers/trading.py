@@ -202,7 +202,7 @@ def _save_agent_msg(db: Session, channel_id: str, text: str) -> dict:
     m = Message(
         id=uid("m"), channel_id=channel_id, authorName=_AGENT_NAME, time=now_hm(),
         avatarInitial=_AGENT_INITIAL, avatarColor=_AGENT_COLOR, isAgent=True,
-        raw=_to_raw(text), sort=next_sort(db, Message),
+        raw=rec.md_to_blocks(text), sort=next_sort(db, Message),
     )
     db.add(m)
     db.commit()

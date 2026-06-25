@@ -83,7 +83,7 @@ def run_morning_report(db: Session, *, manual: bool = False) -> str:
         if db.get(Channel, "chung-khoan"):
             db.add(Message(
                 id=uid("m"), channel_id="chung-khoan", authorName=_BOT[0], time=now_hm(),
-                avatarInitial=_BOT[1], avatarColor=_BOT[2], isAgent=True, raw=_to_raw(report),
+                avatarInitial=_BOT[1], avatarColor=_BOT[2], isAgent=True, raw=rec.md_to_blocks(report),
                 sort=next_sort(db, Message),
             ))
         db.add(Notification(
