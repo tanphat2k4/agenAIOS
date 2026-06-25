@@ -21,11 +21,13 @@ export function Rooms() {
 
   // ---- view-model (replicated verbatim from renderVals ~4991–5034) ----
   const activeRoom = s.rooms.find((r) => r.id === s.activeRoom) || s.rooms[0]
+  const activeRoomId = activeRoom?.id || ''
 
   const roomList = s.rooms.map((r) => {
     const sel = r.id === s.activeRoom
     return {
       id: r.id, name: r.name, slug: r.slug,
+      tile: (r.name.split(' ').filter(Boolean).map((w) => w[0]).join('') || 'R').slice(0, 2).toUpperCase(),
       onSelect: () => s.selectRoom(r.id),
       onDelete: () => { s.selectRoom(r.id); s.roomAskDelete() },
       bg: sel ? 'var(--jade-soft)' : 'transparent',
@@ -36,7 +38,7 @@ export function Rooms() {
     }
   })
 
-  const roomMembers = (s.roomMembersById[s.activeRoom] || []).map((m: RoomMember) => ({
+  const roomMembers = (s.roomMembersById[activeRoomId] || []).map((m: RoomMember) => ({
     name: m.name, handle: m.handle, initial: m.initial, color: m.color,
     type: m.type,
     typeFg: m.type === 'user' ? '#3B6FB5' : '#28409E',
@@ -47,8 +49,8 @@ export function Rooms() {
     onRemove: () => s.roomRemoveMember(m.name),
   }))
 
-  const memberTotal = (s.roomMembersById[s.activeRoom] || []).length
-  const agentTotal = (s.roomMembersById[s.activeRoom] || []).filter((m: RoomMember) => m.type === 'agent').length
+  const memberTotal = (s.roomMembersById[activeRoomId] || []).length
+  const agentTotal = (s.roomMembersById[activeRoomId] || []).filter((m: RoomMember) => m.type === 'agent').length
   const userTotal = memberTotal - agentTotal
 
   const roomTabs = [
@@ -89,7 +91,7 @@ export function Rooms() {
   ]
 
   // addPeople: people not already in this room
-  const curNames = new Set((s.roomMembersById[s.activeRoom] || []).map((m: RoomMember) => m.name))
+  const curNames = new Set((s.roomMembersById[activeRoomId] || []).map((m: RoomMember) => m.name))
   const roomAddPeople: RoomMember[] = addPeoplePool
     .filter((p) => !curNames.has(p.name))
     .map((p) => {
@@ -132,7 +134,7 @@ export function Rooms() {
             <Hover key={r.id} onClick={r.onSelect} className="chrow"
               style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 10px', borderRadius: 13, cursor: 'pointer', marginBottom: 3, background: r.bg, border: `1px solid ${r.border}` }}
               hover={{ background: 'var(--jade-soft)' }}>
-              <div style={{ width: 34, height: 34, borderRadius: 10, background: r.tileBg, color: r.tileFg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12, flex: 'none', letterSpacing: '.3px' }}>ZY</div>
+              <div style={{ width: 34, height: 34, borderRadius: 10, background: r.tileBg, color: r.tileFg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12, flex: 'none', letterSpacing: '.3px' }}>{r.tile}</div>
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div style={{ fontSize: 14, fontWeight: 700, color: r.nameColor, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.name}</div>
                 <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.5px', color: 'var(--placeholder)', marginTop: 2 }}>{r.slug}</div>

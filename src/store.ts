@@ -620,7 +620,8 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
       publicData: channels.public, privateData: channels.private, directData: channels.direct,
       agentsData: agents, mcpData: mcp, workflows, cronJobsData: cron, tasksData: tasks,
       devicesData: devices, sessionsData: sessions, auditLog: audit, knowledgeData: knowledge,
-      rooms, roomMembersById, rolesData: roles, rolePerms, usersData: users, invitesData: invites,
+      rooms, roomMembersById, activeRoom: rooms.find((r: { id: string }) => r.id === get().activeRoom) ? get().activeRoom : (rooms[0]?.id || ''),
+      rolesData: roles, rolePerms, usersData: users, invitesData: invites,
       signupsData: signups, notifsData: notifs, billMonths: bill, recentActivity: activity, unread,
       profileData: { name: profile.name, email: profile.email, phone: profile.phone, title: profile.title, bio: profile.bio, location: profile.location },
     })

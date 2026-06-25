@@ -203,6 +203,7 @@ def ensure_channel(db: Session = Depends(get_db), current: User = Depends(get_cu
     rec.ensure_mcp_server(db)
     rec.ensure_analysis_workflow(db)
     rec.ensure_trading_agent(db)
+    rec.ensure_trading_room(db)
     return _channel_dict(db, ch)
 
 

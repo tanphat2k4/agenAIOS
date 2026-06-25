@@ -18,7 +18,9 @@ from sqlalchemy.orm import Session
 
 from app.crud import now_hm, uid
 from app.models.agents import Agent, McpServer, Workflow
+from app.models.comms import Room
 from app.models.ops import KnowledgeEntry, SessionLog
+from app.models.user import User
 
 MCP_ID = "tradingagents-vn"
 WF_ID = "wf-trading-analysis"
@@ -95,6 +97,32 @@ def ensure_trading_agent(db: Session) -> Agent:
     db.add(a)
     db.commit()
     return a
+
+
+def ensure_trading_room(db: Session) -> Room:
+    """A 'Chứng khoán' project room grouping the #chung-khoan channel + the analyst agent.
+
+    Created once; members = workspace owner (lead) + the analyst agent (staff). Does not
+    add whoever happens to log in, so logins don't pollute the room.
+    """
+    r = db.get(Room, "room-chung-khoan")
+    if r:
+        return r
+    owner = db.scalar(select(User).where(User.role == "owner")) or db.scalar(select(User))
+    members: list = []
+    if owner:
+        members.append({
+            "name": owner.name, "handle": "@" + (owner.name.split()[0].lower() if owner.name else "owner"),
+            "type": "user", "role": "lead", "initial": owner.initial, "color": owner.color,
+        })
+    members.append({
+        "name": _AGENT[0], "handle": "@phan-tich-ck", "type": "agent", "role": "staff",
+        "initial": _AGENT[1], "color": _AGENT[2],
+    })
+    r = Room(id="room-chung-khoan", name="Chứng khoán", slug="chung-khoan", channel="chung-khoan", members=members, sort=-1)
+    db.add(r)
+    db.commit()
+    return r
 
 
 def record_mcp_call(db: Session, command: str, ok: bool = True) -> None:
