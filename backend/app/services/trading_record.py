@@ -17,7 +17,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.crud import now_hm, uid
-from app.models.agents import McpServer, Workflow
+from app.models.agents import Agent, McpServer, Workflow
 from app.models.ops import KnowledgeEntry, SessionLog
 
 MCP_ID = "tradingagents-vn"
@@ -79,6 +79,24 @@ def ensure_analysis_workflow(db: Session) -> Workflow:
     return w
 
 
+def ensure_trading_agent(db: Session) -> Agent:
+    """The "Phân tích CK" agent shown in chat/members/workflow is a real Agent row."""
+    a = db.scalar(select(Agent).where(Agent.name == _AGENT[0]))
+    if a:
+        return a
+    a = Agent(
+        id="agent-trading-vn", name=_AGENT[0], handle="@phan-tich-ck",
+        role="Phân tích chứng khoán VN", roleType="research", initial=_AGENT[1], color=_AGENT[2],
+        status="online", model="deep_think", modelType="local", tasks=0, rooms=1, success=100,
+        skills=["analyze_vn_stock", "snapshot", "news", "macro"], lastActive="vừa xong",
+        bio="Phân tích cổ phiếu VN đa-agent qua TradingAgents (vnstock/FireAnt). Công cụ nghiên cứu — không phải lời khuyên đầu tư.",
+        roomsList=["#chung-khoan"], recentTasks=[], sort=-1,
+    )
+    db.add(a)
+    db.commit()
+    return a
+
+
 def record_mcp_call(db: Session, command: str, ok: bool = True) -> None:
     try:
         m = ensure_mcp_server(db)
@@ -116,7 +134,7 @@ def record_analysis(db: Session, ticker: str, *, report: str = "", duration: str
     try:
         # 1) workflow run
         w = ensure_analysis_workflow(db)
-        w.runs = [{"time": now_hm(), "status": "done" if ok else "failed", "dur": duration}, *(w.runs or [])][:12]
+        w.runs = [{"time": now_hm(), "status": "success" if ok else "failed", "dur": duration}, *(w.runs or [])][:12]
         w.lastRun = now_hm()
         w.runs24 = (w.runs24 or 0) + 1
         w.runState = "idle"

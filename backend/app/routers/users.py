@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.crud import get_or_404, list_ordered, next_sort, uid
+from app.models.comms import ChannelMember
 from app.models.org import Invite, Role, Signup
 from app.models.user import User
 from app.serialize import row_to_dict, rows_to_list
@@ -75,7 +76,8 @@ def remove_user(user_id: str, db: Session = Depends(get_db)):
     u = get_or_404(db, User, user_id)
     name = u.name
     db.delete(u)
-    # cascade: drop this person from every role's member list
+    # cascade: drop this person from every role's member list + channel memberships
+    db.execute(delete(ChannelMember).where(ChannelMember.userId == user_id))
     for role in db.scalars(select(Role)):
         if any(m.get("name") == name for m in role.members):
             role.members = [m for m in role.members if m.get("name") != name]
