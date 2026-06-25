@@ -1,0 +1,39 @@
+from pathlib import Path
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# backend/  (config.py is at backend/app/core/config.py)
+BASE_DIR = Path(__file__).resolve().parents[2]
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=str(BASE_DIR / ".env"),
+        env_file_encoding="utf-8",
+        extra="ignore",
+        case_sensitive=False,
+    )
+
+    DATABASE_URL: str = "postgresql+psycopg://postgres:postgres@localhost:5432/agentaios"
+    SECRET_KEY: str = "dev-secret-change-me-0123456789abcdef0123456789abcdef"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 10080  # 7 days
+    ALGORITHM: str = "HS256"
+    CORS_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173"
+
+    # 9Router LLM gateway (OpenAI-compatible). Loopback needs no key; set one if remote.
+    NINEROUTER_BASE_URL: str = "http://localhost:20128/v1"
+    NINEROUTER_API_KEY: str = ""
+    NINEROUTER_DEFAULT_MODEL: str = "fast-chat"
+
+    # TradingAgents-VN: call the existing vn_cli.py as a subprocess (no edits to that repo).
+    TRADINGAGENTS_ENABLED: bool = True
+    TRADINGAGENTS_PYTHON: str = r"C:\Users\tanph\AppData\Local\Microsoft\WindowsApps\python.exe"
+    TRADINGAGENTS_CLI: str = r"D:\TradingAgents\repo\vn_cli.py"
+    TRADINGAGENTS_CWD: str = r"D:\TradingAgents\repo"
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
+
+
+settings = Settings()

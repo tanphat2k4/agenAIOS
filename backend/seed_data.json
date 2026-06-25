@@ -1,0 +1,3123 @@
+{
+  "agentsData": [
+    {
+      "id": "dragon",
+      "name": "Dragon - CEO",
+      "handle": "@dragon-ceo",
+      "role": "Orchestrator",
+      "roleType": "manager",
+      "initial": "D",
+      "color": "#C0392B",
+      "status": "online",
+      "model": "Claude Sonnet",
+      "modelType": "cloud",
+      "tasks": 142,
+      "rooms": 3,
+      "success": 98,
+      "skills": [
+        "Điều phối",
+        "Tạo SOP",
+        "Duyệt nội dung"
+      ],
+      "lastActive": "vừa xong",
+      "bio": "Agent điều phối trung tâm — nhận yêu cầu, tạo SOP, giao việc cho agent khác và duyệt kết quả.",
+      "roomsList": [
+        "Zy Novel",
+        "Zy Page",
+        "Zy Tech"
+      ],
+      "recentTasks": [
+        {
+          "id": "T-2362",
+          "text": "Tạo knowledge \"Chuẩn bị nội dung facebook\"",
+          "status": "done"
+        },
+        {
+          "id": "T-2358",
+          "text": "Duyệt 5 bài facebook_post_cho",
+          "status": "done"
+        }
+      ]
+    },
+    {
+      "id": "sabo",
+      "name": "Sabo - Facebook Research",
+      "handle": "@sabo-zynovel",
+      "role": "Researcher",
+      "roleType": "research",
+      "initial": "S",
+      "color": "#3B82C4",
+      "status": "online",
+      "model": "Qwen3 35B",
+      "modelType": "local",
+      "tasks": 118,
+      "rooms": 2,
+      "success": 95,
+      "skills": [
+        "Crawl dữ liệu",
+        "Phân tích hook",
+        "Bắt trend"
+      ],
+      "lastActive": "2m",
+      "bio": "Chuyên thu thập và phân tích bài viral từ fanpage nguồn, đánh giá hook và độ phù hợp.",
+      "roomsList": [
+        "Zy Novel",
+        "Zy Page"
+      ],
+      "recentTasks": [
+        {
+          "id": "T-2401",
+          "text": "Research 12 bài viral tuần này",
+          "status": "done"
+        },
+        {
+          "id": "T-2399",
+          "text": "Quét fanpage nguồn mới",
+          "status": "running"
+        }
+      ]
+    },
+    {
+      "id": "sanji",
+      "name": "Sanji - Xào nấu content",
+      "handle": "@sanji-zynovel",
+      "role": "Writer",
+      "roleType": "writer",
+      "initial": "S",
+      "color": "#0EA5A0",
+      "status": "busy",
+      "model": "Qwen3 35B",
+      "modelType": "local",
+      "tasks": 96,
+      "rooms": 2,
+      "success": 92,
+      "skills": [
+        "Viết lại",
+        "Tối ưu hook",
+        "SEO"
+      ],
+      "lastActive": "đang chạy",
+      "bio": "Biến bài nguồn thành nội dung mới đầy đủ cho fanpage vệ tinh và Fanpage Zy Novel.",
+      "roomsList": [
+        "Zy Novel"
+      ],
+      "recentTasks": [
+        {
+          "id": "T-2593",
+          "text": "Viết nội dung đầy đủ cho 1 bài",
+          "status": "running"
+        },
+        {
+          "id": "T-2588",
+          "text": "Tối ưu hook 3 bài",
+          "status": "done"
+        }
+      ]
+    },
+    {
+      "id": "nami",
+      "name": "Nami - Quản lý Fanpage",
+      "handle": "@nami-zynovel",
+      "role": "Manager",
+      "roleType": "manager",
+      "initial": "N",
+      "color": "#E8A33D",
+      "status": "online",
+      "model": "Qwen3 8B",
+      "modelType": "local",
+      "tasks": 74,
+      "rooms": 4,
+      "success": 97,
+      "skills": [
+        "Lịch đăng",
+        "Quản lý fanpage"
+      ],
+      "lastActive": "5m",
+      "bio": "Quản lý lịch đăng và phân phối nội dung cho toàn bộ fanpage vệ tinh.",
+      "roomsList": [
+        "Zy Novel",
+        "Zy Page"
+      ],
+      "recentTasks": [
+        {
+          "id": "T-2410",
+          "text": "Cập nhật lịch 6 fanpage vệ tinh",
+          "status": "done"
+        }
+      ]
+    },
+    {
+      "id": "morgans",
+      "name": "Morgans - Social Leader",
+      "handle": "@morgans-zynovel",
+      "role": "Analyst",
+      "roleType": "research",
+      "initial": "M",
+      "color": "#8B5CF6",
+      "status": "idle",
+      "model": "DeepSeek V3",
+      "modelType": "cloud",
+      "tasks": 51,
+      "rooms": 1,
+      "success": 90,
+      "skills": [
+        "Báo cáo",
+        "Phân tích KPI"
+      ],
+      "lastActive": "1h",
+      "bio": "Phân tích chỉ số tương tác và tổng hợp KPI social hằng tuần.",
+      "roomsList": [
+        "Zy Novel"
+      ],
+      "recentTasks": [
+        {
+          "id": "T-2380",
+          "text": "Phân tích tương tác tháng",
+          "status": "done"
+        }
+      ]
+    },
+    {
+      "id": "usopp",
+      "name": "Usopp - Group Seeding",
+      "handle": "@usopp-zynovel",
+      "role": "Seeder",
+      "roleType": "writer",
+      "initial": "U",
+      "color": "#C94F3D",
+      "status": "online",
+      "model": "Qwen3 8B",
+      "modelType": "local",
+      "tasks": 63,
+      "rooms": 2,
+      "success": 88,
+      "skills": [
+        "Seeding nhóm",
+        "Comment"
+      ],
+      "lastActive": "12m",
+      "bio": "Seeding bài viết vào các nhóm cộng đồng sau khi đăng để kéo tương tác.",
+      "roomsList": [
+        "Zy Novel",
+        "Zy Page"
+      ],
+      "recentTasks": [
+        {
+          "id": "T-2370",
+          "text": "Seeding 8 nhóm cộng đồng",
+          "status": "done"
+        }
+      ]
+    },
+    {
+      "id": "brook",
+      "name": "Brook - Báo Cáo Zy Novel",
+      "handle": "@brook-zynovel",
+      "role": "Reporter",
+      "roleType": "research",
+      "initial": "B",
+      "color": "#3B5BDB",
+      "status": "idle",
+      "model": "Qwen3 35B",
+      "modelType": "local",
+      "tasks": 39,
+      "rooms": 1,
+      "success": 99,
+      "skills": [
+        "Tổng hợp",
+        "Export PDF"
+      ],
+      "lastActive": "3h",
+      "bio": "Tổng hợp dữ liệu và xuất báo cáo Social Data Report định kỳ.",
+      "roomsList": [
+        "Zy Novel"
+      ],
+      "recentTasks": [
+        {
+          "id": "T-2360",
+          "text": "Xuất Social Data Report v13",
+          "status": "done"
+        }
+      ]
+    },
+    {
+      "id": "robin",
+      "name": "Robin - Biên tập",
+      "handle": "@robin-zynovel",
+      "role": "Editor",
+      "roleType": "writer",
+      "initial": "R",
+      "color": "#8B5CF6",
+      "status": "online",
+      "model": "Claude Sonnet",
+      "modelType": "cloud",
+      "tasks": 28,
+      "rooms": 1,
+      "success": 96,
+      "skills": [
+        "Biên tập",
+        "Soát lỗi"
+      ],
+      "lastActive": "8m",
+      "bio": "Soát chính tả, văn phong và đảm bảo chất lượng nội dung trước khi đăng.",
+      "roomsList": [
+        "Zy Novel"
+      ],
+      "recentTasks": [
+        {
+          "id": "T-2355",
+          "text": "Soát 4 bài chờ duyệt",
+          "status": "done"
+        }
+      ]
+    },
+    {
+      "id": "franky",
+      "name": "Franky - Thiết kế",
+      "handle": "@franky-zypage",
+      "role": "Designer",
+      "roleType": "writer",
+      "initial": "F",
+      "color": "#0EA5A0",
+      "status": "offline",
+      "model": "Qwen3 8B",
+      "modelType": "local",
+      "tasks": 17,
+      "rooms": 1,
+      "success": 94,
+      "skills": [
+        "Ảnh bìa",
+        "Avatar"
+      ],
+      "lastActive": "2 ngày",
+      "bio": "Thiết kế ảnh bìa, avatar và tài nguyên hình ảnh cho fanpage mới.",
+      "roomsList": [
+        "Zy Page"
+      ],
+      "recentTasks": [
+        {
+          "id": "T-2300",
+          "text": "Thiết kế bộ cover fanpage 03",
+          "status": "done"
+        }
+      ]
+    },
+    {
+      "id": "zoro",
+      "name": "Zoro - DevOps",
+      "handle": "@zoro-zytech",
+      "role": "DevOps",
+      "roleType": "manager",
+      "initial": "Z",
+      "color": "#0E7490",
+      "status": "online",
+      "model": "Qwen3 35B",
+      "modelType": "local",
+      "tasks": 24,
+      "rooms": 1,
+      "success": 99,
+      "skills": [
+        "Hạ tầng",
+        "Monitor"
+      ],
+      "lastActive": "20m",
+      "bio": "Vận hành hạ tầng agent, theo dõi MCP và sức khỏe máy chủ nhà.",
+      "roomsList": [
+        "Zy Tech"
+      ],
+      "recentTasks": [
+        {
+          "id": "T-2320",
+          "text": "Kiểm tra kết nối 9Router",
+          "status": "done"
+        }
+      ]
+    },
+    {
+      "id": "lisa",
+      "name": "Lisa Q&A AI",
+      "handle": "@lisa-qa",
+      "role": "Assistant",
+      "roleType": "manager",
+      "initial": "L",
+      "color": "#3B5BDB",
+      "status": "online",
+      "model": "Claude Sonnet",
+      "modelType": "cloud",
+      "tasks": 312,
+      "rooms": 1,
+      "success": 97,
+      "skills": [
+        "Hỏi đáp",
+        "Tra cứu"
+      ],
+      "lastActive": "vừa xong",
+      "bio": "Trợ lý hỏi đáp chung của workspace, hỗ trợ tra cứu nhanh kiến thức nội bộ.",
+      "roomsList": [
+        "general"
+      ],
+      "recentTasks": [
+        {
+          "id": "T-2600",
+          "text": "Trả lời 24 câu hỏi nội bộ",
+          "status": "done"
+        }
+      ]
+    },
+    {
+      "id": "tim",
+      "name": "Tim - Trợ Lý Zypage",
+      "handle": "@tim-zypage",
+      "role": "Manager",
+      "roleType": "manager",
+      "initial": "T",
+      "color": "#E8A33D",
+      "status": "idle",
+      "model": "Qwen3 8B",
+      "modelType": "local",
+      "tasks": 45,
+      "rooms": 1,
+      "success": 93,
+      "skills": [
+        "Báo cáo Zypage"
+      ],
+      "lastActive": "40m",
+      "bio": "Phụ trách báo cáo và vận hành nội dung cho mảng Zypage.",
+      "roomsList": [
+        "Zy Page"
+      ],
+      "recentTasks": [
+        {
+          "id": "T-2335",
+          "text": "Báo cáo Zypage hàng ngày",
+          "status": "done"
+        }
+      ]
+    }
+  ],
+  "mcpData": [
+    {
+      "id": "fb",
+      "name": "Facebook Graph",
+      "icon": "📘",
+      "desc": "Đăng bài, đọc insights và quản lý fanpage qua Graph API.",
+      "transport": "HTTP",
+      "status": "connected",
+      "tools": [
+        "post_page",
+        "read_insights",
+        "list_pages",
+        "schedule_post"
+      ],
+      "agents": 5,
+      "calls24": 482,
+      "lastSync": "2m",
+      "endpoint": "https://graph.facebook.com/v19.0",
+      "recentCalls": [
+        {
+          "tool": "read_insights",
+          "time": "2m",
+          "ok": true
+        },
+        {
+          "tool": "post_page",
+          "time": "18m",
+          "ok": true
+        },
+        {
+          "tool": "list_pages",
+          "time": "42m",
+          "ok": true
+        }
+      ]
+    },
+    {
+      "id": "pg",
+      "name": "Database Zy",
+      "icon": "🗄",
+      "desc": "Truy vấn và ghi dữ liệu các dataset nội bộ (fanpage, post…).",
+      "transport": "stdio",
+      "status": "connected",
+      "tools": [
+        "query",
+        "insert",
+        "update",
+        "list_tables"
+      ],
+      "agents": 8,
+      "calls24": 1240,
+      "lastSync": "vừa xong",
+      "endpoint": "postgres://zy-db:5432/zynovel",
+      "recentCalls": [
+        {
+          "tool": "query",
+          "time": "vừa xong",
+          "ok": true
+        },
+        {
+          "tool": "insert",
+          "time": "5m",
+          "ok": true
+        }
+      ]
+    },
+    {
+      "id": "search",
+      "name": "Web Search",
+      "icon": "🔍",
+      "desc": "Tìm kiếm web thời gian thực phục vụ research.",
+      "transport": "SSE",
+      "status": "connected",
+      "tools": [
+        "search",
+        "fetch_url"
+      ],
+      "agents": 3,
+      "calls24": 96,
+      "lastSync": "9m",
+      "endpoint": "https://mcp.zytech/search",
+      "recentCalls": [
+        {
+          "tool": "search",
+          "time": "9m",
+          "ok": true
+        }
+      ]
+    },
+    {
+      "id": "fs",
+      "name": "Session Files",
+      "icon": "📁",
+      "desc": "Đọc/ghi file session và nhật ký của agent.",
+      "transport": "stdio",
+      "status": "connected",
+      "tools": [
+        "read_file",
+        "write_file",
+        "list_dir"
+      ],
+      "agents": 6,
+      "calls24": 318,
+      "lastSync": "1m",
+      "endpoint": "file:///srv/zy/session",
+      "recentCalls": [
+        {
+          "tool": "write_file",
+          "time": "1m",
+          "ok": true
+        }
+      ]
+    },
+    {
+      "id": "pdf",
+      "name": "PDF Export",
+      "icon": "📄",
+      "desc": "Kết xuất báo cáo và tài liệu sang PDF.",
+      "transport": "HTTP",
+      "status": "connected",
+      "tools": [
+        "render_pdf",
+        "merge_pdf"
+      ],
+      "agents": 2,
+      "calls24": 24,
+      "lastSync": "3h",
+      "endpoint": "https://mcp.zytech/pdf",
+      "recentCalls": [
+        {
+          "tool": "render_pdf",
+          "time": "3h",
+          "ok": true
+        }
+      ]
+    },
+    {
+      "id": "router",
+      "name": "9Router Gateway",
+      "icon": "🌐",
+      "desc": "Cổng định tuyến tới model máy nhà qua Tailscale.",
+      "transport": "HTTP",
+      "status": "connected",
+      "tools": [
+        "route",
+        "health"
+      ],
+      "agents": 12,
+      "calls24": 2048,
+      "lastSync": "vừa xong",
+      "endpoint": "https://9router.zy.ts.net",
+      "recentCalls": [
+        {
+          "tool": "route",
+          "time": "vừa xong",
+          "ok": true
+        },
+        {
+          "tool": "health",
+          "time": "30s",
+          "ok": true
+        }
+      ]
+    },
+    {
+      "id": "gdrive",
+      "name": "Google Drive",
+      "icon": "📂",
+      "desc": "Đồng bộ tài liệu với Google Drive — hiện đang tắt.",
+      "transport": "HTTP",
+      "status": "disabled",
+      "tools": [
+        "list_files",
+        "download"
+      ],
+      "agents": 0,
+      "calls24": 0,
+      "lastSync": "2 ngày",
+      "endpoint": "https://www.googleapis.com/drive/v3",
+      "recentCalls": []
+    },
+    {
+      "id": "browser",
+      "name": "Trình duyệt tự động",
+      "icon": "🧭",
+      "desc": "Điều khiển trình duyệt headless để seeding & kiểm tra.",
+      "transport": "stdio",
+      "status": "error",
+      "tools": [
+        "open",
+        "click",
+        "screenshot"
+      ],
+      "agents": 1,
+      "calls24": 12,
+      "lastSync": "lỗi kết nối",
+      "endpoint": "stdio://playwright-mcp",
+      "recentCalls": [
+        {
+          "tool": "open",
+          "time": "1h",
+          "ok": false
+        }
+      ]
+    }
+  ],
+  "workflows": [
+    {
+      "id": "wf1",
+      "name": "Chuẩn bị & đăng bài Zy Novel",
+      "desc": "Pipeline tự động nuôi fanpage vệ tinh",
+      "trigger": "cron",
+      "triggerLabel": "*/30 * * * *",
+      "enabled": true,
+      "lastRun": "7m ago",
+      "runs24": 48,
+      "success": 98,
+      "steps": [
+        {
+          "agent": "Sabo - Facebook Research",
+          "initial": "S",
+          "color": "#3B82C4",
+          "title": "Quét bài mới từ fanpage nguồn",
+          "io": "→ fanpage_post_source",
+          "status": "done",
+          "dur": "12s"
+        },
+        {
+          "agent": "Dragon - CEO",
+          "initial": "D",
+          "color": "#C0392B",
+          "title": "Lọc 5 bài chưa sử dụng",
+          "io": "fanpage_post_source → facebook_post_cho",
+          "status": "done",
+          "dur": "8s"
+        },
+        {
+          "agent": "Sanji - Xào nấu content",
+          "initial": "S",
+          "color": "#0EA5A0",
+          "title": "Viết lại nội dung đầy đủ",
+          "io": "facebook_post_cho",
+          "status": "running",
+          "dur": "…"
+        },
+        {
+          "agent": "Nami - Quản lý Fanpage",
+          "initial": "N",
+          "color": "#E8A33D",
+          "title": "Lên lịch đăng fanpage vệ tinh",
+          "io": "facebook_post_cho → schedule",
+          "status": "idle",
+          "dur": "—"
+        },
+        {
+          "agent": "Usopp - Group Seeding",
+          "initial": "U",
+          "color": "#C94F3D",
+          "title": "Seeding nhóm sau khi đăng",
+          "io": "schedule",
+          "status": "idle",
+          "dur": "—"
+        },
+        {
+          "agent": "Brook - Báo Cáo Zy Novel",
+          "initial": "B",
+          "color": "#3B5BDB",
+          "title": "Tổng hợp tương tác",
+          "io": "→ Social Data Report",
+          "status": "idle",
+          "dur": "—"
+        }
+      ],
+      "runs": [
+        {
+          "time": "7m ago",
+          "status": "running",
+          "dur": "…"
+        },
+        {
+          "time": "37m ago",
+          "status": "success",
+          "dur": "1m 04s"
+        },
+        {
+          "time": "1h 7m ago",
+          "status": "success",
+          "dur": "58s"
+        },
+        {
+          "time": "1h 37m ago",
+          "status": "failed",
+          "dur": "12s"
+        },
+        {
+          "time": "2h ago",
+          "status": "success",
+          "dur": "1m 11s"
+        }
+      ]
+    },
+    {
+      "id": "wf2",
+      "name": "Research & báo cáo hằng ngày",
+      "desc": "Tổng hợp dữ liệu social mỗi sáng",
+      "trigger": "cron",
+      "triggerLabel": "0 9 * * *",
+      "enabled": true,
+      "lastRun": "3h ago",
+      "runs24": 1,
+      "success": 100,
+      "steps": [
+        {
+          "agent": "Sabo - Facebook Research",
+          "initial": "S",
+          "color": "#3B82C4",
+          "title": "Thu thập 12 bài viral",
+          "io": "→ research",
+          "status": "done",
+          "dur": "45s"
+        },
+        {
+          "agent": "Morgans - Social Leader",
+          "initial": "M",
+          "color": "#8B5CF6",
+          "title": "Phân tích chỉ số tương tác",
+          "io": "research",
+          "status": "done",
+          "dur": "30s"
+        },
+        {
+          "agent": "Brook - Báo Cáo Zy Novel",
+          "initial": "B",
+          "color": "#3B5BDB",
+          "title": "Xuất báo cáo PDF",
+          "io": "→ report.pdf",
+          "status": "done",
+          "dur": "18s"
+        }
+      ],
+      "runs": [
+        {
+          "time": "3h ago",
+          "status": "success",
+          "dur": "1m 33s"
+        },
+        {
+          "time": "1 ngày trước",
+          "status": "success",
+          "dur": "1m 28s"
+        },
+        {
+          "time": "2 ngày trước",
+          "status": "success",
+          "dur": "1m 40s"
+        }
+      ]
+    },
+    {
+      "id": "wf3",
+      "name": "Kiểm duyệt nội dung",
+      "desc": "Chạy khi có bài mới chờ duyệt",
+      "trigger": "event",
+      "triggerLabel": "on: facebook_post_cho.insert",
+      "enabled": true,
+      "lastRun": "22m ago",
+      "runs24": 14,
+      "success": 93,
+      "steps": [
+        {
+          "agent": "Dragon - CEO",
+          "initial": "D",
+          "color": "#C0392B",
+          "title": "Kiểm tra chính sách nội dung",
+          "io": "facebook_post_cho",
+          "status": "done",
+          "dur": "5s"
+        },
+        {
+          "agent": "Robin - Biên tập",
+          "initial": "R",
+          "color": "#8B5CF6",
+          "title": "Soát chính tả & văn phong",
+          "io": "facebook_post_cho",
+          "status": "done",
+          "dur": "9s"
+        }
+      ],
+      "runs": [
+        {
+          "time": "22m ago",
+          "status": "success",
+          "dur": "14s"
+        },
+        {
+          "time": "48m ago",
+          "status": "success",
+          "dur": "11s"
+        },
+        {
+          "time": "1h ago",
+          "status": "failed",
+          "dur": "4s"
+        }
+      ]
+    },
+    {
+      "id": "wf4",
+      "name": "Onboard fanpage vệ tinh mới",
+      "desc": "Khởi tạo fanpage và lịch nuôi",
+      "trigger": "manual",
+      "triggerLabel": "Chạy thủ công",
+      "enabled": false,
+      "lastRun": "2 ngày trước",
+      "runs24": 0,
+      "success": 100,
+      "steps": [
+        {
+          "agent": "Nami - Quản lý Fanpage",
+          "initial": "N",
+          "color": "#E8A33D",
+          "title": "Tạo hồ sơ fanpage",
+          "io": "→ fanpage",
+          "status": "idle",
+          "dur": "—"
+        },
+        {
+          "agent": "Franky - Thiết kế",
+          "initial": "F",
+          "color": "#0EA5A0",
+          "title": "Thiết kế avatar & cover",
+          "io": "→ assets",
+          "status": "idle",
+          "dur": "—"
+        },
+        {
+          "agent": "Usopp - Group Seeding",
+          "initial": "U",
+          "color": "#C94F3D",
+          "title": "Khởi tạo lịch seeding",
+          "io": "→ schedule",
+          "status": "idle",
+          "dur": "—"
+        }
+      ],
+      "runs": [
+        {
+          "time": "2 ngày trước",
+          "status": "success",
+          "dur": "3m 20s"
+        }
+      ]
+    }
+  ],
+  "cronJobsData": [
+    {
+      "id": "j1",
+      "name": "Auto Facebook fanpage post tự động",
+      "target": "Nami - Quản lý Fanpage",
+      "expr": "0 9,19 * * *",
+      "last": "22m ago",
+      "next": "in 7h",
+      "creator": "Nguyễn Thiện Giang",
+      "creatorInitial": "N",
+      "creatorColor": "#3B5BDB",
+      "enabled": true,
+      "spark": [
+        40,
+        65,
+        30,
+        80,
+        55,
+        70,
+        90
+      ]
+    },
+    {
+      "id": "j2",
+      "name": "ZyNovel rewrite pending Facebook",
+      "target": "Sanji - Xào nấu content",
+      "expr": "*/10 * * * *",
+      "last": "7m ago",
+      "next": "in 2m",
+      "creator": "Nguyễn Thiện Giang",
+      "creatorInitial": "N",
+      "creatorColor": "#3B5BDB",
+      "enabled": true,
+      "spark": [
+        70,
+        60,
+        85,
+        50,
+        75,
+        65,
+        80
+      ]
+    },
+    {
+      "id": "j3",
+      "name": "Chuẩn bị nội dung facebook",
+      "target": "Morgans - Social Leader",
+      "expr": "*/30 * * * *",
+      "last": "7m ago",
+      "next": "in 22m",
+      "creator": "Nguyễn Thiện Giang",
+      "creatorInitial": "N",
+      "creatorColor": "#3B5BDB",
+      "enabled": true,
+      "spark": [
+        30,
+        45,
+        60,
+        40,
+        55,
+        50,
+        65
+      ]
+    },
+    {
+      "id": "j4",
+      "name": "Quét bài mới từ Fanpage nguồn",
+      "target": "Sabo - Facebook Research",
+      "expr": "*/30 * * * *",
+      "last": "7m ago",
+      "next": "in 22m",
+      "creator": "Nguyễn Thiện Giang",
+      "creatorInitial": "N",
+      "creatorColor": "#3B5BDB",
+      "enabled": true,
+      "spark": [
+        55,
+        70,
+        45,
+        85,
+        60,
+        75,
+        50
+      ]
+    },
+    {
+      "id": "j5",
+      "name": "Finder youtube channel",
+      "target": "Roto - Trợ lý của Vỹ",
+      "expr": "*/30 * * * *",
+      "last": "7m ago",
+      "next": "in 22m",
+      "creator": "Nguyễn Trần Thế Vỹ",
+      "creatorInitial": "NV",
+      "creatorColor": "#E8A33D",
+      "enabled": true,
+      "spark": [
+        20,
+        35,
+        50,
+        30,
+        45,
+        40,
+        60
+      ]
+    },
+    {
+      "id": "j6",
+      "name": "Báo cáo Zypage hàng ngày",
+      "target": "Tim - Trợ Lý Zypage",
+      "expr": "5 0 * * *",
+      "last": "11h ago",
+      "next": "in 12h",
+      "creator": "Nguyễn Thiện Giang",
+      "creatorInitial": "N",
+      "creatorColor": "#3B5BDB",
+      "enabled": true,
+      "spark": [
+        60,
+        50,
+        70,
+        55,
+        65,
+        45,
+        75
+      ]
+    },
+    {
+      "id": "j7",
+      "name": "Báo cáo Zypage hàng tháng",
+      "target": "Tim - Trợ Lý Zypage",
+      "expr": "30 8 1 * *",
+      "last": "17d ago",
+      "next": "in 12d",
+      "creator": "Nguyễn Thiện Giang",
+      "creatorInitial": "N",
+      "creatorColor": "#3B5BDB",
+      "enabled": true,
+      "spark": [
+        40,
+        55,
+        35,
+        60,
+        50,
+        65,
+        45
+      ]
+    }
+  ],
+  "tasksData": [
+    {
+      "id": "T-2593",
+      "title": "Viết nội dung đầy đủ cho 1 bài facebook_post_cho",
+      "status": "running",
+      "assignee": "Sanji - Xào nấu content",
+      "initial": "S",
+      "color": "#0EA5A0",
+      "room": "Zy Novel",
+      "priority": "high",
+      "time": "6m",
+      "desc": "Soạn nội dung đầy đủ cho bài đã được chọn vào danh sách chờ, tối ưu hook và độ dài phù hợp fanpage vệ tinh."
+    },
+    {
+      "id": "T-2401",
+      "title": "Research 12 bài viral tuần này",
+      "status": "done",
+      "assignee": "Sabo - Facebook Research",
+      "initial": "S",
+      "color": "#3B82C4",
+      "room": "Zy Novel",
+      "priority": "med",
+      "time": "1h",
+      "desc": "Thu thập và phân tích 12 bài viral từ fanpage nguồn, đánh giá hook và độ phù hợp."
+    },
+    {
+      "id": "T-2362",
+      "title": "Tạo knowledge \"Chuẩn bị nội dung facebook\"",
+      "status": "done",
+      "assignee": "Dragon - CEO",
+      "initial": "D",
+      "color": "#C0392B",
+      "room": "Zy Novel",
+      "priority": "high",
+      "time": "2h",
+      "desc": "Tổng hợp SOP chuẩn bị nội dung facebook và gửi Hub duyệt."
+    },
+    {
+      "id": "T-2410",
+      "title": "Cập nhật lịch đăng 6 fanpage vệ tinh",
+      "status": "review",
+      "assignee": "Nami - Quản lý Fanpage",
+      "initial": "N",
+      "color": "#E8A33D",
+      "room": "Zy Novel",
+      "priority": "med",
+      "time": "30m",
+      "desc": "Lên lịch đăng tuần này cho toàn bộ fanpage vệ tinh, chờ duyệt trước khi áp dụng."
+    },
+    {
+      "id": "T-2370",
+      "title": "Seeding 8 nhóm cộng đồng sau khi đăng",
+      "status": "queued",
+      "assignee": "Usopp - Group Seeding",
+      "initial": "U",
+      "color": "#C94F3D",
+      "room": "Zy Novel",
+      "priority": "low",
+      "time": "15m",
+      "desc": "Seeding bài viết vào 8 nhóm cộng đồng để kéo tương tác."
+    },
+    {
+      "id": "T-2355",
+      "title": "Soát chính tả 4 bài chờ duyệt",
+      "status": "running",
+      "assignee": "Robin - Biên tập",
+      "initial": "R",
+      "color": "#8B5CF6",
+      "room": "Zy Novel",
+      "priority": "med",
+      "time": "12m",
+      "desc": "Soát chính tả và văn phong 4 bài trong hàng chờ duyệt."
+    },
+    {
+      "id": "T-2335",
+      "title": "Báo cáo Zypage hàng ngày",
+      "status": "queued",
+      "assignee": "Tim - Trợ Lý Zypage",
+      "initial": "T",
+      "color": "#E8A33D",
+      "room": "Zy Page",
+      "priority": "low",
+      "time": "1h",
+      "desc": "Tổng hợp số liệu Zypage và gửi báo cáo cuối ngày."
+    },
+    {
+      "id": "T-2300",
+      "title": "Thiết kế bộ cover fanpage 03",
+      "status": "review",
+      "assignee": "Franky - Thiết kế",
+      "initial": "F",
+      "color": "#0EA5A0",
+      "room": "Zy Page",
+      "priority": "med",
+      "time": "3h",
+      "desc": "Thiết kế ảnh bìa và avatar cho fanpage vệ tinh số 03."
+    },
+    {
+      "id": "T-2320",
+      "title": "Kiểm tra kết nối 9Router",
+      "status": "done",
+      "assignee": "Zoro - DevOps",
+      "initial": "Z",
+      "color": "#0E7490",
+      "room": "Zy Tech",
+      "priority": "high",
+      "time": "20m",
+      "desc": "Kiểm tra sức khỏe gateway 9Router và đường Tailscale tới máy nhà."
+    },
+    {
+      "id": "T-2380",
+      "title": "Phân tích tương tác tháng",
+      "status": "queued",
+      "assignee": "Morgans - Social Leader",
+      "initial": "M",
+      "color": "#8B5CF6",
+      "room": "Zy Novel",
+      "priority": "med",
+      "time": "2h",
+      "desc": "Phân tích chỉ số tương tác tháng và lập bảng KPI social."
+    },
+    {
+      "id": "T-2360",
+      "title": "Xuất Social Data Report v13",
+      "status": "done",
+      "assignee": "Brook - Báo Cáo Zy Novel",
+      "initial": "B",
+      "color": "#3B5BDB",
+      "room": "Zy Novel",
+      "priority": "low",
+      "time": "1h",
+      "desc": "Kết xuất báo cáo Social Data Report phiên bản v13 sang PDF."
+    },
+    {
+      "id": "T-2600",
+      "title": "Trả lời 24 câu hỏi nội bộ",
+      "status": "running",
+      "assignee": "Lisa Q&A AI",
+      "initial": "L",
+      "color": "#3B5BDB",
+      "room": "general",
+      "priority": "low",
+      "time": "5m",
+      "desc": "Xử lý hàng chờ 24 câu hỏi nội bộ của thành viên workspace."
+    }
+  ],
+  "devicesData": [
+    {
+      "id": "mn01",
+      "name": "máy-nhà-01",
+      "type": "server",
+      "icon": "🖥",
+      "status": "online",
+      "addr": "100.84.12.3",
+      "os": "Ubuntu 24.04 LTS",
+      "cpu": "AMD Ryzen 9 7950X",
+      "cpuPct": 42,
+      "ram": "64 GB",
+      "ramPct": 68,
+      "gpu": "RTX 4090 24GB",
+      "gpuPct": 88,
+      "vram": "23 / 24 GB",
+      "uptime": "14 ngày",
+      "lastSeen": "vừa xong",
+      "role": "Model host chính",
+      "models": [
+        {
+          "name": "Qwen3 35B",
+          "vram": "18 GB"
+        },
+        {
+          "name": "Qwen3 8B",
+          "vram": "6 GB"
+        }
+      ]
+    },
+    {
+      "id": "mn02",
+      "name": "máy-nhà-02",
+      "type": "server",
+      "icon": "🖥",
+      "status": "online",
+      "addr": "100.84.12.4",
+      "os": "Ubuntu 24.04 LTS",
+      "cpu": "Intel i9-13900K",
+      "cpuPct": 28,
+      "ram": "32 GB",
+      "ramPct": 44,
+      "gpu": "RTX 3090 24GB",
+      "gpuPct": 35,
+      "vram": "9 / 24 GB",
+      "uptime": "7 ngày",
+      "lastSeen": "30s",
+      "role": "Embeddings & phụ trợ",
+      "models": [
+        {
+          "name": "Embeddings BGE-M3",
+          "vram": "4 GB"
+        }
+      ]
+    },
+    {
+      "id": "gw",
+      "name": "9router-gw",
+      "type": "gateway",
+      "icon": "🌐",
+      "status": "online",
+      "addr": "9router.zy.ts.net",
+      "os": "Alpine Linux",
+      "cpu": "ARM Cortex-A76",
+      "cpuPct": 12,
+      "ram": "4 GB",
+      "ramPct": 38,
+      "gpu": "—",
+      "gpuPct": 0,
+      "vram": "—",
+      "uptime": "31 ngày",
+      "lastSeen": "vừa xong",
+      "role": "Định tuyến model · Tailscale",
+      "models": []
+    },
+    {
+      "id": "nas",
+      "name": "nas-zy",
+      "type": "server",
+      "icon": "🗄",
+      "status": "online",
+      "addr": "100.84.12.9",
+      "os": "TrueNAS",
+      "cpu": "Intel N305",
+      "cpuPct": 18,
+      "ram": "16 GB",
+      "ramPct": 52,
+      "gpu": "—",
+      "gpuPct": 0,
+      "vram": "—",
+      "uptime": "90 ngày",
+      "lastSeen": "1m",
+      "role": "Lưu trữ dataset & backup",
+      "models": []
+    },
+    {
+      "id": "mac",
+      "name": "macbook-giang",
+      "type": "desktop",
+      "icon": "💻",
+      "status": "online",
+      "addr": "100.84.12.21",
+      "os": "macOS 15",
+      "cpu": "Apple M3 Pro",
+      "cpuPct": 34,
+      "ram": "18 GB",
+      "ramPct": 61,
+      "gpu": "M3 Pro GPU",
+      "gpuPct": 22,
+      "vram": "—",
+      "uptime": "2 ngày",
+      "lastSeen": "5m",
+      "role": "Máy làm việc của Owner",
+      "models": []
+    },
+    {
+      "id": "pixel",
+      "name": "pixel-giang",
+      "type": "phone",
+      "icon": "📱",
+      "status": "online",
+      "addr": "100.84.12.30",
+      "os": "Android 15",
+      "cpu": "Tensor G3",
+      "cpuPct": 8,
+      "ram": "12 GB",
+      "ramPct": 40,
+      "gpu": "—",
+      "gpuPct": 0,
+      "vram": "—",
+      "uptime": "—",
+      "lastSeen": "2m",
+      "role": "App Trợ Lý (client)",
+      "models": []
+    },
+    {
+      "id": "mn03",
+      "name": "máy-nhà-03",
+      "type": "server",
+      "icon": "🖥",
+      "status": "offline",
+      "addr": "100.84.12.5",
+      "os": "Ubuntu 24.04 LTS",
+      "cpu": "AMD Ryzen 7 5800X",
+      "cpuPct": 0,
+      "ram": "32 GB",
+      "ramPct": 0,
+      "gpu": "RTX 3080 10GB",
+      "gpuPct": 0,
+      "vram": "0 / 10 GB",
+      "uptime": "—",
+      "lastSeen": "2 ngày",
+      "role": "Server dự phòng",
+      "models": []
+    }
+  ],
+  "sessionsData": [
+    {
+      "id": "session_0171",
+      "agent": "Sanji - Xào nấu content",
+      "initial": "S",
+      "color": "#0EA5A0",
+      "room": "zy-novel",
+      "model": "Qwen3 35B",
+      "modelType": "local",
+      "status": "running",
+      "started": "15:56",
+      "duration": "2m 14s",
+      "tokens": "12.4k",
+      "log": [
+        {
+          "t": "15:56:02",
+          "lvl": "info",
+          "msg": "Session bắt đầu · room=zy-novel · agent=@sanji-zynovel"
+        },
+        {
+          "t": "15:56:02",
+          "lvl": "debug",
+          "msg": "Nạp context: 3 knowledge, 1 SOP (T-2362)"
+        },
+        {
+          "t": "15:56:04",
+          "lvl": "info",
+          "msg": "Tool call → mcp.database query facebook_post_cho WHERE noi_dung_day_du IS NULL"
+        },
+        {
+          "t": "15:56:05",
+          "lvl": "info",
+          "msg": "← 1 bản ghi (POST-015)"
+        },
+        {
+          "t": "15:56:06",
+          "lvl": "info",
+          "msg": "Sinh nội dung… model=Qwen3 35B @ máy-nhà-01"
+        },
+        {
+          "t": "15:57:48",
+          "lvl": "warn",
+          "msg": "Độ dài vượt 1200 từ — đang rút gọn hook"
+        },
+        {
+          "t": "15:58:10",
+          "lvl": "info",
+          "msg": "Tool call → mcp.database update POST-015 set noi_dung_day_du=…"
+        },
+        {
+          "t": "15:58:12",
+          "lvl": "info",
+          "msg": "Đang chờ phản hồi model…"
+        }
+      ]
+    },
+    {
+      "id": "session_0170",
+      "agent": "Dragon - CEO",
+      "initial": "D",
+      "color": "#C0392B",
+      "room": "zy-novel",
+      "model": "Claude Sonnet",
+      "modelType": "cloud",
+      "status": "done",
+      "started": "15:55",
+      "duration": "1m 03s",
+      "tokens": "8.1k",
+      "log": [
+        {
+          "t": "15:55:01",
+          "lvl": "info",
+          "msg": "Session bắt đầu · tạo knowledge"
+        },
+        {
+          "t": "15:55:02",
+          "lvl": "debug",
+          "msg": "Phân tích yêu cầu từ @Nguyễn Thiện Giang"
+        },
+        {
+          "t": "15:55:40",
+          "lvl": "info",
+          "msg": "Soạn SOP \"Chuẩn bị nội dung facebook\""
+        },
+        {
+          "t": "15:55:58",
+          "lvl": "info",
+          "msg": "Gửi Hub duyệt: pending #49"
+        },
+        {
+          "t": "15:56:04",
+          "lvl": "info",
+          "msg": "Ghi log: session/room/zy-novel/session_0170.md"
+        },
+        {
+          "t": "15:56:04",
+          "lvl": "info",
+          "msg": "Session hoàn tất ✓"
+        }
+      ]
+    },
+    {
+      "id": "session_0169",
+      "agent": "Sabo - Facebook Research",
+      "initial": "S",
+      "color": "#3B82C4",
+      "room": "zy-novel",
+      "model": "Qwen3 35B",
+      "modelType": "local",
+      "status": "done",
+      "started": "15:40",
+      "duration": "45s",
+      "tokens": "15.2k",
+      "log": [
+        {
+          "t": "15:40:01",
+          "lvl": "info",
+          "msg": "Session bắt đầu · research"
+        },
+        {
+          "t": "15:40:03",
+          "lvl": "info",
+          "msg": "Tool call → mcp.search \"bài viral truyện tháng 6\""
+        },
+        {
+          "t": "15:40:21",
+          "lvl": "info",
+          "msg": "← 12 kết quả, đang chấm điểm hook"
+        },
+        {
+          "t": "15:40:44",
+          "lvl": "info",
+          "msg": "Ghi 12 bản ghi vào fanpage_post_source"
+        },
+        {
+          "t": "15:40:46",
+          "lvl": "info",
+          "msg": "Session hoàn tất ✓"
+        }
+      ]
+    },
+    {
+      "id": "session_0168",
+      "agent": "Usopp - Group Seeding",
+      "initial": "U",
+      "color": "#C94F3D",
+      "room": "zy-novel",
+      "model": "Qwen3 8B",
+      "modelType": "local",
+      "status": "failed",
+      "started": "14:30",
+      "duration": "12s",
+      "tokens": "2.1k",
+      "log": [
+        {
+          "t": "14:30:01",
+          "lvl": "info",
+          "msg": "Session bắt đầu · seeding nhóm"
+        },
+        {
+          "t": "14:30:05",
+          "lvl": "info",
+          "msg": "Tool call → mcp.browser open group/12345"
+        },
+        {
+          "t": "14:30:13",
+          "lvl": "error",
+          "msg": "mcp.browser: timeout sau 8s — playwright-mcp không phản hồi"
+        },
+        {
+          "t": "14:30:13",
+          "lvl": "error",
+          "msg": "Session thất bại ✕ — sẽ retry 1/3 sau 5m"
+        }
+      ]
+    },
+    {
+      "id": "session_0167",
+      "agent": "Nami - Quản lý Fanpage",
+      "initial": "N",
+      "color": "#E8A33D",
+      "room": "zy-novel",
+      "model": "Qwen3 8B",
+      "modelType": "local",
+      "status": "done",
+      "started": "11:20",
+      "duration": "33s",
+      "tokens": "5.6k",
+      "log": [
+        {
+          "t": "11:20:01",
+          "lvl": "info",
+          "msg": "Session bắt đầu · cập nhật lịch"
+        },
+        {
+          "t": "11:20:18",
+          "lvl": "info",
+          "msg": "Cập nhật lịch đăng cho 6 fanpage vệ tinh"
+        },
+        {
+          "t": "11:20:33",
+          "lvl": "info",
+          "msg": "Session hoàn tất ✓"
+        }
+      ]
+    },
+    {
+      "id": "session_0166",
+      "agent": "Brook - Báo Cáo Zy Novel",
+      "initial": "B",
+      "color": "#3B5BDB",
+      "room": "zy-novel",
+      "model": "Qwen3 35B",
+      "modelType": "local",
+      "status": "done",
+      "started": "09:10",
+      "duration": "18s",
+      "tokens": "9.0k",
+      "log": [
+        {
+          "t": "09:10:01",
+          "lvl": "info",
+          "msg": "Session bắt đầu · xuất báo cáo"
+        },
+        {
+          "t": "09:10:09",
+          "lvl": "info",
+          "msg": "Tool call → mcp.pdf render_pdf Social Data Report v13"
+        },
+        {
+          "t": "09:10:18",
+          "lvl": "info",
+          "msg": "Session hoàn tất ✓"
+        }
+      ]
+    }
+  ],
+  "auditLog": [
+    {
+      "actor": "Nguyễn Thiện Giang",
+      "action": "đổi quyền",
+      "target": "@morgans → staff",
+      "lvl": "info",
+      "time": "Hôm nay · 16:02"
+    },
+    {
+      "actor": "Dragon - CEO",
+      "action": "tạo knowledge",
+      "target": "#49 pending",
+      "lvl": "info",
+      "time": "15:55"
+    },
+    {
+      "actor": "Hệ thống",
+      "action": "workflow thất bại",
+      "target": "Kiểm duyệt nội dung",
+      "lvl": "error",
+      "time": "15:10"
+    },
+    {
+      "actor": "Cron",
+      "action": "chạy job",
+      "target": "ZyNovel rewrite · success",
+      "lvl": "info",
+      "time": "15:00"
+    },
+    {
+      "actor": "máy-nhà-01",
+      "action": "cảnh báo tải",
+      "target": "GPU 88%",
+      "lvl": "warn",
+      "time": "14:50"
+    },
+    {
+      "actor": "mcp.browser",
+      "action": "mất kết nối",
+      "target": "playwright-mcp",
+      "lvl": "error",
+      "time": "14:30"
+    },
+    {
+      "actor": "Nami - Quản lý Fanpage",
+      "action": "cập nhật lịch",
+      "target": "6 fanpage vệ tinh",
+      "lvl": "info",
+      "time": "11:20"
+    },
+    {
+      "actor": "Nguyễn Thiện Giang",
+      "action": "thêm thành viên",
+      "target": "Brook → phòng Zy Novel",
+      "lvl": "info",
+      "time": "Hôm qua · 17:42"
+    }
+  ],
+  "usersData": [
+    {
+      "id": "u1",
+      "name": "Nguyễn Thiện Giang",
+      "email": "giang@zytech.vn",
+      "initial": "N",
+      "color": "#3B5BDB",
+      "role": "owner",
+      "status": "active",
+      "last": "vừa xong"
+    },
+    {
+      "id": "u2",
+      "name": "Lý Minh Hùng",
+      "email": "hung.ly@zytech.vn",
+      "initial": "LM",
+      "color": "#8B5CF6",
+      "role": "lead",
+      "status": "active",
+      "last": "2h"
+    },
+    {
+      "id": "u3",
+      "name": "Ngô Phi Kiên",
+      "email": "kien.ngo@zytech.vn",
+      "initial": "NP",
+      "color": "#3B82C4",
+      "role": "lead",
+      "status": "active",
+      "last": "1h"
+    },
+    {
+      "id": "u4",
+      "name": "Nguyễn Trần Thế Vỹ",
+      "email": "vy.nguyen@zytech.vn",
+      "initial": "NV",
+      "color": "#E8A33D",
+      "role": "lead",
+      "status": "active",
+      "last": "30m"
+    },
+    {
+      "id": "u5",
+      "name": "Trần Quốc Bảo",
+      "email": "bao.tran@zytech.vn",
+      "initial": "TB",
+      "color": "#0EA5A0",
+      "role": "staff",
+      "status": "active",
+      "last": "1 ngày"
+    },
+    {
+      "id": "u6",
+      "name": "Phạm Thu Hà",
+      "email": "ha.pham@zytech.vn",
+      "initial": "PH",
+      "color": "#C0392B",
+      "role": "staff",
+      "status": "suspended",
+      "last": "5 ngày"
+    },
+    {
+      "id": "u7",
+      "name": "Khách mời A",
+      "email": "guesta@gmail.com",
+      "initial": "KA",
+      "color": "#9A6A1B",
+      "role": "viewer",
+      "status": "active",
+      "last": "3 ngày"
+    },
+    {
+      "id": "u8",
+      "name": "Khách mời B",
+      "email": "guestb@gmail.com",
+      "initial": "KB",
+      "color": "#5A6B64",
+      "role": "viewer",
+      "status": "active",
+      "last": "1 tuần"
+    }
+  ],
+  "invitesData": [
+    {
+      "id": "i1",
+      "email": "newlead@zytech.vn",
+      "role": "lead",
+      "by": "Nguyễn Thiện Giang",
+      "time": "2 ngày trước"
+    },
+    {
+      "id": "i2",
+      "email": "partner@vendor.com",
+      "role": "viewer",
+      "by": "Lý Minh Hùng",
+      "time": "5 ngày trước"
+    },
+    {
+      "id": "i3",
+      "email": "editor@zytech.vn",
+      "role": "staff",
+      "by": "Nguyễn Thiện Giang",
+      "time": "1 tuần trước"
+    }
+  ],
+  "signupsData": [
+    {
+      "id": "r1",
+      "name": "Đặng Hoài Nam",
+      "email": "nam.dang@zytech.vn",
+      "initial": "ĐN",
+      "color": "#3B5BDB",
+      "role": "staff",
+      "via": "Email công ty",
+      "time": "18 phút trước"
+    },
+    {
+      "id": "r2",
+      "name": "Vũ Khánh Linh",
+      "email": "linh.vu@gmail.com",
+      "initial": "VL",
+      "color": "#8B5CF6",
+      "role": "viewer",
+      "via": "Google",
+      "time": "2 giờ trước"
+    },
+    {
+      "id": "r3",
+      "name": "Hồ Quang Đại",
+      "email": "dai.ho@partner.io",
+      "initial": "HĐ",
+      "color": "#0EA5A0",
+      "role": "viewer",
+      "via": "Link mời",
+      "time": "Hôm qua · 20:42"
+    }
+  ],
+  "notifsData": [
+    {
+      "id": "n1",
+      "group": "Hôm nay",
+      "type": "mention",
+      "actor": "Dragon - CEO",
+      "initial": "D",
+      "color": "#C0392B",
+      "action": "nhắc bạn trong #zy-novel",
+      "preview": "Đã tạo knowledge và gửi Hub duyệt: pending #49",
+      "time": "7m",
+      "unread": true
+    },
+    {
+      "id": "n2",
+      "group": "Hôm nay",
+      "type": "task",
+      "taskId": "T-2593",
+      "actor": "Sanji - Xào nấu content",
+      "initial": "S",
+      "color": "#0EA5A0",
+      "action": "cập nhật tác vụ T-2593",
+      "preview": "Đang xử lý: Viết nội dung đầy đủ cho 1 bài",
+      "time": "12m",
+      "unread": true
+    },
+    {
+      "id": "n3",
+      "group": "Hôm nay",
+      "type": "workflow",
+      "actor": "Agent Workflow",
+      "initial": "⚡",
+      "color": "#C94F3D",
+      "action": "pipeline thất bại",
+      "preview": "\"Kiểm duyệt nội dung\" lỗi — mcp.browser timeout",
+      "time": "1h",
+      "unread": true
+    },
+    {
+      "id": "n4",
+      "group": "Hôm nay",
+      "type": "system",
+      "actor": "máy-nhà-01",
+      "initial": "🖥",
+      "color": "#E8A33D",
+      "action": "cảnh báo tải",
+      "preview": "GPU đạt 88% — cân nhắc giảm tải model",
+      "time": "1h",
+      "unread": false
+    },
+    {
+      "id": "n5",
+      "group": "Hôm nay",
+      "type": "knowledge",
+      "actor": "Robin - Biên tập",
+      "initial": "R",
+      "color": "#8B5CF6",
+      "action": "duyệt knowledge",
+      "preview": "Đã soát xong 4 bài trong hàng chờ",
+      "time": "2h",
+      "unread": false
+    },
+    {
+      "id": "n6",
+      "group": "Hôm qua",
+      "type": "mention",
+      "actor": "Nguyễn Thiện Giang",
+      "initial": "N",
+      "color": "#3B5BDB",
+      "action": "thêm bạn vào phòng",
+      "preview": "Bạn được thêm vào phòng Zy Tech",
+      "time": "17:42",
+      "unread": false
+    },
+    {
+      "id": "n7",
+      "group": "Hôm qua",
+      "type": "task",
+      "taskId": "T-2410",
+      "actor": "Nami - Quản lý Fanpage",
+      "initial": "N",
+      "color": "#E8A33D",
+      "action": "hoàn tất tác vụ",
+      "preview": "Đã cập nhật lịch đăng 6 fanpage vệ tinh",
+      "time": "11:20",
+      "unread": false
+    },
+    {
+      "id": "n8",
+      "group": "Hôm qua",
+      "type": "billing",
+      "actor": "Hệ thống",
+      "initial": "💳",
+      "color": "#9A6A1B",
+      "action": "xuất hóa đơn tháng 06",
+      "preview": "Hóa đơn INV-2026-06 · 6,42M ₫ đã thanh toán",
+      "time": "09:00",
+      "unread": true
+    },
+    {
+      "id": "n9",
+      "group": "Trước đó",
+      "type": "cron",
+      "cronId": "j2",
+      "actor": "Cron scheduler",
+      "initial": "⏱",
+      "color": "#3B5BDB",
+      "action": "job chạy thành công",
+      "preview": "\"ZyNovel rewrite pending\" chạy 48 lần hôm nay",
+      "time": "2 ngày",
+      "unread": false
+    },
+    {
+      "id": "n10",
+      "group": "Trước đó",
+      "type": "system",
+      "actor": "9Router Gateway",
+      "initial": "🌐",
+      "color": "#0E7490",
+      "action": "online trở lại",
+      "preview": "Gateway hoạt động bình thường sau bảo trì",
+      "time": "3 ngày",
+      "unread": false
+    },
+    {
+      "id": "n11",
+      "group": "Trước đó",
+      "type": "knowledge",
+      "actor": "Sabo - Facebook Research",
+      "initial": "S",
+      "color": "#3B82C4",
+      "action": "thêm dữ liệu",
+      "preview": "Thêm 12 bài vào fanpage_post_source",
+      "time": "3 ngày",
+      "unread": false
+    }
+  ],
+  "billMonths": [
+    {
+      "m": "07/25",
+      "v": 4.6
+    },
+    {
+      "m": "08/25",
+      "v": 4.9
+    },
+    {
+      "m": "09/25",
+      "v": 5.1
+    },
+    {
+      "m": "10/25",
+      "v": 4.7
+    },
+    {
+      "m": "11/25",
+      "v": 5.3
+    },
+    {
+      "m": "12/25",
+      "v": 5.9
+    },
+    {
+      "m": "01/26",
+      "v": 5.2
+    },
+    {
+      "m": "02/26",
+      "v": 4.8
+    },
+    {
+      "m": "03/26",
+      "v": 5.4
+    },
+    {
+      "m": "04/26",
+      "v": 6.01
+    },
+    {
+      "m": "05/26",
+      "v": 5.88
+    },
+    {
+      "m": "06/26",
+      "v": 6.42
+    }
+  ],
+  "rolesData": [
+    {
+      "id": "owner",
+      "name": "Owner",
+      "icon": "👑",
+      "color": "#3B5BDB",
+      "system": true,
+      "desc": "Toàn quyền trên workspace, bao gồm phân quyền và thanh toán.",
+      "members": [
+        {
+          "name": "Nguyễn Thiện Giang",
+          "initial": "N",
+          "color": "#3B5BDB",
+          "sub": "@giang · bạn"
+        }
+      ]
+    },
+    {
+      "id": "lead",
+      "name": "Lead",
+      "icon": "🧭",
+      "color": "#0E7490",
+      "system": false,
+      "desc": "Quản lý nội dung, agent và workflow trong các phòng được giao.",
+      "members": [
+        {
+          "name": "Lý Minh Hùng",
+          "initial": "LM",
+          "color": "#8B5CF6",
+          "sub": "user #89"
+        },
+        {
+          "name": "Ngô Phi Kiên",
+          "initial": "NP",
+          "color": "#3B82C4",
+          "sub": "user #7"
+        },
+        {
+          "name": "Nguyễn Trần Thế Vỹ",
+          "initial": "NV",
+          "color": "#E8A33D",
+          "sub": "user #6"
+        }
+      ]
+    },
+    {
+      "id": "staff",
+      "name": "Staff",
+      "icon": "🤖",
+      "color": "#0A7B52",
+      "system": false,
+      "desc": "Vai trò cho agent — thực thi tác vụ và workflow được giao.",
+      "members": [
+        {
+          "name": "Dragon - CEO",
+          "initial": "D",
+          "color": "#C0392B",
+          "sub": "agent #11"
+        },
+        {
+          "name": "Nami - Quản lý Fanpage",
+          "initial": "N",
+          "color": "#E8A33D",
+          "sub": "agent #12"
+        },
+        {
+          "name": "Sanji - Xào nấu content",
+          "initial": "S",
+          "color": "#0EA5A0",
+          "sub": "agent #8"
+        },
+        {
+          "name": "Sabo - Facebook Research",
+          "initial": "S",
+          "color": "#3B82C4",
+          "sub": "agent #9"
+        }
+      ]
+    },
+    {
+      "id": "viewer",
+      "name": "Viewer",
+      "icon": "👁",
+      "color": "#9A6A1B",
+      "system": false,
+      "desc": "Chỉ xem — không chỉnh sửa nội dung hay cấu hình.",
+      "members": [
+        {
+          "name": "Khách mời A",
+          "initial": "K",
+          "color": "#8B5CF6",
+          "sub": "guest"
+        },
+        {
+          "name": "Khách mời B",
+          "initial": "K",
+          "color": "#5A6B64",
+          "sub": "guest"
+        }
+      ]
+    }
+  ],
+  "initialRolePerms": {
+    "owner": {
+      "ch_view": true,
+      "ch_edit": true,
+      "ch_del": true,
+      "room_members": true,
+      "kn_view": true,
+      "kn_edit": true,
+      "kn_approve": true,
+      "kn_del": true,
+      "ag_view": true,
+      "ag_config": true,
+      "wf_run": true,
+      "wf_edit": true,
+      "cron_view": true,
+      "cron_edit": true,
+      "task_assign": true,
+      "sys_devices": true,
+      "sys_perm": true,
+      "sys_billing": true
+    },
+    "lead": {
+      "ch_view": true,
+      "ch_edit": true,
+      "ch_del": true,
+      "room_members": true,
+      "kn_view": true,
+      "kn_edit": true,
+      "kn_approve": true,
+      "kn_del": true,
+      "ag_view": true,
+      "ag_config": true,
+      "wf_run": true,
+      "wf_edit": true,
+      "cron_view": true,
+      "cron_edit": true,
+      "task_assign": true,
+      "sys_devices": true,
+      "sys_perm": false,
+      "sys_billing": false
+    },
+    "staff": {
+      "ch_view": true,
+      "ch_edit": false,
+      "ch_del": false,
+      "room_members": false,
+      "kn_view": true,
+      "kn_edit": true,
+      "kn_approve": false,
+      "kn_del": false,
+      "ag_view": true,
+      "ag_config": false,
+      "wf_run": true,
+      "wf_edit": false,
+      "cron_view": true,
+      "cron_edit": false,
+      "task_assign": true,
+      "sys_devices": false,
+      "sys_perm": false,
+      "sys_billing": false
+    },
+    "viewer": {
+      "ch_view": true,
+      "ch_edit": false,
+      "ch_del": false,
+      "room_members": false,
+      "kn_view": true,
+      "kn_edit": false,
+      "kn_approve": false,
+      "kn_del": false,
+      "ag_view": true,
+      "ag_config": false,
+      "wf_run": false,
+      "wf_edit": false,
+      "cron_view": true,
+      "cron_edit": false,
+      "task_assign": false,
+      "sys_devices": true,
+      "sys_perm": false,
+      "sys_billing": false
+    }
+  },
+  "knowledgeData": [
+    {
+      "type": "knowledge",
+      "title": "Chuẩn bị nội dung facebook",
+      "repo": "zy-novel",
+      "ver": "v3",
+      "time": "17 giờ trước",
+      "avatars": [
+        {
+          "i": "N",
+          "c": "#3B5BDB"
+        }
+      ]
+    },
+    {
+      "type": "knowledge",
+      "title": "Cách tham khảo và viết lại content",
+      "repo": "zy-novel",
+      "ver": "v3",
+      "time": "1 ngày trước",
+      "avatars": [
+        {
+          "i": "N",
+          "c": "#3B5BDB"
+        },
+        {
+          "i": "S",
+          "c": "#E8A33D"
+        }
+      ]
+    },
+    {
+      "type": "agent",
+      "title": "Social Research",
+      "repo": "zy-novel",
+      "ver": "v4",
+      "time": "1 ngày trước",
+      "avatars": [
+        {
+          "i": "S",
+          "c": "#C0392B"
+        }
+      ]
+    },
+    {
+      "type": "knowledge",
+      "title": "Tìm kiếm Fanpage và tổng hợp bài viết",
+      "repo": "zy-novel",
+      "ver": "v4",
+      "time": "1 ngày trước",
+      "avatars": [
+        {
+          "i": "S",
+          "c": "#C0392B"
+        }
+      ]
+    },
+    {
+      "type": "agent",
+      "title": "Social Leader",
+      "repo": "zy-novel",
+      "ver": "v2",
+      "time": "1 ngày trước",
+      "avatars": [
+        {
+          "i": "M",
+          "c": "#8B5CF6"
+        }
+      ]
+    },
+    {
+      "type": "agent",
+      "title": "Facebook Group Seeding",
+      "repo": "zy-novel",
+      "ver": "v5",
+      "time": "1 ngày trước",
+      "avatars": [
+        {
+          "i": "U",
+          "c": "#0EA5A0"
+        }
+      ]
+    },
+    {
+      "type": "knowledge",
+      "title": "Social Data Report",
+      "repo": "zy-novel",
+      "ver": "v13",
+      "time": "1 ngày trước",
+      "avatars": [
+        {
+          "i": "B",
+          "c": "#3B5BDB"
+        },
+        {
+          "i": "M",
+          "c": "#8B5CF6"
+        }
+      ]
+    },
+    {
+      "type": "knowledge",
+      "title": "Thông tin nền tảng Zynovel",
+      "repo": "zy-novel",
+      "ver": "v8",
+      "time": "13 giờ trước",
+      "private": true,
+      "avatars": [
+        {
+          "i": "N",
+          "c": "#3B5BDB"
+        },
+        {
+          "i": "D",
+          "c": "#C0392B"
+        },
+        {
+          "i": "S",
+          "c": "#E8A33D"
+        }
+      ],
+      "extra": 3
+    },
+    {
+      "type": "agent",
+      "title": "Main CEO",
+      "repo": "zy-novel",
+      "ver": "v8",
+      "time": "1 ngày trước",
+      "avatars": [
+        {
+          "i": "D",
+          "c": "#C0392B"
+        }
+      ]
+    },
+    {
+      "type": "knowledge",
+      "title": "Đăng nhập Facebook & Lưu session",
+      "repo": "zy-novel",
+      "ver": "v6",
+      "time": "1 ngày trước",
+      "avatars": [
+        {
+          "i": "N",
+          "c": "#3B5BDB"
+        },
+        {
+          "i": "U",
+          "c": "#0EA5A0"
+        },
+        {
+          "i": "S",
+          "c": "#C0392B"
+        }
+      ],
+      "extra": 2
+    },
+    {
+      "type": "agent",
+      "title": "Quản lý Fanpage",
+      "repo": "zy-novel",
+      "ver": "v2",
+      "time": "1 ngày trước",
+      "avatars": [
+        {
+          "i": "N",
+          "c": "#E8A33D"
+        }
+      ]
+    },
+    {
+      "type": "rule",
+      "title": "Check shop",
+      "repo": "zypage",
+      "ver": "v1",
+      "time": "15 ngày trước",
+      "private": true,
+      "avatars": [
+        {
+          "i": "T",
+          "c": "#3B82C4"
+        }
+      ]
+    },
+    {
+      "type": "skill",
+      "title": "Xuất báo cáo PDF tự động",
+      "repo": "zy-tech",
+      "ver": "v2",
+      "time": "3 ngày trước",
+      "avatars": [
+        {
+          "i": "Z",
+          "c": "#0E7490"
+        }
+      ]
+    },
+    {
+      "type": "rule",
+      "title": "Duyệt nội dung trước khi đăng",
+      "repo": "zy-novel",
+      "ver": "v4",
+      "time": "5 ngày trước",
+      "avatars": [
+        {
+          "i": "D",
+          "c": "#C0392B"
+        }
+      ]
+    }
+  ],
+  "publicData": [
+    {
+      "id": "general",
+      "name": "general",
+      "desc": "Chat thử nghiệm Lisa Q&A",
+      "icon": "#",
+      "visibility": "PUBLIC",
+      "members": 9,
+      "database": null,
+      "tasks": [],
+      "wfTotal": 0,
+      "wfNote": "Kênh chung của workspace."
+    }
+  ],
+  "privateData": [
+    {
+      "id": "room-zy-tech",
+      "name": "room-zy-tech",
+      "desc": "Room channel cho Zy Tech",
+      "visibility": "PRIVATE",
+      "members": 4,
+      "files": "zy-tech/",
+      "database": "zy-tech",
+      "tasks": [],
+      "wfTotal": 6,
+      "wfNote": "Không có workflow phù hợp room này."
+    },
+    {
+      "id": "room-zypage",
+      "name": "room-zypage",
+      "desc": "Room channel cho Zypage",
+      "visibility": "PRIVATE",
+      "members": 3,
+      "files": "zypage/",
+      "database": "zypage",
+      "tasks": [],
+      "wfTotal": 4,
+      "wfNote": "Không có workflow phù hợp room này."
+    },
+    {
+      "id": "room-zy-novel",
+      "name": "room-zy-novel",
+      "desc": "Room channel cho Zy Novel",
+      "visibility": "PRIVATE",
+      "members": 11,
+      "files": "zy-novel/",
+      "database": "zy-novel",
+      "tasks": [
+        {
+          "id": "T-2593",
+          "status": "ĐANG XỬ LÝ",
+          "assignee": "@sanji-zynovel",
+          "text": "Viết nội dung đầy đủ cho 1 bài facebook_post_cho",
+          "time": "6m"
+        }
+      ],
+      "wfTotal": 10,
+      "wfNote": "Không có workflow phù hợp room này."
+    }
+  ],
+  "directData": [
+    {
+      "id": "dm-support",
+      "name": "ZyAgents Support AI",
+      "desc": "Hãy hỏi tôi nếu bạn cần trợ giúp",
+      "color": "#3B5BDB",
+      "initial": "Z",
+      "members": 2,
+      "visibility": "TRỢ LÝ",
+      "database": null,
+      "tasks": [],
+      "wfTotal": 0,
+      "wfNote": "Trợ lý hỗ trợ workspace."
+    },
+    {
+      "id": "dm-nami",
+      "name": "Nami - Quản lý Fanpage",
+      "desc": "@nami-zy-novel · Direct chat",
+      "color": "#E8A33D",
+      "initial": "N",
+      "members": 2,
+      "visibility": "DM",
+      "database": "fanpage",
+      "tasks": [],
+      "wfTotal": 0,
+      "wfNote": "Direct chat với agent."
+    },
+    {
+      "id": "dm-usopp",
+      "name": "Usopp - Group Seeding",
+      "desc": "@usopp-zynovel · Direct chat",
+      "color": "#C94F3D",
+      "initial": "U",
+      "members": 2,
+      "visibility": "DM",
+      "database": null,
+      "tasks": [],
+      "wfTotal": 0,
+      "wfNote": "Direct chat với agent."
+    },
+    {
+      "id": "dm-sabo",
+      "name": "Sabo - Facebook Research",
+      "desc": "@sabo-zynovel · Direct chat",
+      "color": "#3B82C4",
+      "initial": "S",
+      "members": 2,
+      "visibility": "DM",
+      "database": null,
+      "tasks": [],
+      "wfTotal": 0,
+      "wfNote": "Direct chat với agent."
+    },
+    {
+      "id": "dm-morgans",
+      "name": "Morgans - Social Leader",
+      "desc": "@morgans-zynovel · Direct chat",
+      "color": "#8B5CF6",
+      "initial": "M",
+      "members": 2,
+      "visibility": "DM",
+      "database": null,
+      "tasks": [],
+      "wfTotal": 0,
+      "wfNote": "Direct chat với agent."
+    },
+    {
+      "id": "dm-sanji",
+      "name": "Sanji - Xào nấu content",
+      "desc": "@sanji-zynovel · Direct chat",
+      "color": "#0EA5A0",
+      "initial": "S",
+      "members": 2,
+      "visibility": "DM",
+      "database": null,
+      "tasks": [],
+      "wfTotal": 0,
+      "wfNote": "Direct chat với agent."
+    }
+  ],
+  "messages": {
+    "general": [
+      {
+        "authorName": "Lisa Q&A AI",
+        "time": "09:12",
+        "avatarInitial": "L",
+        "avatarColor": "#3B5BDB",
+        "isAgent": true,
+        "raw": [
+          {
+            "kind": "para",
+            "rich": [
+              {
+                "v": "Chào anh 🌿 Đây là kênh thử nghiệm Lisa Q&A. Anh hỏi em bất cứ điều gì nhé.",
+                "isText": true
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "room-zy-tech": [
+      {
+        "authorName": "Sabo - Facebook Research",
+        "time": "09:12",
+        "avatarInitial": "S",
+        "avatarColor": "#3B5BDB",
+        "isAgent": true,
+        "raw": [
+          {
+            "kind": "para",
+            "rich": [
+              {
+                "v": "Room này dành cho team Zy Tech trao đổi kỹ thuật và hạ tầng agent.",
+                "isText": true
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "room-zypage": [],
+    "room-zy-novel": [
+      {
+        "authorName": "Nguyễn Thiện Giang",
+        "time": "15:56",
+        "avatarInitial": "N",
+        "avatarColor": "#3B5BDB",
+        "isAgent": false,
+        "raw": [
+          {
+            "kind": "para",
+            "rich": [
+              {
+                "v": "@Dragon - CEO",
+                "isMention": true
+              },
+              {
+                "v": " tạo cho em 1 kiến thức mới đi:",
+                "isText": true
+              }
+            ]
+          },
+          {
+            "kind": "para",
+            "rich": [
+              {
+                "v": "Tiêu đề:",
+                "isBold": true
+              },
+              {
+                "v": " Chuẩn bị nội dung facebook.",
+                "isText": true
+              }
+            ]
+          },
+          {
+            "kind": "list",
+            "items": [
+              [
+                {
+                  "v": "Lấy danh sách Fanpage vệ tinh trong ",
+                  "isText": true
+                },
+                {
+                  "v": "database fanpage",
+                  "isCode": true
+                },
+                {
+                  "v": ".",
+                  "isText": true
+                }
+              ],
+              [
+                {
+                  "v": "Tham khảo ",
+                  "isText": true
+                },
+                {
+                  "v": "database fanpage post source",
+                  "isCode": true
+                },
+                {
+                  "v": ". Chọn ra 5 bài có Trạng Thái Tái Sử Dụng là false, sort theo thời gian tạo từ cũ nhất → mới nhất.",
+                  "isText": true
+                }
+              ],
+              [
+                {
+                  "v": "Nghiên cứu kỹ thông tin, nội dung, hook ...v.v của các bài đó. Rồi hãy xem có thể tái sử dụng bài đó (viết lại) để nuôi các fanpage vệ tinh không, hoặc phù hợp để đăng lên Fanpage Zy Novel không.",
+                  "isText": true
+                }
+              ],
+              [
+                {
+                  "v": "Nếu phù hợp thì hãy thêm vào facebook ",
+                  "isText": true
+                },
+                {
+                  "v": "post",
+                  "isCode": true
+                },
+                {
+                  "v": " cho với đầy đủ chi tiết (không tạo thêm cột) trừ ",
+                  "isText": true
+                },
+                {
+                  "v": "Nội Dung Đầy Đủ",
+                  "isCode": true
+                },
+                {
+                  "v": " (Phần đó sẽ do Agent khác chuẩn bị).",
+                  "isText": true
+                }
+              ],
+              [
+                {
+                  "v": "Sau khi tổng hợp thì trả kết quả ngắn gọn. Đã thêm xx bài viết vào danh sách chờ. Tiêu đề + Mô tả ngắn của bài viết.",
+                  "isText": true
+                }
+              ]
+            ]
+          },
+          {
+            "kind": "para",
+            "rich": [
+              {
+                "v": "Anh hãy bổ sung và tối ưu kiến thức cho em với.",
+                "isText": true
+              }
+            ]
+          },
+          {
+            "kind": "task",
+            "code": "T-2362",
+            "text": "tạo cho em 1 kiến thức mới đi: Tiêu đề: Chuẩn bị nội dun…"
+          }
+        ]
+      },
+      {
+        "authorName": "Dragon - CEO",
+        "time": "15:55",
+        "avatarInitial": "D",
+        "avatarColor": "#C0392B",
+        "isAgent": true,
+        "replyable": true,
+        "raw": [
+          {
+            "kind": "para",
+            "rich": [
+              {
+                "v": "Đã tạo knowledge mới ",
+                "isText": true
+              },
+              {
+                "v": "\"Chuẩn bị nội dung facebook\"",
+                "isBold": true
+              },
+              {
+                "v": " và gửi vào Hub để duyệt: ",
+                "isText": true
+              },
+              {
+                "v": "pending",
+                "isAmber": true
+              },
+              {
+                "v": " ",
+                "isText": true
+              },
+              {
+                "v": "#49",
+                "isLink": true
+              },
+              {
+                "v": " .",
+                "isText": true
+              }
+            ]
+          },
+          {
+            "kind": "para",
+            "rich": [
+              {
+                "v": "Nội dung đã được tối ưu thành SOP rõ ràng gồm:",
+                "isText": true
+              }
+            ]
+          },
+          {
+            "kind": "list",
+            "items": [
+              [
+                {
+                  "v": "Lấy fanpage vệ tinh từ ",
+                  "isText": true
+                },
+                {
+                  "v": "fanpage",
+                  "isCode": true
+                },
+                {
+                  "v": " .",
+                  "isText": true
+                }
+              ],
+              [
+                {
+                  "v": "Chọn 5 bài chưa sử dụng từ ",
+                  "isText": true
+                },
+                {
+                  "v": "fanpage_post_source",
+                  "isCode": true
+                },
+                {
+                  "v": " , sort cũ nhất → mới nhất.",
+                  "isText": true
+                }
+              ],
+              [
+                {
+                  "v": "Đánh giá hook, nội dung, độ phù hợp với fanpage vệ tinh hoặc Fanpage Zy Novel.",
+                  "isText": true
+                }
+              ],
+              [
+                {
+                  "v": "Thêm bài phù hợp vào ",
+                  "isText": true
+                },
+                {
+                  "v": "facebook_post_cho",
+                  "isCode": true
+                },
+                {
+                  "v": " , không tạo thêm cột, không điền ",
+                  "isText": true
+                },
+                {
+                  "v": "Nội Dung Đầy Đủ",
+                  "isCode": true
+                },
+                {
+                  "v": " .",
+                  "isText": true
+                }
+              ],
+              [
+                {
+                  "v": "Trả kết quả ngắn gọn theo mẫu \"Đã thêm xx bài viết\".",
+                  "isText": true
+                }
+              ]
+            ]
+          },
+          {
+            "kind": "para",
+            "rich": [
+              {
+                "v": "Em cũng đã ghi session log: ",
+                "isText": true
+              },
+              {
+                "v": "session/room/zy-novel/session_0171.md",
+                "isLink": true
+              },
+              {
+                "v": " .",
+                "isText": true
+              }
+            ]
+          },
+          {
+            "kind": "task",
+            "code": "T-2362",
+            "text": "tạo cho em 1 kiến thức mới đi: Tiêu đề: Chuẩn bị nội dun…"
+          }
+        ]
+      }
+    ],
+    "dm-support": [
+      {
+        "authorName": "ZyAgents Support AI",
+        "time": "09:12",
+        "avatarInitial": "Z",
+        "avatarColor": "#3B5BDB",
+        "isAgent": true,
+        "raw": [
+          {
+            "kind": "para",
+            "rich": [
+              {
+                "v": "Hãy hỏi tôi nếu anh cần trợ giúp về workspace, agent hay billing.",
+                "isText": true
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "dm-nami": [
+      {
+        "authorName": "Nami - Quản lý Fanpage",
+        "time": "09:12",
+        "avatarInitial": "N",
+        "avatarColor": "#3B5BDB",
+        "isAgent": true,
+        "raw": [
+          {
+            "kind": "para",
+            "rich": [
+              {
+                "v": "Em đã cập nhật lịch đăng bài tuần này cho 6 fanpage vệ tinh.",
+                "isText": true
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "dm-usopp": [],
+    "dm-sabo": [
+      {
+        "authorName": "Sabo - Facebook Research",
+        "time": "09:12",
+        "avatarInitial": "S",
+        "avatarColor": "#3B5BDB",
+        "isAgent": true,
+        "raw": [
+          {
+            "kind": "para",
+            "rich": [
+              {
+                "v": "Đã research xong 12 bài viral, em gửi anh danh sách nhé.",
+                "isText": true
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "dm-morgans": [
+      {
+        "authorName": "Morgans - Social Leader",
+        "time": "09:12",
+        "avatarInitial": "M",
+        "avatarColor": "#3B5BDB",
+        "isAgent": true,
+        "raw": [
+          {
+            "kind": "para",
+            "rich": [
+              {
+                "v": "Báo cáo tương tác tháng đã sẵn sàng, anh xem giúp em.",
+                "isText": true
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "dm-sanji": []
+  },
+  "rooms": [
+    {
+      "id": "zypage",
+      "name": "Zy Page",
+      "slug": "ZYPAGE · MAIN",
+      "channel": "zypage"
+    },
+    {
+      "id": "zy-novel",
+      "name": "Zy Novel",
+      "slug": "ZY-NOVEL · MAIN",
+      "channel": "zy-novel"
+    },
+    {
+      "id": "zy-tech",
+      "name": "Zy Tech",
+      "slug": "ZY-TECH · MAIN",
+      "channel": "zy-tech"
+    }
+  ],
+  "roomMembersById": {
+    "zy-novel": [
+      {
+        "name": "Nguyễn Thiện Giang",
+        "handle": "user #1",
+        "type": "user",
+        "role": "lead",
+        "initial": "N",
+        "color": "#3B5BDB"
+      },
+      {
+        "name": "Lý Minh Hùng",
+        "handle": "user #89",
+        "type": "user",
+        "role": "lead",
+        "initial": "LM",
+        "color": "#8B5CF6"
+      },
+      {
+        "name": "Ngô Phi Kiên",
+        "handle": "user #7",
+        "type": "user",
+        "role": "lead",
+        "initial": "NP",
+        "color": "#3B82C4"
+      },
+      {
+        "name": "Nguyễn Trần Thế Vỹ",
+        "handle": "user #6",
+        "type": "user",
+        "role": "lead",
+        "initial": "NV",
+        "color": "#E8A33D"
+      },
+      {
+        "name": "Dragon - CEO",
+        "handle": "agent #11",
+        "type": "agent",
+        "role": "staff",
+        "initial": "D",
+        "color": "#C0392B"
+      },
+      {
+        "name": "Nami - Quản lý Fanpage",
+        "handle": "agent #12",
+        "type": "agent",
+        "role": "staff",
+        "initial": "N",
+        "color": "#E8A33D"
+      },
+      {
+        "name": "Usopp - Group Seeding",
+        "handle": "agent #10",
+        "type": "agent",
+        "role": "staff",
+        "initial": "U",
+        "color": "#C94F3D"
+      },
+      {
+        "name": "Sanji - Xào nấu content",
+        "handle": "agent #8",
+        "type": "agent",
+        "role": "staff",
+        "initial": "S",
+        "color": "#0EA5A0"
+      },
+      {
+        "name": "Sabo - Facebook Research",
+        "handle": "agent #9",
+        "type": "agent",
+        "role": "staff",
+        "initial": "S",
+        "color": "#3B82C4"
+      },
+      {
+        "name": "Brook - Báo Cáo Zy Novel",
+        "handle": "agent #7",
+        "type": "agent",
+        "role": "staff",
+        "initial": "B",
+        "color": "#3B5BDB"
+      },
+      {
+        "name": "Morgans - Social Leader",
+        "handle": "agent #6",
+        "type": "agent",
+        "role": "staff",
+        "initial": "M",
+        "color": "#8B5CF6"
+      }
+    ],
+    "zypage": [
+      {
+        "name": "Nguyễn Thiện Giang",
+        "handle": "user #1",
+        "type": "user",
+        "role": "lead",
+        "initial": "N",
+        "color": "#3B5BDB"
+      },
+      {
+        "name": "Trần Quốc Bảo",
+        "handle": "user #14",
+        "type": "user",
+        "role": "staff",
+        "initial": "TB",
+        "color": "#3B82C4"
+      },
+      {
+        "name": "Franky - Thiết kế",
+        "handle": "agent #4",
+        "type": "agent",
+        "role": "staff",
+        "initial": "F",
+        "color": "#0EA5A0"
+      },
+      {
+        "name": "Robin - Biên tập",
+        "handle": "agent #5",
+        "type": "agent",
+        "role": "staff",
+        "initial": "R",
+        "color": "#8B5CF6"
+      },
+      {
+        "name": "Chopper - Hỗ trợ",
+        "handle": "agent #3",
+        "type": "agent",
+        "role": "staff",
+        "initial": "C",
+        "color": "#E8A33D"
+      }
+    ],
+    "zy-tech": [
+      {
+        "name": "Nguyễn Thiện Giang",
+        "handle": "user #1",
+        "type": "user",
+        "role": "lead",
+        "initial": "N",
+        "color": "#3B5BDB"
+      },
+      {
+        "name": "Ngô Phi Kiên",
+        "handle": "user #7",
+        "type": "user",
+        "role": "lead",
+        "initial": "NP",
+        "color": "#3B82C4"
+      },
+      {
+        "name": "Zoro - DevOps",
+        "handle": "agent #2",
+        "type": "agent",
+        "role": "staff",
+        "initial": "Z",
+        "color": "#3B5BDB"
+      },
+      {
+        "name": "Sabo - Facebook Research",
+        "handle": "agent #9",
+        "type": "agent",
+        "role": "staff",
+        "initial": "S",
+        "color": "#3B82C4"
+      }
+    ]
+  },
+  "profileData": {
+    "name": "Nguyễn Thiện Giang",
+    "email": "giang@zytech.vn",
+    "phone": "+84 90 123 4567",
+    "title": "Founder / Owner",
+    "bio": "Điều hành workspace AgentAIOS — quản lý đội ngũ agent AI cho Zy Novel & Zy Page.",
+    "location": "Hồ Chí Minh, Việt Nam"
+  },
+  "profileSessions": [
+    {
+      "id": "s1",
+      "device": "MacBook Pro · Chrome",
+      "where": "Hồ Chí Minh · 100.84.12.21",
+      "time": "Đang hoạt động",
+      "current": true,
+      "icon": "💻"
+    },
+    {
+      "id": "s2",
+      "device": "Pixel 8 · Android",
+      "where": "Hồ Chí Minh · 100.84.12.30",
+      "time": "2 giờ trước",
+      "current": false,
+      "icon": "📱"
+    },
+    {
+      "id": "s3",
+      "device": "iPad · Safari",
+      "where": "Hà Nội · 14.241.x.x",
+      "time": "Hôm qua, 21:14",
+      "current": false,
+      "icon": "📱"
+    },
+    {
+      "id": "s4",
+      "device": "Windows · Edge",
+      "where": "Đà Nẵng · 27.72.x.x",
+      "time": "3 ngày trước",
+      "current": false,
+      "icon": "🖥"
+    }
+  ],
+  "editorAgents": [
+    {
+      "id": "lisa",
+      "name": "Lisa",
+      "initial": "G",
+      "color": "#0A7B52"
+    },
+    {
+      "id": "claude",
+      "name": "claude",
+      "initial": "CL",
+      "color": "#C0762C"
+    },
+    {
+      "id": "codex",
+      "name": "codex",
+      "initial": "CO",
+      "color": "#3B5BDB"
+    },
+    {
+      "id": "qa88",
+      "name": "qa-agent-88",
+      "initial": "QA",
+      "color": "#8B5CF6"
+    },
+    {
+      "id": "min",
+      "name": "Min - Thư ký Zy Tech",
+      "sub": "@tro-ly",
+      "initial": "M",
+      "color": "#E8A33D"
+    },
+    {
+      "id": "morgans",
+      "name": "Morgans - Social Leader",
+      "initial": "M",
+      "color": "#C94F3D"
+    },
+    {
+      "id": "sabo",
+      "name": "Sabo - Facebook Research",
+      "initial": "S",
+      "color": "#3B82C4"
+    },
+    {
+      "id": "nami",
+      "name": "Nami - Quản lý Fanpage",
+      "initial": "N",
+      "color": "#0EA5A0"
+    }
+  ]
+}

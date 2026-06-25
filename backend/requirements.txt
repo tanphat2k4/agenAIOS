@@ -1,0 +1,20 @@
+# --- Web framework ---
+fastapi
+uvicorn[standard]
+
+# --- Database ---
+sqlalchemy>=2.0
+alembic
+psycopg[binary]          # PostgreSQL driver (psycopg 3)
+
+# --- Settings / validation ---
+pydantic[email]
+pydantic-settings
+
+# --- Auth ---
+pyjwt                    # JWT access tokens
+bcrypt                   # password hashing
+python-multipart         # OAuth2 form parsing
+
+# --- HTTP client (9Router gateway) ---
+httpx
