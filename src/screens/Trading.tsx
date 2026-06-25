@@ -13,6 +13,7 @@ const ACTIONS: Action[] = [
   { key: 'extras', label: 'Khối ngoại' },
   { key: 'macro', label: 'Vĩ mô (tỷ giá/lãi suất)' },
   { key: 'analyze', label: 'Phân tích đầy đủ', slow: true },
+  { key: 'pipeline', label: 'Pipeline 5-agent', slow: true },
 ]
 
 export function Trading() {
@@ -73,7 +74,37 @@ export function Trading() {
     }
   }
 
-  const onAction = (a: Action) => (a.key === 'analyze' ? runAnalyze() : runFast(a.key, a.label))
+  const runPipeline = async () => {
+    const t = ticker.trim().toUpperCase()
+    if (!t || busy) return
+    setBusy(true)
+    setTitle('Pipeline 5-agent · ' + t)
+    setResult('⏳ 5 agent đang chạy lần lượt: Analyst → Researcher → Trader → Risk → Portfolio (mỗi con 1 lượt 9Router)…')
+    try {
+      await api.post('/trading/pipeline', { ticker: t })
+      const poll = async () => {
+        try {
+          const r = await api.get(`/trading/pipeline?ticker=${encodeURIComponent(t)}`)
+          if (r.status === 'done' || r.status === 'error') {
+            setResult(r.result || '(không có kết quả)')
+            setBusy(false)
+            refreshOps()
+          } else {
+            setTimeout(poll, 3000)
+          }
+        } catch (e) {
+          setResult('Lỗi khi chờ kết quả: ' + (e instanceof Error ? e.message : 'unknown'))
+          setBusy(false)
+        }
+      }
+      setTimeout(poll, 3000)
+    } catch (e) {
+      setResult('Lỗi: ' + (e instanceof Error ? e.message : 'unknown'))
+      setBusy(false)
+    }
+  }
+
+  const onAction = (a: Action) => (a.key === 'analyze' ? runAnalyze() : a.key === 'pipeline' ? runPipeline() : runFast(a.key, a.label))
 
   return (
     <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>

@@ -104,6 +104,42 @@ def analyze_status(ticker: str, date: str | None = None):
     return {"status": job["status"], "result": job["result"]}
 
 
+# ----------------- 5-agent pipeline (real, AgentAIOS-orchestrated) -----------------
+class PipelineIn(BaseModel):
+    ticker: str
+
+
+@router.post("/pipeline")
+def start_pipeline(body: PipelineIn):
+    key = _key(body.ticker, "pipeline")
+    job = _jobs.get(key)
+    if job and job["status"] in ("running", "done"):
+        return {"status": job["status"], "key": key, "result": job.get("result")}
+    _jobs[key] = {"status": "running", "result": None}
+
+    def work() -> None:
+        db = SessionLocal()
+        try:
+            outputs, ok = rec.run_pipeline(db, body.ticker)
+            text = "\n\n".join(f"### {a['name']} · {a['role']}\n{txt}" for a, txt in outputs)
+            _jobs[key] = {"status": "done" if ok else "error", "result": text}
+        except Exception as exc:  # noqa: BLE001
+            _jobs[key] = {"status": "error", "result": f"Lỗi: {exc}"}
+        finally:
+            db.close()
+
+    threading.Thread(target=work, daemon=True).start()
+    return {"status": "running", "key": key, "result": None}
+
+
+@router.get("/pipeline")
+def pipeline_status(ticker: str):
+    job = _jobs.get(_key(ticker, "pipeline"))
+    if not job:
+        return {"status": "idle", "result": None}
+    return {"status": job["status"], "result": job["result"]}
+
+
 # ----------------------- in-app trading chat (P2) -----------------------
 def ensure_trading_channel(db: Session) -> Channel:
     ch = db.get(Channel, TRADING_CHANNEL_ID)
@@ -200,10 +236,7 @@ def ensure_channel(db: Session = Depends(get_db), current: User = Depends(get_cu
     add_channel_member(db, ch.id, name=current.name, initial=current.initial, color=current.color,
                        role="Owner" if getattr(current, "role", "") == "owner" else "Member", userId=current.id)
     add_channel_member(db, ch.id, name=_AGENT_NAME, initial=_AGENT_INITIAL, color=_AGENT_COLOR, role="Agent", isAgent=True)
-    rec.ensure_mcp_server(db)
-    rec.ensure_analysis_workflow(db)
-    rec.ensure_trading_agent(db)
-    rec.ensure_trading_room(db)
+    rec.ensure_all(db)
     return _channel_dict(db, ch)
 
 
