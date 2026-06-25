@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { api, getToken, setToken } from './api/client'
 import * as seed from './data/seed'
 import type { ChatMessage } from './data/richText'
 import type {
@@ -16,6 +17,16 @@ const uid = (p: string) => p + Math.random().toString(36).slice(2, 9)
 const nowTime = () => {
   const d = new Date()
   return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2)
+}
+
+// Fire an API mutation in the background; surface failures as a toast.
+// Local state is updated optimistically; hydrate() reconciles ids on reload.
+function persist<T>(p: Promise<T>): Promise<T> {
+  p.catch((e: unknown) => {
+    console.error('[api] mutation failed', e)
+    try { useStore.getState().fireToast('Không đồng bộ được với máy chủ') } catch { /* noop */ }
+  })
+  return p
 }
 
 // ----- cron expression helpers (ported) -----
@@ -168,7 +179,6 @@ export interface AppState {
   chatSearch: string
   attachMenuOpen: boolean
   pendingAttach: Attach | null
-  addedMembers: Record<string, number>
   deleteTarget: string | null
   channelTaskDetail: Channel['tasks'][number] | null
   fileDetail: RoomFile | null
@@ -226,6 +236,12 @@ export interface AppActions {
   setView: (v: ViewName) => void
   fireToast: (msg: string) => void
   closeOverlay: () => void
+
+  // backend wiring
+  login: (email: string, password: string) => Promise<void>
+  register: (name: string, email: string, password: string) => Promise<void>
+  bootAuth: () => Promise<void>
+  hydrate: () => Promise<void>
 
   // agents
   setAgentsFilter: (f: string) => void
@@ -287,6 +303,9 @@ export interface AppActions {
   // logs
   setLogsTab: (t: string) => void
   selectSession: (id: string) => void
+  deleteSession: (id: string) => void
+  clearSessions: () => void
+  askClearLogs: () => void
 
   // perms
   selectRole: (id: string) => void
@@ -307,6 +326,8 @@ export interface AppActions {
   setNotifFilter: (f: string) => void
   markRead: (id: string) => void
   markAllRead: () => void
+  deleteNotif: (id: string) => void
+  clearNotifs: () => void
   setPlanCycle: (c: string) => void
 
   // language
@@ -455,6 +476,7 @@ export interface AppActions {
   insertMention: () => void
   replyTo: (name: string) => void
   sendMessage: () => void
+  pollTradingAnalyze: (channelId: string, ticker: string) => void
   toggleChatSearch: () => void
   onChatSearch: (v: string) => void
   confirmLeave: () => void
@@ -472,7 +494,8 @@ export interface AppActions {
   openAddMember: () => void
   openMembers: () => void
   openChannelTask: (t: Channel['tasks'][number]) => void
-  addMemberTo: (name: string) => void
+  addMemberTo: (payload: { userId?: string; agentId?: string }) => void
+  removeMember: (memberId: string) => void
   onCreateName: (v: string) => void
   onCreateDesc: (v: string) => void
   setTypePublic: () => void
@@ -521,7 +544,7 @@ const initial: AppState = {
   wfForm: { name: '', desc: '', trigger: 'cron', triggerLabel: '*/30 * * * *', steps: [{ agent: 'Sabo - Facebook Research', title: '', io: '' }] },
   workflows: seed.workflows as Workflow[],
   activeRoom: 'zy-novel', roomTab: 'members', activeId: 'room-zy-novel', draft: '',
-  chatSearchOpen: false, chatSearch: '', attachMenuOpen: false, pendingAttach: null, addedMembers: {},
+  chatSearchOpen: false, chatSearch: '', attachMenuOpen: false, pendingAttach: null,
   deleteTarget: null, channelTaskDetail: null, fileDetail: null, renameTarget: null, renameValue: '', composerFocused: false,
   createForm: { name: '', type: 'private', desc: '' }, createFocused: false, switchQuery: '',
   unread: { 'room-zy-novel': 4 },
@@ -553,6 +576,58 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
   },
   closeOverlay: () => set({ overlay: null }),
 
+  // ---------- backend wiring ----------
+  login: async (email, password) => {
+    const r = await api.post('/auth/login', { email, password })
+    setToken(r.access_token)
+    set({ authed: true })
+    await get().hydrate()
+  },
+  register: async (name, email, password) => {
+    const r = await api.post('/auth/register', { name, email, password })
+    setToken(r.access_token)
+    set({ authed: true })
+    await get().hydrate()
+  },
+  bootAuth: async () => {
+    if (!getToken()) return
+    try {
+      await api.get('/auth/me')
+      set({ authed: true })
+      await get().hydrate()
+    } catch {
+      setToken(null)
+    }
+  },
+  hydrate: async () => {
+    await api.post('/trading/channel/ensure').catch(() => {})
+    const [channels, agents, mcp, workflows, cron, tasks, devices, sessions, audit, knowledge, rooms, roles, users, invites, signups, notifs, bill, profile, activity] = await Promise.all([
+      api.get('/channels'), api.get('/agents'), api.get('/mcp'), api.get('/workflows'), api.get('/cron'),
+      api.get('/tasks'), api.get('/devices'), api.get('/sessions'), api.get('/audit'), api.get('/knowledge'),
+      api.get('/rooms'), api.get('/roles'), api.get('/users'), api.get('/invites'), api.get('/signups'),
+      api.get('/notifs'), api.get('/billing/months'), api.get('/profile'), api.get('/activity'),
+    ])
+    const roomMembersById: Record<string, RoomMember[]> = {}
+    rooms.forEach((r: { id: string; members?: RoomMember[] }) => { roomMembersById[r.id] = r.members || [] })
+    const rolePerms: Record<string, Record<string, boolean>> = {}
+    roles.forEach((r: { id: string; permissions?: Record<string, boolean> }) => { rolePerms[r.id] = r.permissions || {} })
+    const unread: Record<string, number> = {}
+    ;([...channels.public, ...channels.private, ...channels.direct] as { id: string; unread?: number }[]).forEach((c) => { if (c.unread) unread[c.id] = c.unread })
+    set({
+      publicData: channels.public, privateData: channels.private, directData: channels.direct,
+      agentsData: agents, mcpData: mcp, workflows, cronJobsData: cron, tasksData: tasks,
+      devicesData: devices, sessionsData: sessions, auditLog: audit, knowledgeData: knowledge,
+      rooms, roomMembersById, rolesData: roles, rolePerms, usersData: users, invitesData: invites,
+      signupsData: signups, notifsData: notifs, billMonths: bill, recentActivity: activity, unread,
+      profileData: { name: profile.name, email: profile.email, phone: profile.phone, title: profile.title, bio: profile.bio, location: profile.location },
+    })
+    const id = get().activeId
+    try {
+      const msgs = await api.get(`/channels/${id}/messages`)
+      set((s) => ({ messages: { ...s.messages, [id]: msgs } }))
+    } catch { /* ignore */ }
+  },
+
   // ---------- agents ----------
   setAgentsFilter: (f) => set({ agentsFilter: f }),
   openAgent: (id) => set({ agentDrawer: id }),
@@ -563,6 +638,7 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
   setAgentModel: (m) => set((s) => ({ agentForm: { ...s.agentForm, model: m, modelType: cloudModels.indexOf(m) >= 0 ? 'cloud' : 'local' } })),
   createAgent: () => {
     const f = get().agentForm, name = f.name.trim(); if (!name) return
+    persist(api.post('/agents', { name, role: f.role, model: f.model, modelType: f.modelType, status: f.status, desc: f.desc, skills: f.skills, rooms: f.rooms || [] }))
     const colors = ['#C0392B', '#3B82C4', '#0EA5A0', '#E8A33D', '#8B5CF6', '#0E7490']
     const skills = (f.skills || '').split(',').map((x) => x.trim()).filter(Boolean)
     const rmSel = f.rooms || []
@@ -577,38 +653,39 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
     set((s) => ({ agentsData: [ag, ...s.agentsData], overlay: null }))
   },
   agentAskDelete: () => set({ overlay: 'agentDelete' }),
-  agentDoDelete: () => { const id = get().agentDrawer; set((s) => ({ agentsData: s.agentsData.filter((a) => a.id !== id), agentDrawer: null, overlay: null })) },
+  agentDoDelete: () => { const id = get().agentDrawer; if (id) persist(api.del('/agents/' + id)); set((s) => ({ agentsData: s.agentsData.filter((a) => a.id !== id), agentDrawer: null, overlay: null })) },
   openAgentConfig: () => { const a = get().agentsData.find((x) => x.id === get().agentDrawer); if (!a) return; set({ agentCfg: { id: a.id, model: a.model, status: a.status }, overlay: 'agentConfig' }) },
   onAgentCfg: (k, v) => set((s) => ({ agentCfg: { ...s.agentCfg, [k]: v } as AppState['agentCfg'] })),
-  saveAgentConfig: () => { const c = get().agentCfg; set((s) => ({ agentsData: s.agentsData.map((a) => a.id === c.id ? { ...a, model: c.model, modelType: cloudModels.indexOf(c.model) >= 0 ? 'cloud' : 'local', status: c.status as Agent['status'] } : a), overlay: null })) },
+  saveAgentConfig: () => { const c = get().agentCfg; if (c.id) persist(api.patch(`/agents/${c.id}/config`, { model: c.model, status: c.status })); set((s) => ({ agentsData: s.agentsData.map((a) => a.id === c.id ? { ...a, model: c.model, modelType: cloudModels.indexOf(c.model) >= 0 ? 'cloud' : 'local', status: c.status as Agent['status'] } : a), overlay: null })) },
 
   // ---------- mcp ----------
   setMcpFilter: (f) => set({ mcpFilter: f }),
   openMcp: (id) => set({ mcpDrawer: id }),
   closeMcp: () => set({ mcpDrawer: null }),
-  syncMcp: () => { set((s) => ({ mcpData: s.mcpData.map((m) => m.status === 'error' ? m : { ...m, lastSync: 'vừa xong' }) })); get().fireToast('Đã đồng bộ MCP servers') },
+  syncMcp: () => { persist(api.post('/mcp/sync')); set((s) => ({ mcpData: s.mcpData.map((m) => m.status === 'error' ? m : { ...m, lastSync: 'vừa xong' }) })); get().fireToast('Đã đồng bộ MCP servers') },
   openNewMcp: () => set({ mcpForm: { name: '', transport: 'HTTP', endpoint: '', desc: '', tools: '' }, overlay: 'newMcp' }),
   onMcpField: (k, v) => set((s) => ({ mcpForm: { ...s.mcpForm, [k]: v } as AppState['mcpForm'] })),
   setMcpTransport: (t) => set((s) => ({ mcpForm: { ...s.mcpForm, transport: t } })),
   createMcp: () => {
     const f = get().mcpForm, name = (f.name || '').trim(); if (!name) return
+    persist(api.post('/mcp', { name, transport: f.transport, endpoint: f.endpoint, desc: f.desc, tools: f.tools }))
     const icons = ['🔌', '🧩', '⚙️', '🛰', '📦', '🔗']
     const tools = (f.tools || '').split(',').map((x) => x.trim()).filter(Boolean)
     const m: McpServer = { id: uid('mcp'), name, icon: icons[Math.floor(Math.random() * icons.length)], desc: (f.desc || '').trim() || 'MCP server mới được kết nối vào workspace.', transport: f.transport, status: 'connected', tools: tools.length ? tools : ['ping'], agents: 0, calls24: 0, lastSync: 'vừa xong', endpoint: (f.endpoint || '').trim() || '—', recentCalls: [] }
     set((s) => ({ mcpData: [m, ...s.mcpData], overlay: null })); get().fireToast('Đã kết nối ' + name)
   },
   testMcp: () => { const m = get().mcpData.find((x) => x.id === get().mcpDrawer); if (!m) return; get().fireToast(m.status === 'error' ? '✕ Không kết nối được ' + m.name : '✓ Kết nối ' + m.name + ' OK') },
-  toggleMcp: () => { const id = get().mcpDrawer; set((s) => ({ mcpData: s.mcpData.map((m) => m.id === id ? { ...m, status: m.status === 'disabled' ? 'connected' : 'disabled' } : m) })); const m = get().mcpData.find((x) => x.id === id); if (m) get().fireToast(m.status === 'disabled' ? 'Đã tắt ' + m.name : 'Đã bật ' + m.name) },
+  toggleMcp: () => { const id = get().mcpDrawer; if (id) persist(api.post(`/mcp/${id}/toggle`)); set((s) => ({ mcpData: s.mcpData.map((m) => m.id === id ? { ...m, status: m.status === 'disabled' ? 'connected' : 'disabled' } : m) })); const m = get().mcpData.find((x) => x.id === id); if (m) get().fireToast(m.status === 'disabled' ? 'Đã tắt ' + m.name : 'Đã bật ' + m.name) },
   askDeleteMcp: () => set({ mcpDeleteConfirm: true }),
-  confirmDeleteMcp: () => { const id = get().mcpDrawer; const m = get().mcpData.find((x) => x.id === id); set((s) => ({ mcpData: s.mcpData.filter((x) => x.id !== id), mcpDrawer: null, mcpDeleteConfirm: false })); if (m) get().fireToast('Đã xóa MCP ' + m.name) },
+  confirmDeleteMcp: () => { const id = get().mcpDrawer; const m = get().mcpData.find((x) => x.id === id); if (id) persist(api.del('/mcp/' + id)); set((s) => ({ mcpData: s.mcpData.filter((x) => x.id !== id), mcpDrawer: null, mcpDeleteConfirm: false })); if (m) get().fireToast('Đã xóa MCP ' + m.name) },
 
   // ---------- tasks ----------
   setTasksRoom: (r) => set({ tasksRoom: r }),
   openTask: (id) => set({ taskDrawer: id }),
   closeTask: () => set({ taskDrawer: null }),
   askDeleteTask: () => set({ taskDeleteConfirm: true }),
-  confirmDeleteTask: () => { const id = get().taskDrawer; set((s) => ({ tasksData: s.tasksData.filter((t) => t.id !== id), taskDrawer: null, taskDeleteConfirm: false })); get().fireToast('Đã xóa tác vụ ' + id) },
-  moveTask: (id, status) => set((s) => ({ tasksData: s.tasksData.map((t) => t.id === id ? { ...t, status } : t) })),
+  confirmDeleteTask: () => { const id = get().taskDrawer; if (id) persist(api.del('/tasks/' + id)); set((s) => ({ tasksData: s.tasksData.filter((t) => t.id !== id), taskDrawer: null, taskDeleteConfirm: false })); get().fireToast('Đã xóa tác vụ ' + id) },
+  moveTask: (id, status) => { persist(api.post(`/tasks/${id}/move`, { status })); set((s) => ({ tasksData: s.tasksData.map((t) => t.id === id ? { ...t, status } : t) })) },
   openCreateTask: () => set({ showCreateTask: true, editingTaskId: null, taskForm: { title: '', desc: '', assignee: '', room: 'Zy Novel', priority: 'med', status: 'queued' } }),
   openEditTask: () => { const t = get().tasksData.find((x) => x.id === get().taskDrawer); if (!t) return; set({ showCreateTask: true, editingTaskId: t.id, taskDrawer: null, taskForm: { title: t.title, desc: (t.desc === 'Chưa có mô tả.' ? '' : t.desc) || '', assignee: (t.assignee === 'Chưa giao' ? '' : t.assignee) || '', room: t.room, priority: t.priority, status: t.status } }) },
   closeCreateTask: () => set({ showCreateTask: false, editingTaskId: null }),
@@ -616,6 +693,7 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
   createTask: () => {
     const f = get().taskForm, title = (f.title || '').trim(); if (!title) return
     if (get().editingTaskId) { set({ taskSaveConfirm: true }); return }
+    persist(api.post('/tasks', { title, desc: (f.desc || '').trim(), assignee: f.assignee, room: f.room, priority: f.priority, status: f.status }))
     const ag = get().agentsData.find((a) => a.name === f.assignee)
     const assignee = f.assignee || 'Chưa giao'
     const initial = ag ? ag.initial : '?'; const color = ag ? ag.color : '#9AA8A1'
@@ -626,6 +704,7 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
   },
   confirmSaveTask: () => {
     const f = get().taskForm, title = (f.title || '').trim(); const id = get().editingTaskId; if (!title || !id) return
+    persist(api.patch('/tasks/' + id, { title, desc: (f.desc || '').trim(), assignee: f.assignee, room: f.room, priority: f.priority, status: f.status }))
     const ag = get().agentsData.find((a) => a.name === f.assignee)
     const assignee = f.assignee || 'Chưa giao'; const initial = ag ? ag.initial : '?'; const color = ag ? ag.color : '#9AA8A1'
     set((s) => ({ tasksData: s.tasksData.map((t) => t.id === id ? { ...t, title, desc: (f.desc || '').trim() || 'Chưa có mô tả.', assignee, initial, color, room: f.room, priority: f.priority as TaskItem['priority'], status: f.status as TaskItem['status'] } : t), showCreateTask: false, editingTaskId: null, taskSaveConfirm: false })); get().fireToast('Đã cập nhật tác vụ ' + id)
@@ -633,41 +712,50 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
 
   // ---------- devices ----------
   setDevicesFilter: (f) => set({ devicesFilter: f }),
-  refreshDevices: () => { set((s) => ({ devicesData: s.devicesData.map((d) => { if (d.status !== 'online') return d; const j = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v + Math.round((Math.random() - 0.5) * 16))); return { ...d, cpuPct: j(d.cpuPct, 4, 97), ramPct: j(d.ramPct, 20, 95), gpuPct: d.gpu === '—' ? 0 : j(d.gpuPct, 5, 96), lastSeen: 'vừa xong' } }) })); get().fireToast('Đã làm mới trạng thái thiết bị') },
-  toggleDevicePower: () => { const id = get().deviceDrawer; set((s) => ({ devicesData: s.devicesData.map((d) => { if (d.id !== id) return d; const on = d.status === 'online'; return on ? { ...d, status: 'offline' as const, cpuPct: 0, ramPct: 0, gpuPct: 0, uptime: '—', lastSeen: 'vừa xong' } : { ...d, status: 'online' as const, cpuPct: 18, ramPct: 42, gpuPct: d.gpu === '—' ? 0 : 20, uptime: 'vừa bật', lastSeen: 'vừa xong' } }) })); const dd = get().devicesData.find((d) => d.id === id); get().fireToast(dd && dd.status === 'online' ? 'Đã đánh thức ' + dd.name : 'Đã tắt ' + (dd ? dd.name : 'thiết bị')) },
+  refreshDevices: () => { persist(api.post('/devices/refresh')); set((s) => ({ devicesData: s.devicesData.map((d) => { if (d.status !== 'online') return d; const j = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v + Math.round((Math.random() - 0.5) * 16))); return { ...d, cpuPct: j(d.cpuPct, 4, 97), ramPct: j(d.ramPct, 20, 95), gpuPct: d.gpu === '—' ? 0 : j(d.gpuPct, 5, 96), lastSeen: 'vừa xong' } }) })); get().fireToast('Đã làm mới trạng thái thiết bị') },
+  toggleDevicePower: () => { const id = get().deviceDrawer; if (id) persist(api.post(`/devices/${id}/power`)); set((s) => ({ devicesData: s.devicesData.map((d) => { if (d.id !== id) return d; const on = d.status === 'online'; return on ? { ...d, status: 'offline' as const, cpuPct: 0, ramPct: 0, gpuPct: 0, uptime: '—', lastSeen: 'vừa xong' } : { ...d, status: 'online' as const, cpuPct: 18, ramPct: 42, gpuPct: d.gpu === '—' ? 0 : 20, uptime: 'vừa bật', lastSeen: 'vừa xong' } }) })); const dd = get().devicesData.find((d) => d.id === id); get().fireToast(dd && dd.status === 'online' ? 'Đã đánh thức ' + dd.name : 'Đã tắt ' + (dd ? dd.name : 'thiết bị')) },
   openDevSsh: () => { const dd = get().devicesData.find((d) => d.id === get().deviceDrawer); get().fireToast('Đang mở phiên SSH tới ' + (dd ? dd.name : 'thiết bị') + '…') },
   askDeleteDevice: () => set({ devDeleteConfirm: true }),
-  confirmDeleteDevice: () => { const id = get().deviceDrawer; const dd = get().devicesData.find((d) => d.id === id); set((s) => ({ devicesData: s.devicesData.filter((d) => d.id !== id), deviceDrawer: null, devDeleteConfirm: false })); get().fireToast('Đã xóa thiết bị ' + (dd ? dd.name : '')) },
+  confirmDeleteDevice: () => { const id = get().deviceDrawer; const dd = get().devicesData.find((d) => d.id === id); if (id) persist(api.del('/devices/' + id)); set((s) => ({ devicesData: s.devicesData.filter((d) => d.id !== id), deviceDrawer: null, devDeleteConfirm: false })); get().fireToast('Đã xóa thiết bị ' + (dd ? dd.name : '')) },
   openAddDevice: () => set({ showAddDevice: true, devForm: { name: '', type: 'server', addr: '', role: '' } }),
   closeAddDevice: () => set({ showAddDevice: false }),
   onDevField: (k, v) => set((s) => ({ devForm: { ...s.devForm, [k]: v } as AppState['devForm'] })),
-  createDevice: () => { const f = get().devForm, name = (f.name || '').trim(); if (!name) return; const icons: Record<string, string> = { server: '🖥', gateway: '🌐', desktop: '💻', phone: '📱' }; const nd: Device = { id: uid('dev'), name, type: f.type as Device['type'], icon: icons[f.type] || '🖥', status: 'online', addr: (f.addr || '').trim() || '100.84.0.0', os: '—', cpu: '—', cpuPct: 14, ram: '—', ramPct: 30, gpu: '—', gpuPct: 0, vram: '—', uptime: 'vừa bật', lastSeen: 'vừa xong', role: (f.role || '').trim() || 'Thiết bị mới', models: [] }; set((s) => ({ devicesData: [...s.devicesData, nd], showAddDevice: false })); get().fireToast('Đã thêm thiết bị ' + name) },
+  createDevice: () => { const f = get().devForm, name = (f.name || '').trim(); if (!name) return; persist(api.post('/devices', { name, type: f.type, addr: f.addr, role: f.role })); const icons: Record<string, string> = { server: '🖥', gateway: '🌐', desktop: '💻', phone: '📱' }; const nd: Device = { id: uid('dev'), name, type: f.type as Device['type'], icon: icons[f.type] || '🖥', status: 'online', addr: (f.addr || '').trim() || '100.84.0.0', os: '—', cpu: '—', cpuPct: 14, ram: '—', ramPct: 30, gpu: '—', gpuPct: 0, vram: '—', uptime: 'vừa bật', lastSeen: 'vừa xong', role: (f.role || '').trim() || 'Thiết bị mới', models: [] }; set((s) => ({ devicesData: [...s.devicesData, nd], showAddDevice: false })); get().fireToast('Đã thêm thiết bị ' + name) },
   openDevice: (id) => set({ deviceDrawer: id }),
   closeDevice: () => set({ deviceDrawer: null }),
 
   // ---------- logs ----------
   setLogsTab: (t) => set({ logsTab: t }),
   selectSession: (id) => set({ activeSession: id }),
+  deleteSession: (id) => {
+    persist(api.del('/sessions/' + id))
+    set((s) => { const list = s.sessionsData.filter((x) => x.id !== id); return { sessionsData: list, activeSession: s.activeSession === id ? (list[0]?.id || '') : s.activeSession } })
+    get().fireToast('Đã xóa phiên log ' + id)
+  },
+  clearSessions: () => { persist(api.del('/sessions')); set({ sessionsData: [], activeSession: '', overlay: null }); get().fireToast('Đã xóa tất cả phiên log') },
+  askClearLogs: () => set({ overlay: 'clearLogs' }),
 
   // ---------- perms ----------
   selectRole: (id) => set({ activeRole: id }),
-  togglePerm: (role, pid) => set((s) => ({ rolePerms: { ...s.rolePerms, [role]: { ...s.rolePerms[role], [pid]: !s.rolePerms[role][pid] } } })),
+  togglePerm: (role, pid) => { persist(api.patch(`/roles/${role}/perms`, { permId: pid })); set((s) => ({ rolePerms: { ...s.rolePerms, [role]: { ...s.rolePerms[role], [pid]: !s.rolePerms[role][pid] } } })) },
   openCreateRole: () => set({ showCreateRole: true, roleForm: { name: '', icon: '🛡', desc: '' } }),
   closeCreateRole: () => set({ showCreateRole: false }),
   onRoleField: (k, v) => set((s) => ({ roleForm: { ...s.roleForm, [k]: v } as AppState['roleForm'] })),
-  createRole: () => { const f = get().roleForm, name = (f.name || '').trim(); if (!name) return; const id = uid('role'); const color = roleColors[get().rolesData.length % roleColors.length]; const nr: RoleDef = { id, name, icon: f.icon || '🛡', color, system: false, desc: (f.desc || '').trim() || 'Vai trò tùy chỉnh.', members: [] }; const np: Record<string, boolean> = {}; seed.PERMS.forEach((p) => { np[p.id] = ['ch_view', 'kn_view', 'ag_view', 'cron_view', 'sys_devices'].indexOf(p.id) >= 0 }); set((s) => ({ rolesData: [...s.rolesData, nr], rolePerms: { ...s.rolePerms, [id]: np }, activeRole: id, showCreateRole: false })); get().fireToast('Đã tạo vai trò ' + name) },
+  createRole: () => { const f = get().roleForm, name = (f.name || '').trim(); if (!name) return; persist(api.post('/roles', { name, icon: f.icon, desc: f.desc })); const id = uid('role'); const color = roleColors[get().rolesData.length % roleColors.length]; const nr: RoleDef = { id, name, icon: f.icon || '🛡', color, system: false, desc: (f.desc || '').trim() || 'Vai trò tùy chỉnh.', members: [] }; const np: Record<string, boolean> = {}; seed.PERMS.forEach((p) => { np[p.id] = ['ch_view', 'kn_view', 'ag_view', 'cron_view', 'sys_devices'].indexOf(p.id) >= 0 }); set((s) => ({ rolesData: [...s.rolesData, nr], rolePerms: { ...s.rolePerms, [id]: np }, activeRole: id, showCreateRole: false })); get().fireToast('Đã tạo vai trò ' + name) },
   openAssignMember: () => set({ showAssignMember: true, assignForm: { name: '', sub: '' } }),
   closeAssignMember: () => set({ showAssignMember: false }),
   onAssignField: (k, v) => set((s) => ({ assignForm: { ...s.assignForm, [k]: v } as AppState['assignForm'] })),
-  assignMember: () => { const f = get().assignForm, name = (f.name || '').trim(); if (!name) return; const rid = get().activeRole; const initial = name.split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase(); const color = roleColors[(name.length + rid.length) % roleColors.length]; const mm = { name, initial, color, sub: (f.sub || '').trim() || 'Thành viên' }; set((s) => ({ rolesData: s.rolesData.map((r) => r.id === rid ? { ...r, members: [...r.members, mm] } : r), showAssignMember: false })); get().fireToast('Đã gán ' + name + ' vào vai trò') },
-  removeRoleMember: (name) => { const rid = get().activeRole; set((s) => ({ rolesData: s.rolesData.map((r) => r.id === rid ? { ...r, members: r.members.filter((m) => m.name !== name) } : r) })); get().fireToast('Đã gỡ ' + name + ' khỏi vai trò') },
+  assignMember: () => { const f = get().assignForm, name = (f.name || '').trim(); if (!name) return; const rid = get().activeRole; persist(api.post(`/roles/${rid}/members`, { name, sub: f.sub })); const initial = name.split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase(); const color = roleColors[(name.length + rid.length) % roleColors.length]; const mm = { name, initial, color, sub: (f.sub || '').trim() || 'Thành viên' }; set((s) => ({ rolesData: s.rolesData.map((r) => r.id === rid ? { ...r, members: [...r.members, mm] } : r), showAssignMember: false })); get().fireToast('Đã gán ' + name + ' vào vai trò') },
+  removeRoleMember: (name) => { const rid = get().activeRole; persist(api.del(`/roles/${rid}/members/${encodeURIComponent(name)}`)); set((s) => ({ rolesData: s.rolesData.map((r) => r.id === rid ? { ...r, members: r.members.filter((m) => m.name !== name) } : r) })); get().fireToast('Đã gỡ ' + name + ' khỏi vai trò') },
 
   // ---------- billing / notifs ----------
   setBillRange: (r) => set({ billRange: r }),
   openNotifs: () => set({ view: 'notifs' }),
   setNotifFilter: (f) => set({ notifFilter: f }),
-  markRead: (id) => set((s) => ({ notifsData: s.notifsData.map((n) => n.id === id ? { ...n, unread: false } : n) })),
-  markAllRead: () => set((s) => ({ notifsData: s.notifsData.map((n) => ({ ...n, unread: false })) })),
+  markRead: (id) => { persist(api.post(`/notifs/${id}/read`)); set((s) => ({ notifsData: s.notifsData.map((n) => n.id === id ? { ...n, unread: false } : n) })) },
+  markAllRead: () => { persist(api.post('/notifs/read-all')); set((s) => ({ notifsData: s.notifsData.map((n) => ({ ...n, unread: false })) })) },
+  deleteNotif: (id) => { persist(api.del('/notifs/' + id)); set((s) => ({ notifsData: s.notifsData.filter((n) => n.id !== id) })) },
+  clearNotifs: () => { persist(api.del('/notifs')); set({ notifsData: [] }); get().fireToast('Đã xóa tất cả thông báo') },
   setPlanCycle: (c) => set({ planCycle: c }),
 
   // ---------- language ----------
@@ -681,8 +769,8 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
   closeLangPicker: () => set({ langPicker: null }),
   setTimezone: (v) => set({ timezone: v, langPicker: null }),
   setCurrency: (v) => set({ currency: v, langPicker: null }),
-  resetLangDefaults: () => { set({ activeLang: 'vi', agentLang: 'user', timeFormat: '24h', dateFormat: 'dmy', weekStart: 'mon', timezone: 'hcm', currency: 'vnd' }); get().fireToast('Đã khôi phục cài đặt mặc định') },
-  saveLang: () => get().fireToast('Đã lưu cài đặt ngôn ngữ & khu vực'),
+  resetLangDefaults: () => { persist(api.post('/settings/reset')); set({ activeLang: 'vi', agentLang: 'user', timeFormat: '24h', dateFormat: 'dmy', weekStart: 'mon', timezone: 'hcm', currency: 'vnd' }); get().fireToast('Đã khôi phục cài đặt mặc định') },
+  saveLang: () => { persist(api.patch('/settings', { activeLang: get().activeLang, agentLang: get().agentLang, timeFormat: get().timeFormat, dateFormat: get().dateFormat, weekStart: get().weekStart, timezone: get().timezone, currency: get().currency })); get().fireToast('Đã lưu cài đặt ngôn ngữ & khu vực') },
 
   // ---------- person card / profile ----------
   openPersonCard: (p) => set({ personCard: p }),
@@ -692,26 +780,26 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
   setProfileTab: (t) => set({ profileTab: t }),
   openEditProfile: () => set((s) => ({ overlay: 'editProfile', profileForm: { ...s.profileData } })),
   onProfileField: (k, v) => set((s) => ({ profileForm: { ...s.profileForm, [k]: v } })),
-  saveProfile: () => { const f = get().profileForm; if (!(f.name || '').trim()) return; set((s) => ({ profileData: { ...s.profileData, ...f }, overlay: null })); get().fireToast('Đã cập nhật hồ sơ') },
-  toggle2FA: () => { set((s) => ({ twoFA: !s.twoFA })); get().fireToast(get().twoFA ? 'Đã bật xác thực 2 lớp' : 'Đã tắt xác thực 2 lớp') },
+  saveProfile: () => { const f = get().profileForm; if (!(f.name || '').trim()) return; persist(api.patch('/profile', { name: f.name, email: f.email, phone: f.phone, title: f.title, bio: f.bio, location: f.location })); set((s) => ({ profileData: { ...s.profileData, ...f }, overlay: null })); get().fireToast('Đã cập nhật hồ sơ') },
+  toggle2FA: () => { persist(api.post('/profile/2fa/toggle')); set((s) => ({ twoFA: !s.twoFA })); get().fireToast(get().twoFA ? 'Đã bật xác thực 2 lớp' : 'Đã tắt xác thực 2 lớp') },
   openChangePw: () => set({ overlay: 'changePw', pwForm: { cur: '', next: '', confirm: '' } }),
   onPwField: (k, v) => set((s) => ({ pwForm: { ...s.pwForm, [k]: v } as AppState['pwForm'] })),
-  savePw: () => { const f = get().pwForm; if (!f.cur || !f.next || f.next !== f.confirm) return; set({ overlay: null }); get().fireToast('Đã đổi mật khẩu') },
-  revokeSession: (id) => { set((s) => ({ profileSessions: s.profileSessions.filter((x) => x.id !== id) })); get().fireToast('Đã đăng xuất thiết bị') },
-  revokeAllSessions: () => { set((s) => ({ profileSessions: s.profileSessions.filter((x) => x.current) })); get().fireToast('Đã đăng xuất tất cả thiết bị khác') },
+  savePw: () => { const f = get().pwForm; if (!f.cur || !f.next || f.next !== f.confirm) return; persist(api.post('/profile/password', { cur: f.cur, next: f.next, confirm: f.confirm })); set({ overlay: null }); get().fireToast('Đã đổi mật khẩu') },
+  revokeSession: (id) => { persist(api.del('/profile/sessions/' + id)); set((s) => ({ profileSessions: s.profileSessions.filter((x) => x.id !== id) })); get().fireToast('Đã đăng xuất thiết bị') },
+  revokeAllSessions: () => { persist(api.post('/profile/sessions/revoke-others')); set((s) => ({ profileSessions: s.profileSessions.filter((x) => x.current) })); get().fireToast('Đã đăng xuất tất cả thiết bị khác') },
   askLogout: () => set({ overlay: 'logout' }),
-  doLogout: () => { set({ overlay: null, authed: false }); get().fireToast('Đã đăng xuất khỏi AgentAIOS') },
+  doLogout: () => { setToken(null); set({ overlay: null, authed: false }); get().fireToast('Đã đăng xuất khỏi AgentAIOS') },
 
   // ---------- users ----------
   setUsersTab: (t) => set({ usersTab: t }),
   setUsersRole: (r) => set({ usersRole: r }),
-  cycleRole: (id) => set((s) => ({ usersData: s.usersData.map((u) => { if (u.id !== id || u.role === 'owner') return u; const order: UserRow['role'][] = ['lead', 'staff', 'viewer']; const ni = (order.indexOf(u.role) + 1) % order.length; return { ...u, role: order[ni] } }) })),
+  cycleRole: (id) => { persist(api.post(`/users/${id}/cycle-role`)); set((s) => ({ usersData: s.usersData.map((u) => { if (u.id !== id || u.role === 'owner') return u; const order: UserRow['role'][] = ['lead', 'staff', 'viewer']; const ni = (order.indexOf(u.role) + 1) % order.length; return { ...u, role: order[ni] } }) })) },
   openInvite: () => set({ overlay: 'invite', inviteForm: { email: '', role: 'staff' } }),
   onInviteEmail: (v) => set((s) => ({ inviteForm: { ...s.inviteForm, email: v } })),
   setInviteRole: (r) => set((s) => ({ inviteForm: { ...s.inviteForm, role: r } })),
-  submitInvite: () => { const f = get().inviteForm; const email = (f.email || '').trim(); if (!email) return; set((s) => ({ invitesData: [{ id: uid('i'), email, role: f.role, by: 'Nguyễn Thiện Giang', time: 'vừa xong' }, ...s.invitesData], overlay: null, usersTab: 'invites' })); get().fireToast('Đã gửi lời mời tới ' + email) },
-  resendInvite: (id) => { const iv = get().invitesData.find((x) => x.id === id); get().fireToast('Đã gửi lại lời mời tới ' + (iv ? iv.email : '')) },
-  cancelInvite: (id) => { const iv = get().invitesData.find((x) => x.id === id); set((s) => ({ invitesData: s.invitesData.filter((x) => x.id !== id) })); get().fireToast('Đã hủy lời mời' + (iv ? ' ' + iv.email : '')) },
+  submitInvite: () => { const f = get().inviteForm; const email = (f.email || '').trim(); if (!email) return; persist(api.post('/invites', { email, role: f.role })); set((s) => ({ invitesData: [{ id: uid('i'), email, role: f.role, by: 'Nguyễn Thiện Giang', time: 'vừa xong' }, ...s.invitesData], overlay: null, usersTab: 'invites' })); get().fireToast('Đã gửi lời mời tới ' + email) },
+  resendInvite: (id) => { persist(api.post(`/invites/${id}/resend`)); const iv = get().invitesData.find((x) => x.id === id); get().fireToast('Đã gửi lại lời mời tới ' + (iv ? iv.email : '')) },
+  cancelInvite: (id) => { persist(api.del('/invites/' + id)); const iv = get().invitesData.find((x) => x.id === id); set((s) => ({ invitesData: s.invitesData.filter((x) => x.id !== id) })); get().fireToast('Đã hủy lời mời' + (iv ? ' ' + iv.email : '')) },
   openUserMenu: (id) => set((s) => ({ userMenu: s.userMenu === id ? null : id })),
   closeUserMenu: () => set({ userMenu: null }),
   openEditUser: (id) => set((s) => { const u = s.usersData.find((x) => x.id === id); return { userMenu: null, editUser: u ? { ...u } : null } }),
@@ -719,22 +807,22 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
   onEditUserField: (k, v) => set((s) => ({ editUser: s.editUser ? { ...s.editUser, [k]: v } : null })),
   setEditUserRole: (role) => set((s) => ({ editUser: s.editUser ? { ...s.editUser, role: role as UserRow['role'] } : null })),
   setEditUserStatus: (status) => set((s) => ({ editUser: s.editUser ? { ...s.editUser, status: status as UserRow['status'] } : null })),
-  saveEditUser: () => { set((s) => { const e = s.editUser; if (!e) return {}; const name = ((e.name as string) || '').trim() || '(chưa đặt tên)'; const initial = name.split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase(); return { usersData: s.usersData.map((x) => x.id === e.id ? { ...x, name, email: ((e.email as string) || '').trim(), role: e.role, status: e.status, initial } : x), editUser: null } }); get().fireToast('Đã cập nhật hồ sơ thành viên') },
-  toggleUserStatus: () => { set((s) => { const id = s.userMenu; const u = s.usersData.find((x) => x.id === id); const ns: UserRow['status'] = u && u.status === 'suspended' ? 'active' : 'suspended'; return { usersData: s.usersData.map((x) => x.id === id ? { ...x, status: ns } : x), userMenu: null } }); get().fireToast('Đã cập nhật trạng thái thành viên') },
-  removeUser: () => { set((s) => ({ usersData: s.usersData.filter((x) => x.id !== s.userMenu), userMenu: null })); get().fireToast('Đã gỡ thành viên khỏi workspace') },
-  approveSignup: (id) => { set((s) => { const r = s.signupsData.find((x) => x.id === id); if (!r) return {}; const nu: UserRow = { id: uid('u'), name: r.name, email: r.email, initial: r.initial, color: r.color, role: r.role as UserRow['role'], status: 'active', last: 'vừa xong' }; return { signupsData: s.signupsData.filter((x) => x.id !== id), usersData: [...s.usersData, nu], signupMenu: null } }); get().fireToast('Đã duyệt — thành viên được thêm vào workspace') },
-  rejectSignup: (id) => { set((s) => ({ signupsData: s.signupsData.filter((x) => x.id !== id), signupMenu: null })); get().fireToast('Đã từ chối yêu cầu đăng ký') },
+  saveEditUser: () => { const _e = get().editUser; if (_e) persist(api.patch('/users/' + _e.id, { name: _e.name, email: _e.email, role: _e.role, status: _e.status })); set((s) => { const e = s.editUser; if (!e) return {}; const name = ((e.name as string) || '').trim() || '(chưa đặt tên)'; const initial = name.split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase(); return { usersData: s.usersData.map((x) => x.id === e.id ? { ...x, name, email: ((e.email as string) || '').trim(), role: e.role, status: e.status, initial } : x), editUser: null } }); get().fireToast('Đã cập nhật hồ sơ thành viên') },
+  toggleUserStatus: () => { const _id = get().userMenu; if (_id) persist(api.post(`/users/${_id}/toggle-status`)); set((s) => { const id = s.userMenu; const u = s.usersData.find((x) => x.id === id); const ns: UserRow['status'] = u && u.status === 'suspended' ? 'active' : 'suspended'; return { usersData: s.usersData.map((x) => x.id === id ? { ...x, status: ns } : x), userMenu: null } }); get().fireToast('Đã cập nhật trạng thái thành viên') },
+  removeUser: () => { const _id = get().userMenu; const _u = get().usersData.find((x) => x.id === _id); if (_id) persist(api.del('/users/' + _id)); set((s) => ({ usersData: s.usersData.filter((x) => x.id !== _id), rolesData: _u ? s.rolesData.map((r) => ({ ...r, members: r.members.filter((m) => m.name !== _u.name) })) : s.rolesData, userMenu: null })); get().fireToast('Đã gỡ thành viên khỏi workspace') },
+  approveSignup: (id) => { persist(api.post(`/signups/${id}/approve`)); set((s) => { const r = s.signupsData.find((x) => x.id === id); if (!r) return {}; const nu: UserRow = { id: uid('u'), name: r.name, email: r.email, initial: r.initial, color: r.color, role: r.role as UserRow['role'], status: 'active', last: 'vừa xong' }; return { signupsData: s.signupsData.filter((x) => x.id !== id), usersData: [...s.usersData, nu], signupMenu: null } }); get().fireToast('Đã duyệt — thành viên được thêm vào workspace') },
+  rejectSignup: (id) => { persist(api.post(`/signups/${id}/reject`)); set((s) => ({ signupsData: s.signupsData.filter((x) => x.id !== id), signupMenu: null })); get().fireToast('Đã từ chối yêu cầu đăng ký') },
   openSignupMenu: (id) => set((s) => ({ signupMenu: s.signupMenu === id ? null : id })),
-  setSignupRole: (id, role) => { set((s) => ({ signupsData: s.signupsData.map((x) => x.id === id ? { ...x, role } : x), signupMenu: null })); get().fireToast('Đã đổi vai trò đề xuất') },
+  setSignupRole: (id, role) => { persist(api.patch('/signups/' + id, { role })); set((s) => ({ signupsData: s.signupsData.map((x) => x.id === id ? { ...x, role } : x), signupMenu: null })); get().fireToast('Đã đổi vai trò đề xuất') },
 
   // ---------- workflows ----------
   selectWorkflow: (id) => set({ activeWorkflow: id }),
-  toggleWorkflow: (id) => set((s) => ({ workflows: s.workflows.map((w) => w.id === id ? { ...w, enabled: !w.enabled } : w) })),
+  toggleWorkflow: (id) => { persist(api.post(`/workflows/${id}/toggle`)); set((s) => ({ workflows: s.workflows.map((w) => w.id === id ? { ...w, enabled: !w.enabled } : w) })) },
   wfAskDelete: () => set({ overlay: 'wfDelete' }),
-  wfDoDelete: () => { const id = get().activeWorkflow; set((s) => { const list = s.workflows.filter((w) => w.id !== id); return { workflows: list, activeWorkflow: (list[0] || ({} as Workflow)).id || '', overlay: null } }) },
-  runWorkflow: () => { const id = get().activeWorkflow; set((s) => ({ workflows: s.workflows.map((w) => { if (w.id !== id) return w; const steps = w.steps.map((st, i) => ({ ...st, status: (i === 0 ? 'running' : 'idle') as typeof st.status })); const runs = [{ time: 'vừa xong', status: 'running', dur: '…' }, ...w.runs]; return { ...w, runState: 'running' as const, steps, runs, lastRun: 'vừa xong', runs24: w.runs24 + 1 } }) })) },
-  pauseWorkflow: () => { const id = get().activeWorkflow; set((s) => ({ workflows: s.workflows.map((w) => { if (w.id !== id) return w; const ns = w.runState === 'running' ? 'paused' : 'running'; const steps = w.steps.map((st) => st.status === 'running' ? { ...st, status: (ns === 'paused' ? 'paused' : 'running') as typeof st.status } : (st.status === 'paused' && ns === 'running' ? { ...st, status: 'running' as const } : st)); const runs = w.runs.length ? [{ ...w.runs[0], status: ns === 'paused' ? 'paused' : 'running' }, ...w.runs.slice(1)] : w.runs; return { ...w, runState: ns as Workflow['runState'], steps, runs } }) })) },
-  stopWorkflow: () => { const id = get().activeWorkflow; set((s) => ({ workflows: s.workflows.map((w) => { if (w.id !== id) return w; const steps = w.steps.map((st) => (st.status === 'running' || st.status === 'paused') ? { ...st, status: 'idle' as const } : st); const runs = w.runs.length ? [{ ...w.runs[0], status: 'stopped', dur: w.runs[0].dur === '…' ? 'đã dừng' : w.runs[0].dur }, ...w.runs.slice(1)] : w.runs; return { ...w, runState: 'idle' as const, steps, runs } }) })) },
+  wfDoDelete: () => { const id = get().activeWorkflow; if (id) persist(api.del('/workflows/' + id)); set((s) => { const list = s.workflows.filter((w) => w.id !== id); return { workflows: list, activeWorkflow: (list[0] || ({} as Workflow)).id || '', overlay: null } }) },
+  runWorkflow: () => { const id = get().activeWorkflow; persist(api.post(`/workflows/${id}/run`)); set((s) => ({ workflows: s.workflows.map((w) => { if (w.id !== id) return w; const steps = w.steps.map((st, i) => ({ ...st, status: (i === 0 ? 'running' : 'idle') as typeof st.status })); const runs = [{ time: 'vừa xong', status: 'running', dur: '…' }, ...w.runs]; return { ...w, runState: 'running' as const, steps, runs, lastRun: 'vừa xong', runs24: w.runs24 + 1 } }) })) },
+  pauseWorkflow: () => { const id = get().activeWorkflow; persist(api.post(`/workflows/${id}/pause`)); set((s) => ({ workflows: s.workflows.map((w) => { if (w.id !== id) return w; const ns = w.runState === 'running' ? 'paused' : 'running'; const steps = w.steps.map((st) => st.status === 'running' ? { ...st, status: (ns === 'paused' ? 'paused' : 'running') as typeof st.status } : (st.status === 'paused' && ns === 'running' ? { ...st, status: 'running' as const } : st)); const runs = w.runs.length ? [{ ...w.runs[0], status: ns === 'paused' ? 'paused' : 'running' }, ...w.runs.slice(1)] : w.runs; return { ...w, runState: ns as Workflow['runState'], steps, runs } }) })) },
+  stopWorkflow: () => { const id = get().activeWorkflow; persist(api.post(`/workflows/${id}/stop`)); set((s) => ({ workflows: s.workflows.map((w) => { if (w.id !== id) return w; const steps = w.steps.map((st) => (st.status === 'running' || st.status === 'paused') ? { ...st, status: 'idle' as const } : st); const runs = w.runs.length ? [{ ...w.runs[0], status: 'stopped', dur: w.runs[0].dur === '…' ? 'đã dừng' : w.runs[0].dur }, ...w.runs.slice(1)] : w.runs; return { ...w, runState: 'idle' as const, steps, runs } }) })) },
   openNewWorkflow: () => set({ wfForm: { name: '', desc: '', trigger: 'cron', triggerLabel: '*/30 * * * *', steps: [{ agent: 'Sabo - Facebook Research', title: '', io: '' }] }, overlay: 'newWorkflow' }),
   onWfField: (k, v) => set((s) => ({ wfForm: { ...s.wfForm, [k]: v } as WfForm })),
   setWfTrigger: (t) => set((s) => ({ wfForm: { ...s.wfForm, trigger: t, triggerLabel: t === 'cron' ? '*/30 * * * *' : (t === 'event' ? 'on: dataset.insert' : 'Chạy thủ công') } })),
@@ -743,6 +831,7 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
   onWfStep: (i, k, v) => set((s) => ({ wfForm: { ...s.wfForm, steps: s.wfForm.steps.map((st, ix) => ix === i ? { ...st, [k]: v } : st) } })),
   createWorkflow: () => {
     const f = get().wfForm, name = f.name.trim(); if (!name) return
+    persist(api.post('/workflows', { name, desc: f.desc, trigger: f.trigger, triggerLabel: f.triggerLabel, steps: f.steps }))
     const palette: Record<string, string> = { 'Dragon - CEO': '#C0392B', 'Sabo - Facebook Research': '#3B82C4', 'Sanji - Xào nấu content': '#0EA5A0', 'Nami - Quản lý Fanpage': '#E8A33D', 'Morgans - Social Leader': '#8B5CF6', 'Brook - Báo Cáo Zy Novel': '#3B5BDB', 'Robin - Biên tập': '#8B5CF6', 'Usopp - Group Seeding': '#C94F3D', 'Franky - Thiết kế': '#0EA5A0', 'Tim - Trợ Lý Zypage': '#E8A33D' }
     const steps = f.steps.map((st) => ({ agent: st.agent, initial: (st.agent || 'A').replace(/^[^A-Za-zÀ-ỹ]+/, '').charAt(0).toUpperCase(), color: palette[st.agent] || '#3B5BDB', title: st.title.trim() || 'Bước chưa đặt tên', io: st.io.trim() || '→ output', status: 'idle' as const, dur: '—' }))
     const wf: Workflow = { id: uid('wf'), name, desc: f.desc.trim() || 'Workflow mới', trigger: f.trigger, triggerLabel: f.triggerLabel, enabled: true, lastRun: 'chưa chạy', runs24: 0, success: 100, steps, runs: [] }
@@ -758,6 +847,7 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
   onRoomField: (k, v) => set((s) => ({ roomForm: { ...s.roomForm, [k]: v } as AppState['roomForm'] })),
   createRoom: () => {
     const f = get().roomForm, name = f.name.trim(); if (!name) return
+    persist(api.post('/rooms', { name, channel: f.channel, visibility: f.visibility }))
     const ch = (f.channel.trim() || name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''))
     const id = ch || ('room-' + uid(''))
     const room: RoomDef = { id, name, slug: ch.toUpperCase() + ' · MAIN', channel: ch }
@@ -772,30 +862,30 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
       return { rooms: [...s.rooms, room], roomMembersById: { ...s.roomMembersById, [id]: members }, publicData: pub, privateData: pri, messages, activeRoom: id, roomTab: 'members', overlay: null }
     })
   },
-  roomRemoveMember: (name) => set((s) => ({ roomMembersById: { ...s.roomMembersById, [s.activeRoom]: (s.roomMembersById[s.activeRoom] || []).filter((m) => m.name !== name) } })),
+  roomRemoveMember: (name) => { persist(api.del(`/rooms/${get().activeRoom}/members/${encodeURIComponent(name)}`)); set((s) => ({ roomMembersById: { ...s.roomMembersById, [s.activeRoom]: (s.roomMembersById[s.activeRoom] || []).filter((m) => m.name !== name) } })) },
   openRoomAddMember: () => set({ overlay: 'roomAddMember' }),
-  roomAddMember: (p) => set((s) => { const cur = s.roomMembersById[s.activeRoom] || []; if (cur.some((m) => m.name === p.name)) return {}; return { roomMembersById: { ...s.roomMembersById, [s.activeRoom]: [...cur, p] } } }),
+  roomAddMember: (p) => { persist(api.post(`/rooms/${get().activeRoom}/members`, p)); set((s) => { const cur = s.roomMembersById[s.activeRoom] || []; if (cur.some((m) => m.name === p.name)) return {}; return { roomMembersById: { ...s.roomMembersById, [s.activeRoom]: [...cur, p] } } }) },
   roomAskDelete: () => set({ overlay: 'roomDelete' }),
-  roomDoDelete: () => { const id = get().activeRoom; set((s) => { const rooms = s.rooms.filter((r) => r.id !== id); const mm = { ...s.roomMembersById }; delete mm[id]; return { rooms, roomMembersById: mm, activeRoom: (rooms[0] || ({} as RoomDef)).id || '', overlay: null } }) },
+  roomDoDelete: () => { const id = get().activeRoom; if (id) persist(api.del('/rooms/' + id)); set((s) => { const rooms = s.rooms.filter((r) => r.id !== id); const mm = { ...s.roomMembersById }; delete mm[id]; return { rooms, roomMembersById: mm, activeRoom: (rooms[0] || ({} as RoomDef)).id || '', overlay: null } }) },
   openRoomEdit: () => { const r = get().rooms.find((x) => x.id === get().activeRoom) || ({} as RoomDef); set({ roomForm: { name: r.name || '', channel: r.channel || '', visibility: 'private' }, overlay: 'roomEdit' }) },
-  saveRoomEdit: () => { const f = get().roomForm, id = get().activeRoom, name = f.name.trim(); if (!name) return; set((s) => ({ rooms: s.rooms.map((r) => r.id === id ? { ...r, name } : r), overlay: null })) },
+  saveRoomEdit: () => { const f = get().roomForm, id = get().activeRoom, name = f.name.trim(); if (!name) return; persist(api.patch('/rooms/' + id, { name })); set((s) => ({ rooms: s.rooms.map((r) => r.id === id ? { ...r, name } : r), overlay: null })) },
   selectRoomTab: (t) => set({ roomTab: t }),
 
   // ---------- cron ----------
   setCronFilter: (f) => set({ cronFilter: f }),
-  toggleCron: (id) => set((s) => ({ cronJobsData: s.cronJobsData.map((j) => j.id === id ? { ...j, enabled: !j.enabled } : j) })),
+  toggleCron: (id) => { persist(api.post(`/cron/${id}/toggle`)); set((s) => ({ cronJobsData: s.cronJobsData.map((j) => j.id === id ? { ...j, enabled: !j.enabled } : j) })) },
   openNewCron: () => set({ editingCronId: null, cronForm: { name: '', target: 'Sabo - Facebook Research', freq: 'daily', time: '08:00', dow: 1, interval: 30, enabled: true }, overlay: 'newCron' }),
   editCron: (j) => { const sc = cronParse(j.expr); set({ editingCronId: j.id, cronForm: { name: j.name, target: j.target, freq: sc.freq, time: sc.time, dow: sc.dow, interval: sc.interval, enabled: j.enabled }, overlay: 'newCron' }) },
   askApplyCron: () => { if (!get().cronForm.name.trim()) return; set({ overlay: 'cronApply' }) },
   openCronFromNotif: (cronId) => { const j = get().cronJobsData.find((x) => x.id === cronId); set({ view: 'cron' }); if (j) get().editCron(j) },
-  applyCron: () => { const f = get().cronForm, id = get().editingCronId; set((s) => ({ cronJobsData: s.cronJobsData.map((j) => j.id === id ? { ...j, name: f.name.trim(), target: f.target, expr: cronExprFrom(f), enabled: f.enabled } : j), overlay: null, editingCronId: null })) },
+  applyCron: () => { const f = get().cronForm, id = get().editingCronId; if (id) persist(api.patch('/cron/' + id, { name: f.name, target: f.target, freq: f.freq, time: f.time, dow: f.dow, interval: f.interval, enabled: f.enabled })); set((s) => ({ cronJobsData: s.cronJobsData.map((j) => j.id === id ? { ...j, name: f.name.trim(), target: f.target, expr: cronExprFrom(f), enabled: f.enabled } : j), overlay: null, editingCronId: null })) },
   backToCronForm: () => set({ overlay: 'newCron' }),
   cronAskDelete: (id, e) => { e?.stopPropagation(); set({ cronDeleteTarget: id, overlay: 'cronDelete' }) },
-  cronDoDelete: () => { const id = get().cronDeleteTarget; set((s) => ({ cronJobsData: s.cronJobsData.filter((j) => j.id !== id), overlay: null, cronDeleteTarget: null })) },
-  cronRunNow: (id, e) => { e?.stopPropagation(); set((s) => ({ cronJobsData: s.cronJobsData.map((j) => j.id === id ? { ...j, last: 'vừa xong' } : j) })) },
+  cronDoDelete: () => { const id = get().cronDeleteTarget; if (id) persist(api.del('/cron/' + id)); set((s) => ({ cronJobsData: s.cronJobsData.filter((j) => j.id !== id), overlay: null, cronDeleteTarget: null })) },
+  cronRunNow: (id, e) => { e?.stopPropagation(); persist(api.post(`/cron/${id}/run-now`)); set((s) => ({ cronJobsData: s.cronJobsData.map((j) => j.id === id ? { ...j, last: 'vừa xong' } : j) })) },
   onCronField: (k, v) => set((s) => ({ cronForm: { ...s.cronForm, [k]: v } as CronForm })),
   toggleCronFormEnabled: () => set((s) => ({ cronForm: { ...s.cronForm, enabled: !s.cronForm.enabled } })),
-  createCron: () => { const f = get().cronForm; const name = f.name.trim(); if (!name) return; const job: CronJob = { id: uid('j'), name, target: f.target, expr: cronExprFrom(f), last: 'chưa chạy', next: 'in 30m', creator: 'Nguyễn Thiện Giang', creatorInitial: 'N', creatorColor: '#3B5BDB', enabled: f.enabled, spark: [20, 30, 25, 35, 28, 32, 30] }; set((s) => ({ cronJobsData: [job, ...s.cronJobsData], overlay: null })) },
+  createCron: () => { const f = get().cronForm; const name = f.name.trim(); if (!name) return; persist(api.post('/cron', { name, target: f.target, freq: f.freq, time: f.time, dow: f.dow, interval: f.interval, enabled: f.enabled })); const job: CronJob = { id: uid('j'), name, target: f.target, expr: cronExprFrom(f), last: 'chưa chạy', next: 'in 30m', creator: 'Nguyễn Thiện Giang', creatorInitial: 'N', creatorColor: '#3B5BDB', enabled: f.enabled, spark: [20, 30, 25, 35, 28, 32, 30] }; set((s) => ({ cronJobsData: [job, ...s.cronJobsData], overlay: null })) },
 
   // ---------- knowledge / editor ----------
   setKnowTab: (t) => set({ knowledgeTab: t }),
@@ -805,9 +895,9 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
   openKnowExport: () => set({ overlay: 'knowExport' }),
   openKnowImport: () => set({ overlay: 'knowImport' }),
   knowEdit: (k, e) => { e?.stopPropagation(); get().openEditor(k) },
-  knowDuplicate: (title, e) => { e?.stopPropagation(); set((s) => { const src = s.knowledgeData.find((x) => x.title === title); if (!src) return {}; const copy = { ...src, title: src.title + ' (bản sao)', ver: 'v1', time: 'vừa xong' }; const i = s.knowledgeData.indexOf(src); const arr = s.knowledgeData.slice(); arr.splice(i + 1, 0, copy); return { knowledgeData: arr } }) },
+  knowDuplicate: (title, e) => { e?.stopPropagation(); const _src = get().knowledgeData.find((x) => x.title === title); if (_src?.id) persist(api.post(`/knowledge/${_src.id}/duplicate`)); set((s) => { const src = s.knowledgeData.find((x) => x.title === title); if (!src) return {}; const copy = { ...src, title: src.title + ' (bản sao)', ver: 'v1', time: 'vừa xong' }; const i = s.knowledgeData.indexOf(src); const arr = s.knowledgeData.slice(); arr.splice(i + 1, 0, copy); return { knowledgeData: arr } }) },
   knowAskDelete: (title, e) => { e?.stopPropagation(); set({ knowDeleteTarget: title, overlay: 'knowDelete' }) },
-  knowDoDelete: () => { const t = get().knowDeleteTarget; set((s) => ({ knowledgeData: s.knowledgeData.filter((k) => k.title !== t), overlay: null, knowDeleteTarget: null })) },
+  knowDoDelete: () => { const t = get().knowDeleteTarget; const _ent = get().knowledgeData.find((k) => k.title === t); if (_ent?.id) persist(api.del('/knowledge/' + _ent.id)); set((s) => ({ knowledgeData: s.knowledgeData.filter((k) => k.title !== t), overlay: null, knowDeleteTarget: null })) },
   onKnowQuery: (v) => set({ knowledgeQuery: v }),
   openEditor: (entry) => { if (entry) set({ view: 'editor', editorTitle: entry.title, editorType: entry.type, editorCategory: entry.repo }); else set({ view: 'editor' }) },
   newEntry: () => set({ view: 'editor', editorTitle: '', editorType: 'knowledge', editorText: '# Tiêu đề mới\n\nNội dung knowledge…' }),
@@ -826,7 +916,13 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
   toggleEditorAgent: (id) => set((s) => ({ editorAgentsChecked: { ...s.editorAgentsChecked, [id]: !s.editorAgentsChecked[id] } })),
 
   // ---------- channels / chat ----------
-  selectChannel: (id) => { const unread = { ...get().unread }; delete unread[id]; set({ activeId: id, overlay: null, unread }) },
+  selectChannel: (id) => {
+    const unread = { ...get().unread }; delete unread[id]
+    set({ activeId: id, overlay: null, unread })
+    if (!get().messages[id]) {
+      api.get(`/channels/${id}/messages`).then((msgs) => set((s) => ({ messages: { ...s.messages, [id]: msgs } }))).catch(() => {})
+    }
+  },
   openCreate: () => set({ overlay: 'create', createForm: { name: '', type: 'private', desc: '' } }),
   openSwitch: () => set({ overlay: 'switch', switchQuery: '' }),
   openDb: () => set({ overlay: 'db' }),
@@ -845,16 +941,47 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
     if (att) raw.push({ kind: 'attach', icon: att.icon, name: att.name, label: att.label })
     const msg: ChatMessage = { authorName: 'Nguyễn Thiện Giang', time: nowTime(), avatarInitial: 'N', avatarColor: '#3B5BDB', isAgent: false, raw }
     set((s) => ({ messages: { ...s.messages, [id]: [...(s.messages[id] || []), msg] }, draft: '', pendingAttach: null }))
+    const dm = get().directData.find((c) => c.id === id)
+    persist(
+      api.post(`/channels/${id}/messages`, { text, attach: att ? { icon: att.icon, name: att.name, label: att.label } : null }).then(() => {
+        // Trading channel: route to the TradingAgents tools / 9Router analyst
+        if (id === 'chung-khoan' && text) {
+          return api.post('/trading/chat', { channel_id: id, text }).then((res) => {
+            const replies = (res && res.messages) || []
+            set((s) => ({ messages: { ...s.messages, [id]: [...(s.messages[id] || []), ...replies] } }))
+            if (res && res.analyzing) get().pollTradingAnalyze(id, res.analyzing)
+          })
+        }
+        // DM channels are 1:1 with an agent — auto-generate a real reply via 9Router
+        if (dm && text) {
+          return api.post(`/channels/${id}/agent-reply`, { agentName: dm.name }).then((reply) => {
+            set((s) => ({ messages: { ...s.messages, [id]: [...(s.messages[id] || []), reply] } }))
+          })
+        }
+      }),
+    )
+  },
+  pollTradingAnalyze: (channelId, ticker) => {
+    const tick = () => {
+      api.get(`/trading/analyze?ticker=${encodeURIComponent(ticker)}`).then((r) => {
+        if (r.status === 'done' || r.status === 'error') {
+          api.get(`/channels/${channelId}/messages`).then((msgs) => set((s) => ({ messages: { ...s.messages, [channelId]: msgs } }))).catch(() => {})
+        } else {
+          setTimeout(tick, 4000)
+        }
+      }).catch(() => {})
+    }
+    setTimeout(tick, 4000)
   },
   toggleChatSearch: () => set((s) => ({ chatSearchOpen: !s.chatSearchOpen, chatSearch: '' })),
   onChatSearch: (v) => set({ chatSearch: v }),
   confirmLeave: () => set({ overlay: 'leave' }),
-  doLeave: () => { const id = get().activeId; const drop = (arr: Channel[]) => arr.filter((c) => c.id !== id); set((s) => { const pub = drop(s.publicData), pri = drop(s.privateData), dir = drop(s.directData); const next = (pub[0] || pri[0] || dir[0] || ({} as Channel)).id || ''; const messages = { ...s.messages }; delete messages[id]; return { publicData: pub, privateData: pri, directData: dir, messages, activeId: next, overlay: null } }) },
+  doLeave: () => { const id = get().activeId; persist(api.post('/channels/' + id + '/leave')); const drop = (arr: Channel[]) => arr.filter((c) => c.id !== id); set((s) => { const pub = drop(s.publicData), pri = drop(s.privateData), dir = drop(s.directData); const next = (pub[0] || pri[0] || dir[0] || ({} as Channel)).id || ''; const messages = { ...s.messages }; delete messages[id]; return { publicData: pub, privateData: pri, directData: dir, messages, activeId: next, overlay: null } }) },
   askDeleteChannel: (id) => set({ deleteTarget: id, overlay: 'deleteChannel' }),
   askRename: (id) => { const c = get().findChannel(id) || ({} as Channel); set({ renameTarget: id, renameValue: c.name || '', overlay: 'renameChannel' }) },
   onRenameInput: (v) => set({ renameValue: v }),
-  doRename: () => { const id = get().renameTarget, name = get().renameValue.trim(); if (!id || !name) return; const ren = (arr: Channel[]) => arr.map((c) => c.id === id ? { ...c, name } : c); set((s) => ({ publicData: ren(s.publicData), privateData: ren(s.privateData), directData: ren(s.directData), overlay: null, renameTarget: null })) },
-  doDeleteChannel: () => { const id = get().deleteTarget; if (!id) return; const drop = (arr: Channel[]) => arr.filter((c) => c.id !== id); set((s) => { const pub = drop(s.publicData), pri = drop(s.privateData), dir = drop(s.directData); const messages = { ...s.messages }; delete messages[id]; const activeId = s.activeId === id ? ((pub[0] || pri[0] || dir[0] || ({} as Channel)).id || '') : s.activeId; return { publicData: pub, privateData: pri, directData: dir, messages, activeId, overlay: null, deleteTarget: null } }) },
+  doRename: () => { const id = get().renameTarget, name = get().renameValue.trim(); if (!id || !name) return; persist(api.patch('/channels/' + id, { name })); const ren = (arr: Channel[]) => arr.map((c) => c.id === id ? { ...c, name } : c); set((s) => ({ publicData: ren(s.publicData), privateData: ren(s.privateData), directData: ren(s.directData), overlay: null, renameTarget: null })) },
+  doDeleteChannel: () => { const id = get().deleteTarget; if (!id) return; persist(api.del('/channels/' + id)); const drop = (arr: Channel[]) => arr.filter((c) => c.id !== id); set((s) => { const pub = drop(s.publicData), pri = drop(s.privateData), dir = drop(s.directData); const messages = { ...s.messages }; delete messages[id]; const activeId = s.activeId === id ? ((pub[0] || pri[0] || dir[0] || ({} as Channel)).id || '') : s.activeId; return { publicData: pub, privateData: pri, directData: dir, messages, activeId, overlay: null, deleteTarget: null } }) },
   toggleAttachMenu: () => set((s) => ({ attachMenuOpen: !s.attachMenuOpen })),
   pickAttach: (kind) => { const map: Record<string, Attach> = { file: { icon: '📎', name: 'tai-lieu.pdf', label: 'Tệp đính kèm' }, image: { icon: '🖼', name: 'anh-bai-viet.png', label: 'Hình ảnh' }, record: { icon: '🗄', name: 'POST-015 · facebook_post_cho', label: 'Bản ghi database' } }; set({ pendingAttach: map[kind], attachMenuOpen: false }) },
   clearAttach: () => set({ pendingAttach: null }),
@@ -863,14 +990,28 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
   openAddMember: () => set({ overlay: 'addMember' }),
   openMembers: () => set({ overlay: 'members' }),
   openChannelTask: (t) => set({ channelTaskDetail: t, overlay: 'channelTask' }),
-  addMemberTo: () => { const id = get().activeId; set((s) => ({ addedMembers: { ...s.addedMembers, [id]: (s.addedMembers[id] || 0) + 1 } })) },
+  addMemberTo: (payload) => {
+    const id = get().activeId
+    api.post(`/channels/${id}/members`, payload).then((m) => set((s) => {
+      const upd = (arr: Channel[]) => arr.map((c) => (c.id === id && !(c.memberList || []).some((x) => x.id === m.id)) ? { ...c, memberList: [...(c.memberList || []), m], members: (c.memberList || []).length + 1 } : c)
+      return { publicData: upd(s.publicData), privateData: upd(s.privateData), directData: upd(s.directData) }
+    })).catch(() => get().fireToast('Không thêm được thành viên'))
+  },
+  removeMember: (memberId) => {
+    const id = get().activeId
+    persist(api.del(`/channels/${id}/members/${memberId}`))
+    set((s) => {
+      const upd = (arr: Channel[]) => arr.map((c) => c.id === id ? { ...c, memberList: (c.memberList || []).filter((x) => x.id !== memberId), members: Math.max(0, (c.memberList || []).length - 1) } : c)
+      return { publicData: upd(s.publicData), privateData: upd(s.privateData), directData: upd(s.directData) }
+    })
+  },
   onCreateName: (v) => set((s) => ({ createForm: { ...s.createForm, name: v } })),
   onCreateDesc: (v) => set((s) => ({ createForm: { ...s.createForm, desc: v } })),
   setTypePublic: () => set((s) => ({ createForm: { ...s.createForm, type: 'public' } })),
   setTypePrivate: () => set((s) => ({ createForm: { ...s.createForm, type: 'private' } })),
   onCreateNameFocus: () => set({ createFocused: true }),
   onCreateNameBlur: () => set({ createFocused: false }),
-  createChannel: () => { const f = get().createForm; const name = f.name.trim(); if (!name) return; const id = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || ('room-' + uid('')); const ch: Channel = { id, name, desc: f.desc.trim() || 'Room channel mới', visibility: f.type === 'public' ? 'PUBLIC' : 'PRIVATE', members: 1, files: id + '/', database: id, tasks: [], wfTotal: 0, wfNote: 'Chưa cấu hình workflow cho room này.' }; const messages = { ...get().messages, [id]: [] }; if (f.type === 'public') set((s) => ({ publicData: [...s.publicData, ch], messages, activeId: id, overlay: null })); else set((s) => ({ privateData: [...s.privateData, ch], messages, activeId: id, overlay: null })) },
+  createChannel: () => { const f = get().createForm; const name = f.name.trim(); if (!name) return; persist(api.post('/channels', { name, type: f.type, desc: f.desc.trim() })); const id = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || ('room-' + uid('')); const ch: Channel = { id, name, desc: f.desc.trim() || 'Room channel mới', visibility: f.type === 'public' ? 'PUBLIC' : 'PRIVATE', members: 1, files: id + '/', database: id, tasks: [], wfTotal: 0, wfNote: 'Chưa cấu hình workflow cho room này.' }; const messages = { ...get().messages, [id]: [] }; if (f.type === 'public') set((s) => ({ publicData: [...s.publicData, ch], messages, activeId: id, overlay: null })); else set((s) => ({ privateData: [...s.privateData, ch], messages, activeId: id, overlay: null })) },
   onSwitchQuery: (v) => set({ switchQuery: v }),
 
   allChannels: () => [...get().publicData, ...get().privateData, ...get().directData],

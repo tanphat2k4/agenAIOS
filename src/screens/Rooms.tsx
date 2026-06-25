@@ -20,13 +20,14 @@ export function Rooms() {
   const s = useStore()
 
   // ---- view-model (replicated verbatim from renderVals ~4991–5034) ----
-  const activeRoom = s.rooms.find((r) => r.id === s.activeRoom) || s.rooms[1]
+  const activeRoom = s.rooms.find((r) => r.id === s.activeRoom) || s.rooms[0]
 
   const roomList = s.rooms.map((r) => {
     const sel = r.id === s.activeRoom
     return {
       id: r.id, name: r.name, slug: r.slug,
       onSelect: () => s.selectRoom(r.id),
+      onDelete: () => { s.selectRoom(r.id); s.roomAskDelete() },
       bg: sel ? 'var(--jade-soft)' : 'transparent',
       border: sel ? 'var(--jade)' : 'transparent',
       nameColor: sel ? 'var(--jade-deep)' : 'var(--ink)',
@@ -128,7 +129,7 @@ export function Rooms() {
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '0 8px 14px' }}>
           {roomList.map((r) => (
-            <Hover key={r.id} onClick={r.onSelect}
+            <Hover key={r.id} onClick={r.onSelect} className="chrow"
               style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 10px', borderRadius: 13, cursor: 'pointer', marginBottom: 3, background: r.bg, border: `1px solid ${r.border}` }}
               hover={{ background: 'var(--jade-soft)' }}>
               <div style={{ width: 34, height: 34, borderRadius: 10, background: r.tileBg, color: r.tileFg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12, flex: 'none', letterSpacing: '.3px' }}>ZY</div>
@@ -136,6 +137,10 @@ export function Rooms() {
                 <div style={{ fontSize: 14, fontWeight: 700, color: r.nameColor, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.name}</div>
                 <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.5px', color: 'var(--placeholder)', marginTop: 2 }}>{r.slug}</div>
               </div>
+              <Hover as="button" className="delbtn" title="Xóa phòng"
+                onClick={(e: React.MouseEvent) => { e.stopPropagation(); r.onDelete() }}
+                style={{ flex: 'none', width: 26, height: 26, borderRadius: 7, border: 'none', background: 'transparent', color: 'var(--placeholder)', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                hover={{ background: '#FBEAE7', color: 'var(--danger)' }}>🗑</Hover>
             </Hover>
           ))}
         </div>
@@ -143,6 +148,16 @@ export function Rooms() {
 
       {/* ===== ROOM DETAIL ===== */}
       <main style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
+        {!activeRoom ? (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 13, padding: 40 }}>
+            <div style={{ fontSize: 44 }}>🗂</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--ink-2)' }}>Chưa có phòng nào</div>
+            <div style={{ fontSize: 13, color: 'var(--placeholder)', textAlign: 'center', maxWidth: 340, lineHeight: 1.55 }}>Bạn đã xóa hết phòng. Tạo phòng làm việc mới để gom channel, thành viên và agent theo dự án.</div>
+            <Hover as="button" onClick={s.openNewRoom}
+              style={{ display: 'flex', alignItems: 'center', gap: 7, border: 'none', background: 'var(--jade)', color: '#fff', borderRadius: 99, padding: '11px 22px', font: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer', marginTop: 4, boxShadow: '0 6px 16px rgba(40,64,158,.2)' }}
+              hover={{ background: 'var(--jade-deep)' }}>＋ Tạo phòng mới</Hover>
+          </div>
+        ) : (<>
         <header style={{ flex: 'none', background: 'var(--surface)', borderBottom: '1px solid var(--line)', padding: '16px 26px 0' }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
             <div>
@@ -153,9 +168,14 @@ export function Rooms() {
               </div>
               <div style={{ fontSize: 12, color: 'var(--ink-2)', marginTop: 3, fontWeight: 600, letterSpacing: '.3px' }}>{activeRoomSlug}</div>
             </div>
-            <Hover as="button" onClick={s.openRoomEdit}
-              style={{ display: 'flex', alignItems: 'center', gap: 7, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink-2)', borderRadius: 99, padding: '8px 16px', font: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}
-              hover={{ borderColor: 'var(--jade)', color: 'var(--jade-deep)' }}>✎ Sửa</Hover>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Hover as="button" onClick={s.openRoomEdit}
+                style={{ display: 'flex', alignItems: 'center', gap: 7, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink-2)', borderRadius: 99, padding: '8px 16px', font: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}
+                hover={{ borderColor: 'var(--jade)', color: 'var(--jade-deep)' }}>✎ Sửa</Hover>
+              <Hover as="button" onClick={s.roomAskDelete}
+                style={{ display: 'flex', alignItems: 'center', gap: 7, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--danger)', borderRadius: 99, padding: '8px 16px', font: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}
+                hover={{ borderColor: 'var(--danger)', background: 'var(--danger)', color: '#fff' }}>🗑 Xóa</Hover>
+            </div>
           </div>
 
           <div style={{ display: 'flex', gap: 6 }}>
@@ -277,6 +297,7 @@ export function Rooms() {
           )}
 
         </div>
+        </>)}
       </main>
 
       {/* ===== MODALS ===== */}

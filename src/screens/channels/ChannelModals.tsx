@@ -2,7 +2,7 @@ import { useStore } from '@/store'
 import { Modal, ModalHead } from '@/components/ui/Modal'
 import { Hover } from '@/components/ui/Hover'
 import { Avatar } from '@/components/ui/Avatar'
-import { dbRows, roomFiles, membersPool, addPeoplePool } from '@/data/channelsExtra'
+import { dbRows, roomFiles } from '@/data/channelsExtra'
 import type { Channel } from '@/types'
 
 const wfTitles = ['Lấy fanpage vệ tinh', 'Lọc bài chưa sử dụng', 'Phân tích hook & nội dung', 'Đánh giá độ phù hợp', 'Soạn facebook_post_cho', 'Kiểm tra trùng lặp', 'Ghi session log', 'Gửi Hub duyệt', 'Thông báo thành viên', 'Cập nhật trạng thái']
@@ -28,7 +28,14 @@ export function ChannelModals({ active, memberCount }: { active: Channel | undef
   const wfDone = 0
   const fv = s.fileDetail
   const ct = s.channelTaskDetail
-  const membersList = Array.from({ length: memberCount }).map((_, i) => membersPool[i % membersPool.length])
+  const members = active?.memberList || []
+  const memberUserIds = new Set(members.filter((m) => m.userId).map((m) => m.userId))
+  const memberNames = new Set(members.map((m) => m.name))
+  const candidates = [
+    ...s.usersData.filter((u) => !memberUserIds.has(u.id)).map((u) => ({ key: 'u' + u.id, name: u.name, initial: u.initial, color: u.color, sub: 'user · ' + u.role, arg: { userId: u.id } as { userId?: string; agentId?: string } })),
+    ...s.agentsData.filter((a) => !memberNames.has(a.name)).map((a) => ({ key: 'a' + a.id, name: a.name, initial: a.initial, color: a.color, sub: 'agent · ' + a.role, arg: { agentId: a.id } as { userId?: string; agentId?: string } })),
+  ]
+  const roleStyle = (role: string) => (({ Owner: { fg: '#28409E', bg: '#E8ECFB' }, Lead: { fg: '#0E7490', bg: '#E0F2F4' }, Agent: { fg: '#0A7B52', bg: '#E2F3EC' } } as Record<string, { fg: string; bg: string }>)[role] || { fg: '#5A6B63', bg: '#EEF2F0' })
 
   return (
     <>
@@ -289,13 +296,22 @@ export function ChannelModals({ active, memberCount }: { active: Channel | undef
             <CloseBtn onClick={s.closeOverlay} />
           </div>
           <div style={{ flex: 1, overflowY: 'auto', padding: '6px 12px 12px' }}>
-            {membersList.map((m, i) => (
-              <Hover key={i} onClick={() => s.openPersonCard({ name: m.name, initial: m.initial, color: m.color, role: m.role, isAgent: m.role === 'Agent', isOwner: m.role === 'Owner' })} title="Xem hồ sơ" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 12, cursor: 'pointer' }} hover={{ background: 'var(--bg)' }}>
-                <Avatar initial={m.initial} color={m.color} size={36} fontSize={13} />
-                <div style={{ minWidth: 0, flex: 1 }}><div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.name}</div></div>
-                <span style={{ fontSize: 11, fontWeight: 700, color: m.rFg, background: m.rBg, padding: '3px 11px', borderRadius: 99, flex: 'none' }}>{m.role}</span>
-              </Hover>
-            ))}
+            {members.length === 0 && <div style={{ padding: '28px 12px', textAlign: 'center', color: 'var(--placeholder)', fontSize: 13 }}>Chưa có thành viên</div>}
+            {members.map((m) => {
+              const rs = roleStyle(m.role)
+              return (
+                <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 12 }}>
+                  <Hover onClick={() => s.openPersonCard({ name: m.name, initial: m.initial, color: m.color, role: m.role, isAgent: m.isAgent, isOwner: m.role === 'Owner' })} title="Xem hồ sơ" style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0, cursor: 'pointer' }} hover={{ opacity: 0.7 }}>
+                    <Avatar initial={m.initial} color={m.color} size={36} fontSize={13} />
+                    <div style={{ minWidth: 0, flex: 1 }}><div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.name}</div></div>
+                  </Hover>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: rs.fg, background: rs.bg, padding: '3px 11px', borderRadius: 99, flex: 'none' }}>{m.role}</span>
+                  {m.role !== 'Owner' && (
+                    <Hover as="button" onClick={() => s.removeMember(m.id)} title="Gỡ khỏi kênh" style={{ width: 28, height: 28, borderRadius: 8, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--placeholder)', fontSize: 13, cursor: 'pointer', flex: 'none' }} hover={{ background: '#FBEAE7', color: 'var(--danger)', borderColor: '#F3C8C0' }}>✕</Hover>
+                  )}
+                </div>
+              )
+            })}
           </div>
           <div style={{ padding: '14px 22px', borderTop: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Hover as="button" onClick={s.openAddMember} style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--jade-deep)', background: 'var(--jade-soft)', border: 'none', borderRadius: 99, padding: '9px 16px', cursor: 'pointer', fontFamily: 'inherit' }} hover={{ background: 'var(--jade)', color: '#fff' }}>＋ Thêm thành viên</Hover>
@@ -315,14 +331,15 @@ export function ChannelModals({ active, memberCount }: { active: Channel | undef
             <CloseBtn onClick={s.closeOverlay} />
           </div>
           <div style={{ flex: 1, overflowY: 'auto', padding: '6px 12px 12px' }}>
-            {addPeoplePool.map((p) => (
-              <Hover key={p.name} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 12 }} hover={{ background: 'var(--bg)' }}>
+            {candidates.length === 0 && <div style={{ padding: '28px 12px', textAlign: 'center', color: 'var(--placeholder)', fontSize: 13 }}>Mọi user và agent đã ở trong kênh</div>}
+            {candidates.map((p) => (
+              <Hover key={p.key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 12 }} hover={{ background: 'var(--bg)' }}>
                 <Avatar initial={p.initial} color={p.color} size={34} fontSize={12} />
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div>
                   <div style={{ fontSize: 11.5, color: 'var(--placeholder)' }}>{p.sub}</div>
                 </div>
-                <Hover as="button" onClick={() => s.addMemberTo(p.addArg)} style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--jade-deep)', background: 'var(--jade-soft)', border: 'none', borderRadius: 99, padding: '7px 16px', cursor: 'pointer', fontFamily: 'inherit' }} hover={{ background: 'var(--jade)', color: '#fff' }}>Thêm</Hover>
+                <Hover as="button" onClick={() => s.addMemberTo(p.arg)} style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--jade-deep)', background: 'var(--jade-soft)', border: 'none', borderRadius: 99, padding: '7px 16px', cursor: 'pointer', fontFamily: 'inherit' }} hover={{ background: 'var(--jade)', color: '#fff' }}>Thêm</Hover>
               </Hover>
             ))}
           </div>

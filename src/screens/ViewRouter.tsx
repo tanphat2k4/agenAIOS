@@ -8,6 +8,7 @@ import { Cron } from './Cron'
 import { Knowledge } from './Knowledge'
 import { Editor } from './Editor'
 import { WorkflowView } from './Workflow'
+import { Trading } from './Trading'
 import { Overview } from './Overview'
 import { Agents } from './Agents'
 import { Mcp } from './Mcp'
@@ -15,7 +16,6 @@ import { Tasks } from './Tasks'
 import { Devices } from './Devices'
 import { Logs } from './Logs'
 import { Perms } from './Perms'
-import { Billing } from './Billing'
 import { Users } from './Users'
 import { Notifs } from './Notifs'
 import { Language } from './Language'
@@ -28,6 +28,7 @@ const screens: Partial<Record<ViewName, ComponentType>> = {
   knowledge: Knowledge,
   editor: Editor,
   workflow: WorkflowView,
+  trading: Trading,
   overview: Overview,
   agents: Agents,
   mcp: Mcp,
@@ -35,7 +36,6 @@ const screens: Partial<Record<ViewName, ComponentType>> = {
   devices: Devices,
   logs: Logs,
   perms: Perms,
-  billing: Billing,
   users: Users,
   notifs: Notifs,
   language: Language,

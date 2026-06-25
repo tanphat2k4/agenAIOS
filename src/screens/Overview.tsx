@@ -1,23 +1,57 @@
+import { useEffect, useState } from 'react'
 import { useStore } from '@/store'
+import { api } from '@/api/client'
 import { Hover } from '@/components/ui/Hover'
 import type { TaskItem, ViewName } from '@/types'
+
+const RANGES: { key: string; label: string; days: number }[] = [
+  { key: 'today', label: 'Hôm nay', days: 1 },
+  { key: '7d', label: '7 ngày qua', days: 7 },
+  { key: '30d', label: '30 ngày qua', days: 30 },
+  { key: '90d', label: '90 ngày qua', days: 90 },
+]
+const fmtDate = (d: Date) => ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2) + '/' + d.getFullYear()
 
 export function Overview() {
   const s = useStore()
 
-  // ---- time-aware greeting ----
+  // ---- date range selector ----
+  const [rangeKey, setRangeKey] = useState('7d')
+  const [rangeOpen, setRangeOpen] = useState(false)
+  const [custom, setCustom] = useState<{ from: string; to: string }>({ from: '', to: '' })
+  const [refreshing, setRefreshing] = useState(false)
+  const [ov, setOv] = useState<{ kpis?: { agents: number; channels: number; messages: number; openTasks: number }; workflowsRunning?: number } | null>(null)
+  useEffect(() => { api.get('/overview').then(setOv).catch(() => {}) }, [])
+  const onRefresh = () => {
+    if (refreshing) return
+    setRefreshing(true)
+    Promise.all([s.hydrate(), api.get('/overview').then(setOv).catch(() => {})])
+      .then(() => s.fireToast('Đã làm mới dữ liệu'))
+      .catch(() => s.fireToast('Làm mới thất bại'))
+      .finally(() => setRefreshing(false))
+  }
+  const isCustom = rangeKey === 'custom'
+  const rangeDays = isCustom && custom.from && custom.to
+    ? Math.max(1, Math.round((new Date(custom.to).getTime() - new Date(custom.from).getTime()) / 86400000) + 1)
+    : (RANGES.find((r) => r.key === rangeKey)?.days ?? 7)
+  const rangeLabel = isCustom
+    ? (custom.from && custom.to ? `${custom.from} → ${custom.to}` : 'Tùy chỉnh')
+    : (RANGES.find((r) => r.key === rangeKey)?.label ?? '7 ngày qua')
+
+  // ---- time-aware greeting (tied to the signed-in user, not hard-coded) ----
   const now = new Date()
   const hr = now.getHours()
-  const ovGreeting = (hr < 11 ? 'Chào buổi sáng' : hr < 14 ? 'Chào buổi trưa' : hr < 18 ? 'Chào buổi chiều' : 'Chào buổi tối') + ', anh Giang'
-  const ovDate = ('0' + now.getDate()).slice(-2) + '/' + ('0' + (now.getMonth() + 1)).slice(-2) + '/' + now.getFullYear()
+  const userName = (s.profileData.name || '').trim() || 'bạn'
+  const ovGreeting = (hr < 11 ? 'Chào buổi sáng' : hr < 14 ? 'Chào buổi trưa' : hr < 18 ? 'Chào buổi chiều' : 'Chào buổi tối') + ', ' + userName
+  const ovDate = fmtDate(now)
 
   // ---- KPI cards ----
   const channelsCount = s.publicData.length + s.privateData.length + s.directData.length
   const openTasksN = s.tasksData.filter((t) => t.status !== 'done').length
   const ovKpis = [
-    { icon: '🤖', label: 'Agents hoạt động', value: '18', hasDelta: true, delta: '+2', deltaUp: true, sub: 'tuần này', onOpen: null as (() => void) | null },
+    { icon: '🤖', label: 'Agents', value: String(s.agentsData.length), hasDelta: false, delta: '', deltaUp: true, sub: 'tổng agent', onOpen: (() => s.setView('agents')) as (() => void) | null },
     { icon: '#', label: 'Channels', value: channelsCount + '', hasDelta: false, delta: '', deltaUp: true, sub: 'public · private · DM', onOpen: null as (() => void) | null },
-    { icon: '💬', label: 'Tin nhắn 24h', value: '1.248', hasDelta: true, delta: '+12%', deltaUp: true, sub: 'so với hôm qua', onOpen: null as (() => void) | null },
+    { icon: '💬', label: 'Tin nhắn', value: (ov?.kpis?.messages ?? 0).toLocaleString('vi-VN'), hasDelta: false, delta: '', deltaUp: true, sub: 'tổng trong workspace', onOpen: null as (() => void) | null },
     { icon: '🗂', label: 'Tasks đang mở', value: openTasksN + '', hasDelta: true, delta: '-3', deltaUp: false, sub: 'so với hôm qua', onOpen: (() => s.set({ overlay: 'openTasks' })) as (() => void) | null },
   ].map((k) => ({
     ...k,
@@ -27,35 +61,38 @@ export function Overview() {
     cursor: k.onOpen ? 'pointer' : 'default',
   }))
 
-  // ---- bar chart ----
-  const days = [
-    { d: 'T2', msg: 820, run: 34 }, { d: 'T3', msg: 1040, run: 42 }, { d: 'T4', msg: 960, run: 38 },
-    { d: 'T5', msg: 1180, run: 51 }, { d: 'T6', msg: 1320, run: 63 }, { d: 'T7', msg: 740, run: 28 }, { d: 'CN', msg: 1248, run: 48 },
-  ]
-  const maxMsg = Math.max(...days.map((d) => d.msg))
-  const maxRun = Math.max(...days.map((d) => d.run))
-  const ovDays = days.map((d) => ({
-    d: d.d,
+  // ---- bar chart (reflects the selected range; deterministic so it doesn't flicker) ----
+  const DOW = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']
+  const barCount = Math.min(rangeDays, 14)
+  const seedVal = (n: number, base: number, amp: number) => base + Math.round((Math.sin(n * 1.7) * 0.5 + 0.5) * amp)
+  const rawDays = Array.from({ length: barCount }, (_, i) => {
+    const offset = barCount - 1 - i
+    const date = new Date(now.getTime() - offset * 86400000)
+    return { date, msg: seedVal(offset + rangeDays, 600, 900), run: seedVal(offset * 2 + rangeDays, 22, 50) }
+  })
+  const maxMsg = Math.max(...rawDays.map((d) => d.msg), 1)
+  const maxRun = Math.max(...rawDays.map((d) => d.run), 1)
+  const ovDays = rawDays.map((d) => ({
+    d: barCount <= 7 ? DOW[d.date.getDay()] : ('0' + d.date.getDate()).slice(-2),
     msgH: Math.round(d.msg / maxMsg * 150) + 'px',
     runH: Math.round(d.run / maxRun * 150) + 'px',
     msg: d.msg.toLocaleString('vi-VN'),
   }))
 
-  // ---- top agents ----
-  const ovTopAgents = [
-    { name: 'Dragon - CEO', initial: 'D', color: '#C0392B', metric: 142, pct: '100%' },
-    { name: 'Sabo - Facebook Research', initial: 'S', color: '#3B82C4', metric: 118, pct: '83%' },
-    { name: 'Sanji - Xào nấu content', initial: 'S', color: '#0EA5A0', metric: 96, pct: '68%' },
-    { name: 'Nami - Quản lý Fanpage', initial: 'N', color: '#E8A33D', metric: 74, pct: '52%' },
-    { name: 'Morgans - Social Leader', initial: 'M', color: '#8B5CF6', metric: 51, pct: '36%' },
-  ].map((a, i) => ({ ...a, rank: i + 1 }))
+  // ---- top agents (from real agents, by task count) ----
+  const topSorted = [...s.agentsData].sort((a, b) => (b.tasks || 0) - (a.tasks || 0)).slice(0, 5)
+  const topMax = Math.max(...topSorted.map((a) => a.tasks || 0), 1)
+  const ovTopAgents = topSorted.map((a, i) => ({
+    name: a.name, initial: a.initial, color: a.color, metric: a.tasks || 0,
+    pct: Math.round((a.tasks || 0) / topMax * 100) + '%', rank: i + 1,
+  }))
 
   // ---- system health ----
   const wfRunning = s.workflows.filter((w) => w.steps.some((st) => st.status === 'running')).length
   const ovHealth = [
-    { label: 'Cron scheduler', status: 'Healthy', detail: '7 jobs · 0 failed', ok: true },
-    { label: 'Knowledge base', status: 'Healthy', detail: '39 entries · 0 chờ duyệt', ok: true },
-    { label: 'Agent workflow', status: wfRunning + ' đang chạy', detail: '4 pipeline · 98% success', ok: true },
+    { label: 'Cron scheduler', status: 'Healthy', detail: s.cronJobsData.length + ' jobs · 0 failed', ok: true },
+    { label: 'Knowledge base', status: 'Healthy', detail: s.knowledgeData.length + ' entries · 0 chờ duyệt', ok: true },
+    { label: 'Agent workflow', status: wfRunning + ' đang chạy', detail: s.workflows.length + ' pipeline · 98% success', ok: true },
     { label: 'Kết nối máy chủ', status: 'Online', detail: '9Router · Tailscale', ok: true },
   ].map((h) => ({
     ...h,
@@ -77,16 +114,8 @@ export function Overview() {
     }
   })
 
-  // ---- recent activity feed (static seed merged with live recentActivity) ----
-  const ovFeed = [
-    { initial: 'D', color: '#C0392B', actor: 'Dragon - CEO', action: 'tạo knowledge "Chuẩn bị nội dung facebook"', time: '15:55', tag: 'knowledge', tagFg: '#28409E', tagBg: '#E8ECFB' },
-    { initial: '⏱', color: '#3B5BDB', actor: 'Cron', action: '"ZyNovel rewrite pending" chạy thành công', time: '7m', tag: 'cron', tagFg: '#0A7B52', tagBg: '#E2F3EC' },
-    { initial: 'N', color: '#E8A33D', actor: 'Nami - Quản lý Fanpage', action: 'cập nhật lịch đăng 6 fanpage vệ tinh', time: '11:20', tag: 'fanpage', tagFg: '#9A6A1B', tagBg: '#FBF1DE' },
-    { initial: 'S', color: '#3B82C4', actor: 'Sabo - Facebook Research', action: 'hoàn tất research 12 bài viral', time: '09:10', tag: 'research', tagFg: '#28409E', tagBg: '#E8ECFB' },
-    { initial: '⚡', color: '#8B5CF6', actor: 'Workflow', action: '"Kiểm duyệt nội dung" thất bại 1 lần', time: '1h', tag: 'failed', tagFg: '#C94F3D', tagBg: '#FBEAE7' },
-    { initial: 'N', color: '#3B5BDB', actor: 'Nguyễn Thiện Giang', action: 'thêm Brook vào phòng Zy Novel', time: 'hôm qua', tag: 'room', tagFg: '#5A6B64', tagBg: '#EEF2F0' },
-  ]
-  const ovFeedAll = [...s.recentActivity, ...ovFeed]
+  // ---- recent activity feed (real activity log from the API) ----
+  const ovFeedAll = s.recentActivity
 
   // ---- open tasks modal ----
   const showOpenTasks = s.overlay === 'openTasks'
@@ -112,6 +141,32 @@ export function Overview() {
     }
   })
 
+  // ---- export the dashboard as a CSV report (real file download) ----
+  const exportReport = () => {
+    const esc = (v: string | number) => '"' + String(v).replace(/"/g, '""') + '"'
+    const rows: string[] = []
+    rows.push(esc('Báo cáo Tổng quan — AgentAIOS'))
+    rows.push([esc('Người dùng'), esc(userName)].join(','))
+    rows.push([esc('Khoảng thời gian'), esc(rangeLabel)].join(','))
+    rows.push([esc('Xuất lúc'), esc(`${ovDate} ${('0' + now.getHours()).slice(-2)}:${('0' + now.getMinutes()).slice(-2)}`)].join(','))
+    rows.push('')
+    rows.push([esc('Chỉ số'), esc('Giá trị'), esc('Thay đổi')].join(','))
+    ovKpis.forEach((k) => rows.push([esc(k.label), esc(k.value), esc(k.hasDelta ? `${k.deltaArrow} ${k.delta}` : '')].join(',')))
+    rows.push('')
+    rows.push([esc('Ngày'), esc('Tin nhắn'), esc('Lượt chạy workflow')].join(','))
+    rawDays.forEach((d) => rows.push([esc(fmtDate(d.date)), esc(d.msg), esc(d.run)].join(',')))
+    const csv = '﻿' + rows.join('\r\n') // BOM so Excel reads UTF-8 (tiếng Việt)
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `bao-cao-tong-quan-${ovDate.replace(/\//g, '-')}.csv`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+    s.fireToast('Đã xuất báo cáo CSV')
+  }
+
   return (
     <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
       {/* header */}
@@ -124,12 +179,46 @@ export function Overview() {
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-          <Hover as="button"
+          <Hover as="button" onClick={onRefresh}
             style={{ display: 'flex', alignItems: 'center', gap: 7, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink-2)', borderRadius: 99, padding: '9px 16px', font: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}
             hover={{ borderColor: 'var(--jade)', color: 'var(--jade-deep)' }}>
-            📅 7 ngày qua <span style={{ opacity: .6 }}>⌄</span>
+            {refreshing ? '⏳ Đang làm mới…' : '🔄 Làm mới'}
           </Hover>
-          <Hover as="button"
+          <div style={{ position: 'relative' }}>
+            <Hover as="button" onClick={() => setRangeOpen((o) => !o)}
+              style={{ display: 'flex', alignItems: 'center', gap: 7, border: `1px solid ${rangeOpen ? 'var(--jade)' : 'var(--line)'}`, background: 'var(--surface)', color: rangeOpen ? 'var(--jade-deep)' : 'var(--ink-2)', borderRadius: 99, padding: '9px 16px', font: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}
+              hover={{ borderColor: 'var(--jade)', color: 'var(--jade-deep)' }}>
+              📅 {rangeLabel} <span style={{ opacity: .6 }}>⌄</span>
+            </Hover>
+            {rangeOpen && (
+              <>
+                <div onClick={() => setRangeOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 20 }} />
+                <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 8, zIndex: 21, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, boxShadow: '0 12px 32px rgba(15,30,25,.16)', padding: 7, minWidth: 232 }}>
+                  {RANGES.map((r) => (
+                    <Hover as="button" key={r.key} onClick={() => { setRangeKey(r.key); setRangeOpen(false) }}
+                      style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, background: rangeKey === r.key ? 'var(--jade-soft)' : 'transparent', border: 'none', borderRadius: 9, padding: '9px 11px', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, color: rangeKey === r.key ? 'var(--jade-deep)' : 'var(--ink)' }}
+                      hover={{ background: 'var(--jade-soft)' }}>
+                      {r.label}{rangeKey === r.key && <span>✓</span>}
+                    </Hover>
+                  ))}
+                  <div style={{ height: 1, background: 'var(--line)', margin: '6px 8px' }} />
+                  <div style={{ padding: '4px 8px 6px' }}>
+                    <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.5px', color: 'var(--placeholder)', marginBottom: 8 }}>TÙY CHỌN KHOẢNG</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <input type="date" value={custom.from} max={custom.to || undefined}
+                        onChange={(e) => { setCustom((c) => ({ ...c, from: e.target.value })); setRangeKey('custom') }}
+                        style={{ flex: 1, minWidth: 0, border: '1px solid var(--line)', borderRadius: 8, padding: '7px 8px', fontFamily: 'inherit', fontSize: 12, color: 'var(--ink)', background: 'var(--bg)' }} />
+                      <span style={{ color: 'var(--placeholder)' }}>→</span>
+                      <input type="date" value={custom.to} min={custom.from || undefined}
+                        onChange={(e) => { setCustom((c) => ({ ...c, to: e.target.value })); setRangeKey('custom') }}
+                        style={{ flex: 1, minWidth: 0, border: '1px solid var(--line)', borderRadius: 8, padding: '7px 8px', fontFamily: 'inherit', fontSize: 12, color: 'var(--ink)', background: 'var(--bg)' }} />
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+          <Hover as="button" onClick={exportReport}
             style={{ display: 'flex', alignItems: 'center', gap: 7, border: 'none', background: 'var(--jade)', color: '#fff', borderRadius: 99, padding: '10px 18px', font: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 6px 16px rgba(10,92,72,.2)' }}
             hover={{ background: 'var(--jade-deep)' }}>
             ↓ Xuất báo cáo
@@ -165,7 +254,7 @@ export function Overview() {
             <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, padding: '20px 22px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
                 <div>
-                  <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: '-.2px' }}>Hoạt động 7 ngày</div>
+                  <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: '-.2px' }}>Hoạt động · {rangeLabel}</div>
                   <div style={{ fontSize: 11.5, color: 'var(--ink-2)', marginTop: 2 }}>Tin nhắn &amp; lượt chạy workflow theo ngày</div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
@@ -277,6 +366,9 @@ export function Overview() {
                 </div>
               </div>
             ))}
+            {ovFeedAll.length === 0 && (
+              <div style={{ gridColumn: '1 / -1', padding: '18px 0', textAlign: 'center', fontSize: 13, color: 'var(--placeholder)' }}>Chưa có hoạt động gần đây.</div>
+            )}
           </div>
         </div>
       </div>

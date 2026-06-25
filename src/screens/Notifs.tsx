@@ -13,7 +13,7 @@ export function Notifs() {
     system:    { icon: '🖥', label: 'Hệ thống',   fg: '#9A6A1B', bg: '#FBF1DE', route: 'devices' },
     knowledge: { icon: '📚', label: 'Knowledge',  fg: '#0E7490', bg: '#E0F2F4', route: 'knowledge' },
     cron:      { icon: '⏱', label: 'Cron',        fg: '#28409E', bg: '#E8ECFB', route: 'cron' },
-    billing:   { icon: '💳', label: 'Hóa đơn',    fg: '#9A6A1B', bg: '#FBF1DE', route: 'billing' },
+    billing:   { icon: '💳', label: 'Hóa đơn',    fg: '#9A6A1B', bg: '#FBF1DE', route: 'overview' },
   }
 
   const routeLabel: Record<string, string> = {
@@ -66,6 +66,7 @@ export function Notifs() {
         action: n.action, preview: n.preview, time: n.time,
         unread: n.unread,
         onRead: () => s.markRead(n.id),
+        onDelete: (e: React.MouseEvent) => { e.stopPropagation(); s.deleteNotif(n.id) },
         typeIcon: ts.icon, typeLabel: ts.label, typeFg: ts.fg, typeBg: ts.bg,
         rowBg: n.unread ? 'var(--jade-soft)' : 'var(--surface)',
         actionLabel: routeLabel[ts.route] ?? 'Xem',
@@ -97,11 +98,20 @@ export function Notifs() {
             <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>{unreadCount} chưa đọc</span>
           </div>
         </div>
-        <Hover as="button" onClick={s.markAllRead}
-          style={{ display: 'flex', alignItems: 'center', gap: 7, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink-2)', borderRadius: 99, padding: '9px 16px', font: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}
-          hover={{ borderColor: 'var(--jade)', color: 'var(--jade-deep)' }}>
-          ✓ Đánh dấu tất cả đã đọc
-        </Hover>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+          <Hover as="button" onClick={s.markAllRead}
+            style={{ display: 'flex', alignItems: 'center', gap: 7, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink-2)', borderRadius: 99, padding: '9px 16px', font: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}
+            hover={{ borderColor: 'var(--jade)', color: 'var(--jade-deep)' }}>
+            ✓ Đánh dấu tất cả đã đọc
+          </Hover>
+          {N.length > 0 && (
+            <Hover as="button" onClick={s.clearNotifs}
+              style={{ display: 'flex', alignItems: 'center', gap: 7, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--danger)', borderRadius: 99, padding: '9px 16px', font: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}
+              hover={{ borderColor: 'var(--danger)', background: 'var(--danger)', color: '#fff' }}>
+              🗑 Xóa tất cả
+            </Hover>
+          )}
+        </div>
       </header>
 
       <div style={{ flex: 1, overflow: 'auto', padding: '22px 28px 32px' }}>
@@ -122,7 +132,7 @@ export function Notifs() {
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.7px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 10 }}>{g.label}</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {g.items.map((n, ni) => (
-                  <Hover key={ni} onClick={n.onRead}
+                  <Hover key={ni} onClick={n.onRead} className="chrow"
                     style={{ display: 'flex', alignItems: 'flex-start', gap: 13, background: n.rowBg, border: '1px solid var(--line)', borderRadius: 14, padding: '14px 16px', cursor: 'pointer' }}
                     hover={{ borderColor: 'var(--jade)' }}>
                     {/* avatar with type badge */}
@@ -148,6 +158,10 @@ export function Notifs() {
                     {n.unread && (
                       <span style={{ width: 9, height: 9, borderRadius: 99, background: 'var(--jade)', flex: 'none', marginTop: 4 }}></span>
                     )}
+                    {/* delete */}
+                    <Hover as="button" className="delbtn" title="Xóa thông báo" onClick={n.onDelete}
+                      style={{ flex: 'none', width: 26, height: 26, borderRadius: 7, border: 'none', background: 'transparent', color: 'var(--placeholder)', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 2 }}
+                      hover={{ background: '#FBEAE7', color: 'var(--danger)' }}>🗑</Hover>
                   </Hover>
                 ))}
               </div>

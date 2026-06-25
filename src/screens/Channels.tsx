@@ -5,8 +5,6 @@ import { buildBlocks } from '@/lib/richtext'
 import type { Channel } from '@/types'
 import { ChannelModals } from './channels/ChannelModals'
 
-const memberPalette = ['#3B5BDB', '#E8A33D', '#C94F3D', '#3B82C4', '#8B5CF6']
-
 function ChannelRow({ c, kind }: { c: Channel; kind: 'public' | 'private' | 'direct' }) {
   const activeId = useStore((s) => s.activeId)
   const unread = useStore((s) => s.unread[c.id] || 0)
@@ -58,8 +56,9 @@ export function Channels() {
     ('text' in bl && (bl.text || '').toLowerCase().includes(chatQ)))
   const msgs = allMsgs.filter(matchMsg)
 
-  const memberCount = (active?.members || 1) + (s.addedMembers[active?.id] || 0)
-  const memberAvatars = ['N', 'D', 'S', 'M'].map((ini, i) => ({ initial: ini, color: memberPalette[i % memberPalette.length] }))
+  const members = active?.memberList || []
+  const memberCount = members.length
+  const memberAvatars = members.slice(0, 4)
   const draftHas = !!s.draft.trim()
   const wfTotal = active?.wfTotal || 0
 
@@ -104,6 +103,16 @@ export function Channels() {
 
       {/* ===== CHAT COLUMN ===== */}
       <main style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
+        {!active ? (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 13, padding: 40 }}>
+            <div style={{ width: 72, height: 72, borderRadius: 20, background: 'var(--jade-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30 }}>#</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--ink-2)' }}>Chưa có channel nào</div>
+            <div style={{ fontSize: 13, color: 'var(--placeholder)', textAlign: 'center', maxWidth: 340, lineHeight: 1.55 }}>Tạo channel đầu tiên để bắt đầu trò chuyện với team và agent.</div>
+            <Hover as="button" onClick={s.openCreate}
+              style={{ display: 'flex', alignItems: 'center', gap: 7, border: 'none', background: 'var(--jade)', color: '#fff', borderRadius: 99, padding: '11px 22px', font: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer', marginTop: 4, boxShadow: '0 6px 16px rgba(40,64,158,.2)' }}
+              hover={{ background: 'var(--jade-deep)' }}>＋ Tạo channel mới</Hover>
+          </div>
+        ) : (<>
         <header style={{ flex: 'none', background: 'var(--surface)', borderBottom: '1px solid var(--line)', padding: '13px 22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
@@ -199,9 +208,11 @@ export function Channels() {
             </div>
           </div>
         </div>
+        </>)}
       </main>
 
       {/* ===== RIGHT DETAILS PANEL ===== */}
+      {active && (
       <aside style={{ width: 308, flex: 'none', background: 'var(--surface)', borderLeft: '1px solid var(--line)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <div style={{ flex: 1, overflowY: 'auto', padding: '18px 18px 24px' }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 18 }}>
@@ -263,6 +274,7 @@ export function Channels() {
           <div style={{ fontSize: 11, color: 'var(--placeholder)', textAlign: 'center', paddingTop: 6 }}>• {wfTotal ? wfTotal + ' workflow chưa đủ điều kiện' : 'Chưa có workflow nào'}</div>
         </div>
       </aside>
+      )}
 
       <ChannelModals active={active} memberCount={memberCount} />
     </div>

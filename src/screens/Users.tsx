@@ -302,7 +302,7 @@ export function Users() {
               </div>
             </div>
 
-            <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, overflow: 'hidden' }}>
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18 }}>
               <div style={{ display: 'grid', gridTemplateColumns: 'minmax(240px,1.8fr) 160px 150px 130px 60px', padding: '12px 20px', borderBottom: '1px solid var(--line)', fontSize: 10, fontWeight: 700, letterSpacing: '.6px', textTransform: 'uppercase', color: 'var(--placeholder)' }}>
                 <div>Người dùng</div><div>Vai trò</div><div>Trạng thái</div><div>Hoạt động cuối</div><div></div>
               </div>
@@ -372,7 +372,7 @@ export function Users() {
 
         {/* ---- INVITES TAB ---- */}
         {usersTabInvites && (
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, overflow: 'hidden' }}>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18 }}>
             {inviteRows.map((iv) => (
               <Hover key={iv.id} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '15px 20px', borderBottom: '1px solid var(--line)' }} hover={{ background: 'var(--bg)' }}>
                 <div style={{ width: 38, height: 38, borderRadius: 99, background: 'var(--jade-soft)', color: 'var(--jade-deep)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flex: 'none' }}>✉️</div>
@@ -399,7 +399,7 @@ export function Users() {
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 700, color: '#9A6A1B', background: '#FBF1DE', padding: '5px 12px', borderRadius: 99 }}>🆕 Chờ bạn duyệt</span>
               <span>Người mới yêu cầu tham gia workspace — duyệt để cấp quyền, hoặc từ chối.</span>
             </div>
-            <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, overflow: 'hidden' }}>
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18 }}>
               {signupRows.map((r) => (
                 <Hover key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '15px 20px', borderBottom: '1px solid var(--line)' }} hover={{ background: 'var(--bg)' }}>
                   <div style={{ width: 40, height: 40, borderRadius: 99, background: r.color, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, flex: 'none' }}>{r.initial}</div>

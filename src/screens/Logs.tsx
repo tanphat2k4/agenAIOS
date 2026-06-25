@@ -55,6 +55,7 @@ export function Logs() {
       duration: x.duration,
       tokens: x.tokens,
       onSelect: () => s.selectSession(x.id),
+      onDelete: () => s.deleteSession(x.id),
       bg: sel ? 'var(--jade-soft)' : 'transparent',
       border: sel ? 'var(--jade)' : 'var(--line)',
       dot: st.dot,
@@ -68,12 +69,12 @@ export function Logs() {
   })
 
   const asess = SS.find((x) => x.id === s.activeSession) || SS[0]
-  const ast = sessStStyle[asess.status]
-  const sessLog = asess.log.map((l) => {
+  const ast = asess ? sessStStyle[asess.status] : null
+  const sessLog = (asess?.log ?? []).map((l) => {
     const lv = lvlStyle[l.lvl]
     return { t: l.t, lvlLabel: lv.label, lvlFg: lv.fg, lvlBg: lv.bg, msg: l.msg, msgFg: lv.msgFg }
   })
-  const sessActive = {
+  const sessActive = asess && ast ? {
     id: asess.id,
     agent: asess.agent,
     initial: asess.initial,
@@ -90,7 +91,7 @@ export function Logs() {
     duration: asess.duration,
     tokens: asess.tokens,
     isRunning: asess.status === 'running',
-  }
+  } : null
 
   const auditRows = s.auditLog.map((a) => {
     const lv = lvlStyle[a.lvl as 'info' | 'debug' | 'warn' | 'error']
@@ -120,11 +121,20 @@ export function Logs() {
               <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>Theo dõi phiên chạy của agent và audit hệ thống</span>
             </div>
           </div>
-          <Hover as="button"
-            style={{ display: 'flex', alignItems: 'center', gap: 7, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink-2)', borderRadius: 99, padding: '9px 16px', font: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}
-            hover={{ borderColor: 'var(--jade)', color: 'var(--jade-deep)' }}>
-            ↓ Tải log
-          </Hover>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+            {logTabSessions && SS.length > 0 && (
+              <Hover as="button" onClick={s.askClearLogs}
+                style={{ display: 'flex', alignItems: 'center', gap: 7, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--danger)', borderRadius: 99, padding: '9px 16px', font: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}
+                hover={{ borderColor: 'var(--danger)', background: 'var(--danger)', color: '#fff' }}>
+                🗑 Xóa tất cả
+              </Hover>
+            )}
+            <Hover as="button"
+              style={{ display: 'flex', alignItems: 'center', gap: 7, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink-2)', borderRadius: 99, padding: '9px 16px', font: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}
+              hover={{ borderColor: 'var(--jade)', color: 'var(--jade-deep)' }}>
+              ↓ Tải log
+            </Hover>
+          </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           {logTabs.map((t) => (
@@ -153,12 +163,18 @@ export function Logs() {
         </div>
 
         {/* sessions master-detail */}
-        {logTabSessions && (
+        {logTabSessions && (SS.length === 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 13, padding: '60px 40px', textAlign: 'center' }}>
+            <div style={{ fontSize: 44 }}>📜</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--ink-2)' }}>Chưa có phiên log nào</div>
+            <div style={{ fontSize: 13, color: 'var(--placeholder)', maxWidth: 360, lineHeight: 1.55 }}>Tất cả phiên log đã được xóa. Phiên mới sẽ xuất hiện khi agent chạy.</div>
+          </div>
+        ) : (
           <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: 18, alignItems: 'start' }}>
             {/* session list */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
               {sessList.map((x) => (
-                <Hover key={x.id} onClick={x.onSelect}
+                <Hover key={x.id} onClick={x.onSelect} className="chrow"
                   style={{ background: x.bg, border: `1.5px solid ${x.border}`, borderRadius: 14, padding: '13px 14px', cursor: 'pointer' }}
                   hover={{ borderColor: 'var(--jade)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 9 }}>
@@ -168,6 +184,10 @@ export function Logs() {
                       <div style={{ fontFamily: 'var(--mono)', fontSize: 10.5, color: 'var(--placeholder)' }}>{x.id}</div>
                     </div>
                     <span style={{ width: 9, height: 9, borderRadius: 99, background: x.dot, flex: 'none', animation: x.dotPulse }}></span>
+                    <Hover as="button" className="delbtn" title="Xóa phiên log"
+                      onClick={(e: React.MouseEvent) => { e.stopPropagation(); x.onDelete() }}
+                      style={{ flex: 'none', width: 22, height: 22, borderRadius: 6, border: 'none', background: 'transparent', color: 'var(--placeholder)', cursor: 'pointer', fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      hover={{ background: '#FBEAE7', color: 'var(--danger)' }}>🗑</Hover>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
                     <span style={{ fontSize: 10, fontWeight: 700, color: x.statusFg, background: x.statusBg, padding: '2px 8px', borderRadius: 99 }}>{x.statusLabel}</span>
@@ -179,6 +199,7 @@ export function Logs() {
             </div>
 
             {/* log viewer */}
+            {sessActive && (
             <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 16, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
               <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--line)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
@@ -220,8 +241,9 @@ export function Logs() {
                 )}
               </div>
             </div>
+            )}
           </div>
-        )}
+        ))}
 
         {/* audit log */}
         {logTabAudit && (
@@ -239,6 +261,20 @@ export function Logs() {
           </div>
         )}
       </div>
+
+      {s.overlay === 'clearLogs' && (
+        <div onClick={s.closeOverlay} style={{ position: 'fixed', inset: 0, background: 'rgba(22,32,28,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 55, animation: 'fadeIn .15s ease' }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: 410, maxWidth: '92vw', background: 'var(--surface)', borderRadius: 22, padding: 26, boxShadow: '0 24px 60px rgba(22,32,28,.28)', animation: 'pop .2s ease both' }}>
+            <div style={{ width: 52, height: 52, borderRadius: 15, background: '#FBEAE7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, marginBottom: 16 }}>🗑</div>
+            <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.3px', marginBottom: 8, lineHeight: 1.35 }}>Xóa tất cả phiên log?</div>
+            <div style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.55, marginBottom: 24 }}>Toàn bộ {SS.length} phiên log sẽ bị xóa vĩnh viễn khỏi hệ thống. Không thể hoàn tác.</div>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <Hover as="button" onClick={s.closeOverlay} style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink-2)', background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 99, padding: '11px 22px', cursor: 'pointer', fontFamily: 'inherit' }} hover={{ background: 'var(--line)' }}>Hủy</Hover>
+              <Hover as="button" onClick={s.clearSessions} style={{ fontSize: 13.5, fontWeight: 700, color: '#fff', background: 'var(--danger)', border: 'none', borderRadius: 99, padding: '11px 26px', cursor: 'pointer', fontFamily: 'inherit' }} hover={{ opacity: .9 }}>Xóa tất cả</Hover>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -23,8 +23,10 @@ const labelText: CSSProperties = { display: 'block', fontSize: 12.5, fontWeight:
 const fieldIcon: CSSProperties = { position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', fontSize: 19, color: '#9AA8A1' }
 
 export function Auth() {
-  const setAuthed = useStore((s) => s.setAuthed)
+  const login = useStore((s) => s.login)
+  const register = useStore((s) => s.register)
   const [mode, setMode] = useState<'login' | 'register'>('login')
+  const [busy, setBusy] = useState(false)
   const [showPw, setShowPw] = useState(false)
   const [remember, setRemember] = useState(true)
   const [terms, setTerms] = useState(false)
@@ -42,17 +44,24 @@ export function Auth() {
     tt.current = setTimeout(() => setToast(''), 2600)
   }
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (busy) return
     if (!emailValid(form.email)) { setEmailTouched(true); return }
     if (mode === 'register') {
       if (!form.name.trim()) { fireToast('Vui lòng nhập họ và tên'); return }
       if (!terms) { fireToast('Vui lòng đồng ý với điều khoản'); return }
-      fireToast('Tạo tài khoản thành công! Đang thiết lập workspace…')
-    } else {
-      fireToast('Đăng nhập thành công! Đang vào workspace…')
     }
-    setTimeout(() => setAuthed(true), 650)
+    if (!form.password) { fireToast('Vui lòng nhập mật khẩu'); return }
+    setBusy(true)
+    try {
+      if (mode === 'register') await register(form.name.trim(), form.email, form.password)
+      else await login(form.email, form.password)
+      // success: `authed` flips and App swaps to the workspace
+    } catch (err) {
+      fireToast(err instanceof Error ? err.message : 'Có lỗi xảy ra, thử lại')
+      setBusy(false)
+    }
   }
 
   const score = pwScore(form.password)
@@ -175,7 +184,7 @@ export function Auth() {
               )}
 
               <Hover as="button" type="submit" style={{ width: '100%', border: 'none', cursor: 'pointer', font: 'inherit', fontSize: 14.5, fontWeight: 700, color: '#fff', background: '#3B5BDB', borderRadius: 12, padding: 13, marginTop: 4, boxShadow: '0 6px 18px rgba(59,91,219,.28)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'background .15s' }} hover={{ background: '#28409E' }}>
-                {isLogin ? 'Đăng nhập' : 'Tạo tài khoản'}<span className="material-symbols-rounded" style={{ fontSize: 19 }}>arrow_forward</span>
+                {busy ? 'Đang xử lý…' : isLogin ? 'Đăng nhập' : 'Tạo tài khoản'}<span className="material-symbols-rounded" style={{ fontSize: 19 }}>arrow_forward</span>
               </Hover>
             </form>
 

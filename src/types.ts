@@ -117,6 +117,7 @@ export interface CronJob {
 }
 
 export interface KnowledgeEntry {
+  id?: string
   type: 'knowledge' | 'agent' | 'rule' | 'skill' | 'note' | 'account'
   title: string
   repo: string
@@ -201,6 +202,16 @@ export interface Notif {
   unread: boolean
 }
 
+export interface ChannelMember {
+  id: string
+  userId?: string | null
+  name: string
+  initial: string
+  color: string
+  role: string
+  isAgent: boolean
+}
+
 export interface Channel {
   id: string
   name: string
@@ -210,6 +221,7 @@ export interface Channel {
   color?: string
   initial?: string
   members: number
+  memberList?: ChannelMember[]
   database: string | null
   files?: string
   tasks: { id: string; status: string; assignee: string; text: string; time: string }[]
@@ -243,6 +255,6 @@ export interface PersonCard {
 }
 
 export type ViewName =
-  | 'channels' | 'rooms' | 'cron' | 'knowledge' | 'editor' | 'workflow'
+  | 'channels' | 'rooms' | 'cron' | 'knowledge' | 'editor' | 'workflow' | 'trading'
   | 'overview' | 'agents' | 'mcp' | 'tasks' | 'devices' | 'logs'
   | 'perms' | 'billing' | 'plans' | 'users' | 'notifs' | 'language' | 'profile'
