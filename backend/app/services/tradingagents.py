@@ -21,6 +21,7 @@ _STOP = {
     "MACRO", "VND", "USD", "RSI", "MACD", "CUA", "CHO", "NHE", "VOI", "NAO",
     "SAO", "BAO", "CAO", "EM", "ANH", "VND", "CK",  # CK = chứng khoán, not a ticker
     "SAGE", "MUA", "BAN", "GIU", "NEN",  # advisor name + buy/sell/hold verbs — never tickers
+    "ROE", "ROA", "EPS", "NIM", "BVPS", "NAY", "PE", "PB",  # metric names + "nay" — never tickers
 }
 
 # Opinion / advice keywords — shared so the Sage agent can detect advice requests.
@@ -163,6 +164,144 @@ def realtime_quote(ticker: str) -> dict | None:
         "ceiling": thou(d.get("ceiling")), "floor": thou(d.get("floor")),
         "vol": int(d.get("vol") or 0), "foreign_net": int((d.get("fbuy") or 0) - (d.get("fsell") or 0)),
     }
+
+
+# ---- fundamentals (P/E, P/B, ROE, ROA, EPS) via vnstock KBS — yearly, cached ----
+# The KBS source returns clean year-labelled columns (VCI's are corrupt: all "2018").
+_FUNDAMENTAL_SCRIPT = (
+    "import json,warnings,io,contextlib,sys\n"
+    "warnings.filterwarnings('ignore')\n"
+    "tk=sys.argv[1]; buf=io.StringIO()\n"
+    "try:\n"
+    "    with contextlib.redirect_stdout(buf),contextlib.redirect_stderr(buf):\n"
+    "        from vnstock import Finance\n"
+    "        r=Finance(symbol=tk,source='KBS').ratio(period='year',lang='en')\n"
+    "    cols=[str(c) for c in r.columns]\n"
+    "    yrs=sorted([c for c in cols if 'Năm' in c])\n"
+    "    latest=yrs[-1] if yrs else cols[-1]\n"
+    "    want={'pe_ratio':'pe','pb_ratio':'pb','roe':'roe','roa':'roa','trailing_eps':'eps','net_interest_margin_ni':'nim','dividend_yield':'divy'}\n"
+    "    out={'year':str(latest).split('-')[0]}\n"
+    "    for _,row in r.iterrows():\n"
+    "        iid=str(row.get('item_id',''))\n"
+    "        if iid in want:\n"
+    "            v=row.get(latest)\n"
+    "            try: out[want[iid]]=round(float(v),2) if v==v else None\n"
+    "            except Exception: out[want[iid]]=None\n"
+    "    print('JSON:'+json.dumps(out))\n"
+    "except Exception as e: print('ERR:'+str(e)[:200])\n"
+)
+
+_fund_cache: dict[str, dict] = {}  # ticker -> dict (stable intraday; cleared on restart)
+
+
+def fundamentals(ticker: str) -> dict | None:
+    """Latest-year fundamentals (pe, pb, roe, roa, eps, nim) via vnstock KBS, or None.
+    Cached per-process (fundamentals don't change intraday). Never raises."""
+    if not settings.TRADINGAGENTS_ENABLED:
+        return None
+    ticker = ticker.upper()
+    if ticker in _fund_cache:
+        return _fund_cache[ticker]
+    try:
+        proc = subprocess.run(
+            [settings.TRADINGAGENTS_PYTHON, "-c", _FUNDAMENTAL_SCRIPT, ticker],
+            cwd=settings.TRADINGAGENTS_CWD, capture_output=True, text=True,
+            encoding="utf-8", errors="replace", timeout=60, env=_CLEAN_ENV,
+        )
+    except Exception:  # noqa: BLE001
+        return None
+    line = next((ln for ln in (proc.stdout or "").splitlines() if ln.startswith("JSON:")), None)
+    if not line:
+        return None
+    try:
+        d = json.loads(line[5:])
+    except Exception:  # noqa: BLE001
+        return None
+    if d.get("pe") is None and d.get("roe") is None:
+        return None
+    _fund_cache[ticker] = d
+    return d
+
+
+def fundamentals_text(ticker: str) -> str:
+    """One-line fundamentals summary, or '' if unavailable."""
+    f = fundamentals(ticker)
+    if not f:
+        return ""
+    parts = []
+    if f.get("pe") is not None:
+        parts.append(f"P/E {f['pe']}")
+    if f.get("pb") is not None:
+        parts.append(f"P/B {f['pb']}")
+    if f.get("roe") is not None:
+        parts.append(f"ROE {f['roe']}%")
+    if f.get("roa") is not None:
+        parts.append(f"ROA {f['roa']}%")
+    if f.get("eps") is not None:
+        parts.append(f"EPS {int(f['eps']):,}đ")
+    if f.get("nim") is not None:
+        parts.append(f"NIM {f['nim']}%")
+    return (f"Cơ bản (năm {f.get('year', '?')}): " + " · ".join(parts)) if parts else ""
+
+
+# ---- market overview (VN-Index) via vnstock ----
+_VNINDEX_SCRIPT = (
+    "import json,warnings,io,contextlib\n"
+    "warnings.filterwarnings('ignore')\n"
+    "buf=io.StringIO()\n"
+    "try:\n"
+    "    with contextlib.redirect_stdout(buf),contextlib.redirect_stderr(buf):\n"
+    "        from vnstock import Quote\n"
+    "        from datetime import date,timedelta\n"
+    "        end=date.today().isoformat(); start=(date.today()-timedelta(days=20)).isoformat()\n"
+    "        h=Quote(symbol='VNINDEX',source='VCI').history(start=start,end=end,interval='1D')\n"
+    "    r=h.iloc[-1]; p=h.iloc[-2]\n"
+    "    out={'close':round(float(r['close']),2),'prev':round(float(p['close']),2),"
+    "'high':round(float(r['high']),2),'low':round(float(r['low']),2),'vol':int(r['volume'])}\n"
+    "    print('JSON:'+json.dumps(out))\n"
+    "except Exception as e: print('ERR:'+str(e)[:200])\n"
+)
+
+_mkt_cache: dict = {}  # {'t': epoch, 'd': dict} — short TTL
+
+
+def market_overview() -> dict | None:
+    """VN-Index latest close + change% (cached ~5 min), or None. Never raises."""
+    if not settings.TRADINGAGENTS_ENABLED:
+        return None
+    import time as _t
+    if _mkt_cache and _t.time() - _mkt_cache.get("t", 0) < 300:
+        return _mkt_cache["d"]
+    try:
+        proc = subprocess.run(
+            [settings.TRADINGAGENTS_PYTHON, "-c", _VNINDEX_SCRIPT],
+            cwd=settings.TRADINGAGENTS_CWD, capture_output=True, text=True,
+            encoding="utf-8", errors="replace", timeout=45, env=_CLEAN_ENV,
+        )
+    except Exception:  # noqa: BLE001
+        return None
+    line = next((ln for ln in (proc.stdout or "").splitlines() if ln.startswith("JSON:")), None)
+    if not line:
+        return None
+    try:
+        d = json.loads(line[5:])
+    except Exception:  # noqa: BLE001
+        return None
+    if not d.get("close") or not d.get("prev"):
+        return None
+    d["change"] = round((d["close"] - d["prev"]) / d["prev"] * 100, 2)
+    _mkt_cache.update(t=_t.time(), d=d)
+    return d
+
+
+def market_overview_text() -> str:
+    """One-line VN-Index summary, or '' if unavailable."""
+    m = market_overview()
+    if not m:
+        return ""
+    chg = m.get("change", 0)
+    arrow = "🔺" if chg > 0 else ("🔻" if chg < 0 else "▪")
+    return f"VN-Index {m['close']:.2f} {arrow}{abs(chg)}% (cao {m['high']:.2f} · thấp {m['low']:.2f} · KL {m['vol'] / 1e6:.0f} triệu cp)"
 
 
 def news(ticker: str, days: int = 7) -> str:

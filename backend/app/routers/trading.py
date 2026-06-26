@@ -313,13 +313,30 @@ def _llm_reply(db: Session, channel_id: str, _text: str) -> str:
     # Ground the answer in the CURRENT live price (snapshot ~2s) so follow-up
     # questions don't parrot stale numbers from earlier in the conversation.
     directive = headline = ""
-    ticker = _recent_ticker(history, _text)
+    # Market-overview questions must NOT borrow a ticker from earlier chat (else "thị
+    # trường sao?" gets answered about the last stock discussed).
+    is_market_q = any(k in _text.lower() for k in ("thị trường", "thi truong", "vn-index", "vnindex", "vn index"))
+    ticker = ta._extract_ticker(_text) if is_market_q else _recent_ticker(history, _text)
     if ticker:
         _snap, headline, directive = rec.ground(ticker)
+    # Enrich grounding with fundamentals (P/E/ROE when a ticker) + VN-Index context
+    # (cached) so the advisor answers valuation + market questions, not just price.
+    ctx_extra = []
+    mkt = ta.market_overview_text()
+    if mkt:
+        ctx_extra.append("Tổng quan thị trường: " + mkt)
+    if ticker:
+        fund = ta.fundamentals_text(ticker)
+        if fund:
+            ctx_extra.append(f"{ticker} — {fund}")
+    if ctx_extra:
+        directive = (directive + "\n" + "\n".join(ctx_extra)) if directive else "\n".join(ctx_extra)
 
     system = {
         "role": "system",
         "content": ("Bạn là trợ lý phân tích chứng khoán Việt Nam, trả lời ngắn gọn bằng tiếng Việt, xưng 'em'. "
+                    "Trả lời TRỰC TIẾP đúng câu hỏi mới nhất; KHÔNG lặp lại khuyến nghị/báo cáo cũ trừ khi được hỏi lại. "
+                    "Khi được hỏi P/E, P/B, ROE, định giá hoặc tổng quan thị trường, dùng đúng số trong phần dữ liệu cung cấp. "
                     "Giải thích khái niệm/chỉ báo (RSI, MACD, P/E...) khi được hỏi. " + rec.ANTI_HALLUCINATION +
                     " Đây là công cụ nghiên cứu, KHÔNG phải lời khuyên đầu tư."),
     }
@@ -399,7 +416,7 @@ def trading_chat(body: ChatIn, db: Session = Depends(get_db)):
 
     # --- Sage: @gọi trong chat → chạy pipeline (tư vấn) hoặc hội thoại (giải đáp), real-time ---
     if _is_advisor_call(body.text):
-        if ticker and (cmd == "analyze" or ta.is_opinion(body.text)):
+        if ticker and ticker in body.text and (cmd == "analyze" or ta.is_opinion(body.text)):
             key = _key(ticker, None)
             job = _jobs.get(key)
             if not (job and job["status"] == "running"):

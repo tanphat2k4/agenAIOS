@@ -30,7 +30,7 @@ _TOOLS = ["analyze_vn_stock", "get_vn_stock_snapshot", "get_vn_news", "get_vn_ex
 _PIPELINE = [
     {"id": "agent-ck-analyst", "name": "Analyst", "role": "Phân tích dữ liệu", "initial": "A", "color": "#3B5BDB",
      "io": "Thu thập + tóm tắt giá/tin/khối ngoại",
-     "persona": "Bạn là Analyst — thu thập và tóm tắt dữ liệu thị trường (giá, chỉ báo kỹ thuật, tin tức, khối ngoại) từ dữ liệu được cung cấp. Nêu súc tích các điểm chính, KHÔNG bịa số."},
+     "persona": "Bạn là Analyst — thu thập và tóm tắt dữ liệu thị trường (giá, chỉ báo kỹ thuật, cơ bản P/E/P/B/ROE, tổng quan VN-Index, tin tức, khối ngoại) từ dữ liệu được cung cấp. Nêu súc tích các điểm chính, KHÔNG bịa số."},
     {"id": "agent-ck-research", "name": "Researcher", "role": "Tranh luận Bull/Bear", "initial": "R", "color": "#E8A33D",
      "io": "Tranh luận mua vs bán",
      "persona": "Bạn là Researcher — tranh luận hai chiều: phe Mua (bull) và phe Bán (bear) dựa trên phần phân tích dữ liệu. Nêu luận điểm mạnh nhất mỗi phe."},
@@ -405,7 +405,14 @@ def run_pipeline(db: Session, ticker: str) -> tuple[list, bool, str]:
         snap = ta.snapshot(ticker)
         headline, directive = price_headline(ticker, snap), ""
     rt = (directive + "\n\n") if directive else ""
-    data = f"{rt}GIÁ + CHỈ BÁO:\n{snap}\n\nTIN TỨC:\n{ta.news(ticker)[:1200]}\n\nKHỐI NGOẠI:\n{ta.extras(ticker)[:900]}"
+    fund = ta.fundamentals_text(ticker)      # P/E, P/B, ROE, ROA, EPS (vnstock KBS, yearly)
+    mkt = ta.market_overview_text()          # VN-Index + change%
+    data = (
+        f"{rt}GIÁ + CHỈ BÁO:\n{snap}\n\n"
+        + (f"CƠ BẢN:\n{fund}\n\n" if fund else "")
+        + (f"TỔNG QUAN THỊ TRƯỜNG:\n{mkt}\n\n" if mkt else "")
+        + f"TIN TỨC:\n{ta.news(ticker)[:1200]}\n\nKHỐI NGOẠI:\n{ta.extras(ticker)[:900]}"
+    )
 
     outputs: list = []
     prior = ""
