@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useStore } from '@/store'
 import { assetUrl } from '@/api/client'
 import { Hover } from '@/components/ui/Hover'
@@ -76,6 +76,34 @@ export function Channels() {
   const memberAvatars = members.slice(0, 4)
   const draftHas = !!s.draft.trim()
   const wfTotal = active?.wfTotal || 0
+
+  // ---- @mention autocomplete (real channel members) ----
+  const [mention, setMention] = useState<{ q: string; start: number } | null>(null)
+  const mentionMatches = mention ? members.filter((m) => m.name.toLowerCase().includes(mention.q.toLowerCase())).slice(0, 8) : []
+  const onComposerChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const el = e.target
+    s.onDraft(el.value)
+    el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 140) + 'px'
+    const pos = el.selectionStart || 0
+    const m = el.value.slice(0, pos).match(/(?:^|\s)@([^\s@]*)$/)
+    setMention(m ? { q: m[1], start: pos - m[1].length - 1 } : null)
+  }
+  const pickMention = (name: string) => {
+    if (!mention) return
+    const v = s.draft
+    s.onDraft(v.slice(0, mention.start) + '@' + name + ' ' + v.slice(mention.start + 1 + mention.q.length))
+    setMention(null)
+    setTimeout(() => composerRef.current?.focus(), 0)
+  }
+  const onMentionBtn = () => {
+    const el = composerRef.current
+    const v = s.draft
+    const pos = el?.selectionStart ?? v.length
+    const ins = pos > 0 && !/\s/.test(v[pos - 1]) ? ' @' : '@'
+    s.onDraft(v.slice(0, pos) + ins + v.slice(pos))
+    setMention({ q: '', start: pos + ins.length - 1 })
+    setTimeout(() => { el?.focus(); const np = pos + ins.length; el?.setSelectionRange(np, np) }, 0)
+  }
 
   useEffect(() => { if (composerRef.current && !s.draft) composerRef.current.style.height = 'auto' }, [s.draft])
 
@@ -190,7 +218,21 @@ export function Channels() {
         </div>
 
         {/* composer */}
-        <div style={{ flex: 'none', padding: '10px 22px 18px' }}>
+        <div style={{ flex: 'none', padding: '10px 22px 18px', position: 'relative' }}>
+          {mention && mentionMatches.length > 0 && (
+            <div style={{ position: 'absolute', bottom: 'calc(100% - 10px)', left: 22, right: 22, maxHeight: 224, overflowY: 'auto', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, boxShadow: '0 12px 32px rgba(22,32,28,.18)', padding: 6, zIndex: 30, animation: 'pop .15s ease both' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)', padding: '6px 10px 4px' }}>Thành viên · {mentionMatches.length}</div>
+              {mentionMatches.map((m, i) => (
+                <Hover key={i} onClick={() => pickMention(m.name)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 10, cursor: 'pointer' }} hover={{ background: 'var(--jade-soft)' }}>
+                  <div style={{ width: 28, height: 28, borderRadius: 99, background: m.color, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flex: 'none' }}>{m.initial}</div>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>{m.name}</div>
+                    <div style={{ fontSize: 10.5, color: 'var(--placeholder)' }}>{m.isAgent ? 'Agent' : (m.role || 'Thành viên')}</div>
+                  </div>
+                </Hover>
+              ))}
+            </div>
+          )}
           <div style={{ background: 'var(--surface)', border: `1.5px solid ${s.composerFocused ? 'var(--jade)' : 'var(--line)'}`, borderRadius: 22, padding: '10px 12px 8px', transition: 'border-color .15s' }}>
             <input ref={fileInputRef} type="file" style={{ display: 'none' }} onChange={onFileChosen} />
             {s.pendingAttach && (
@@ -208,8 +250,14 @@ export function Channels() {
             <textarea
               ref={composerRef}
               value={s.draft}
-              onChange={(e) => { s.onDraft(e.target.value); const el = e.target; el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 140) + 'px' }}
-              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); s.sendMessage() } }}
+              onChange={onComposerChange}
+              onKeyDown={(e) => {
+                if (mention && mentionMatches.length) {
+                  if (e.key === 'Enter') { e.preventDefault(); pickMention(mentionMatches[0].name); return }
+                  if (e.key === 'Escape') { e.preventDefault(); setMention(null); return }
+                }
+                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); s.sendMessage() }
+              }}
               onFocus={s.onComposerFocus} onBlur={s.onComposerBlur}
               placeholder={`Nhắn cho ${active?.name}…`} rows={1}
               style={{ width: '100%', border: 'none', outline: 'none', resize: 'none', fontFamily: 'inherit', fontSize: 15, lineHeight: 1.5, color: 'var(--ink)', background: 'transparent', maxHeight: 140, minHeight: 24, padding: '4px 6px' }}
@@ -226,7 +274,7 @@ export function Channels() {
                     </div>
                   )}
                 </div>
-                <Hover as="button" title="Mention" onClick={s.insertMention} style={{ width: 36, height: 36, borderRadius: 99, border: 'none', background: 'transparent', color: 'var(--ink-2)', cursor: 'pointer', fontSize: 17, fontWeight: 700 }} hover={{ background: 'var(--jade-soft)', color: 'var(--jade-deep)' }}>@</Hover>
+                <Hover as="button" title="Nhắc tên (@)" onClick={onMentionBtn} style={{ width: 36, height: 36, borderRadius: 99, border: 'none', background: 'transparent', color: 'var(--ink-2)', cursor: 'pointer', fontSize: 17, fontWeight: 700 }} hover={{ background: 'var(--jade-soft)', color: 'var(--jade-deep)' }}>@</Hover>
                 <span style={{ fontSize: 11, color: 'var(--placeholder)', marginLeft: 8 }}>Enter để gửi · Shift+Enter xuống dòng · @ để mention</span>
               </div>
               <button onClick={s.sendMessage} title="Gửi" style={{ width: 42, height: 42, borderRadius: 99, border: 'none', background: draftHas || s.pendingAttach ? 'var(--jade)' : '#9FBDB1', color: '#fff', cursor: draftHas || s.pendingAttach ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 6px 16px rgba(40,64,158,.22)', transition: 'background .15s' }}><span className="material-symbols-rounded" style={{ fontSize: 21 }}>send</span></button>
