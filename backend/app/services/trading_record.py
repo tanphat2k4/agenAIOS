@@ -330,13 +330,30 @@ def live_directive(ticker: str, snap: str) -> str:
 
 
 def ground(ticker: str) -> tuple[str, str, str]:
-    """Fetch the live snapshot for a ticker → (snapshot, headline, directive).
-    Returns ('','','') if data is unavailable so callers fall back to plain mode."""
+    """Ground a stock answer → (snapshot, headline, directive). Prefers the LIVE
+    intraday price (vnstock price_board) over the EOD close so the analyst has
+    today's price; falls back to the EOD snapshot if real-time is unavailable.
+    Returns ('','','') if no data at all."""
     from app.services import tradingagents as ta
 
     snap = ta.snapshot(ticker)
     if not snap or snap.startswith(("Lỗi", "Hết", "Không", "Tích hợp", "(")):
         return "", "", ""
+    rt = ta.realtime_quote(ticker)
+    if rt and rt.get("price"):
+        rsi = _snap_field(snap, "rsi")
+        sma50, sma200 = _snap_field(snap, "close_50_sma"), _snap_field(snap, "close_200_sma")
+        chs = f"{rt['change']:+}" if rt.get("change") is not None else "?"
+        headline = f"📍 {ticker} đang ở {rt['price']} (real-time, {chs}% từ tham chiếu {rt['ref']})" + (f" · RSI {rsi}" if rsi else "")
+        directive = (
+            f"⚠️ GIÁ REAL-TIME ({ticker}) TRONG PHIÊN HÔM NAY: khớp {rt['price']} ({chs}% so với tham chiếu {rt['ref']}). "
+            f"Mở {rt['open']} · Cao {rt['high']} · Thấp {rt['low']} · Trần {rt['ceiling']} / Sàn {rt['floor']} · "
+            f"KL {rt['vol']:,} · khối ngoại ròng {rt['foreign_net']:+,} cp. "
+            f"Chỉ báo (phiên gần nhất): RSI {rsi}, SMA50 {sma50}, SMA200 {sma200}. "
+            f"BẮT BUỘC: GIÁ HIỆN TẠI = {rt['price']} (real-time trong phiên hôm nay — TUYỆT ĐỐI KHÔNG nói 'không có dữ liệu hôm nay'). "
+            f"Các mức thấp hơn {rt['price']} là vùng mua/hỗ trợ, không phải giá hiện tại. Đưa ra khuyến nghị vùng giá rõ ràng."
+        )
+        return snap, headline, directive
     return snap, price_headline(ticker, snap), live_directive(ticker, snap)
 
 

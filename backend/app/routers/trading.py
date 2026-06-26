@@ -52,6 +52,34 @@ def macro(db: Session = Depends(get_db)):
     return {"text": text}
 
 
+@router.get("/advise/{ticker}")
+def advise(ticker: str, db: Session = Depends(get_db)):
+    """Real-time advisor: a grounded BUY/SELL/HOLD recommendation built on the LIVE
+    intraday price (vnstock price_board) + EOD indicators — not the stale EOD close."""
+    ticker = ticker.strip().upper()
+    _snap, headline, directive = rec.ground(ticker)
+    rec.record_mcp_call(db, "snapshot", ok=bool(directive))
+    if not directive:
+        return {"ticker": ticker, "text": f"Chưa lấy được dữ liệu cho **{ticker}**. Kiểm tra lại mã hoặc thử lại sau."}
+    system = {
+        "role": "system",
+        "content": ("Bạn là cố vấn phân tích chứng khoán Việt Nam, trả lời bằng tiếng Việt, xưng 'em'. "
+                    + rec.ANTI_HALLUCINATION + " Đây là công cụ nghiên cứu, KHÔNG phải lời khuyên đầu tư."),
+    }
+    user = {
+        "role": "user",
+        "content": (f"Dựa trên dữ liệu real-time, đưa khuyến nghị cho {ticker}: nêu rõ **MUA / BÁN / GIỮ**, "
+                    "vùng giá mua hợp lý, vùng chốt lời & cắt lỗ, kèm lý do ngắn gọn (RSI, xu hướng SMA50/200, khối ngoại). "
+                    "Trình bày gọn bằng gạch đầu dòng, kết bằng 1 dòng nhận định tổng thể."),
+    }
+    messages = [system, user, {"role": "system", "content": directive}]
+    try:
+        out = ninerouter.chat(messages, temperature=0.3, max_tokens=600)["content"] or "(không có nội dung)"
+    except Exception as exc:  # noqa: BLE001
+        out = f"Lỗi gọi LLM: {exc}"
+    return {"ticker": ticker, "text": f"{headline}\n\n{out}"}
+
+
 # ------------------- full analysis (slow, LLM) — background -------------------
 _jobs: dict[str, dict] = {}
 

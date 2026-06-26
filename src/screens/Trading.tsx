@@ -6,8 +6,9 @@ import { MarkdownLite } from '@/components/MarkdownLite'
 
 const SUGGEST = ['FPT', 'VCB', 'HPG', 'VNM', 'MWG', 'SSI', 'VHM', 'VIB']
 
-type Action = { key: string; label: string; slow?: boolean }
+type Action = { key: string; label: string; slow?: boolean; advisor?: boolean }
 const ACTIONS: Action[] = [
+  { key: 'advise', label: 'Cố vấn real-time', advisor: true },
   { key: 'snapshot', label: 'Giá + chỉ báo' },
   { key: 'news', label: 'Tin tức' },
   { key: 'extras', label: 'Khối ngoại' },
@@ -28,7 +29,7 @@ export function Trading() {
     if (!t && key !== 'macro') return
     setBusy(true)
     setTitle(label + (key === 'macro' ? '' : ' · ' + t))
-    setResult('Đang tải…')
+    setResult(key === 'advise' ? '💡 Cố vấn đang phân tích theo giá real-time…' : 'Đang tải…')
     try {
       const path =
         key === 'macro' ? '/trading/macro'
@@ -134,11 +135,13 @@ export function Trading() {
               <Hover as="button" key={a.key} onClick={() => onAction(a)} disabled={busy}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 7, border: 'none', borderRadius: 99, padding: '10px 16px',
-                  font: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1,
-                  background: a.slow ? 'var(--jade)' : 'var(--jade-soft)', color: a.slow ? '#fff' : 'var(--jade-deep)',
+                  font: 'inherit', fontSize: 12.5, fontWeight: a.advisor ? 700 : 600, cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1,
+                  background: a.advisor ? 'linear-gradient(135deg,#F0B429,#DE911D)' : a.slow ? 'var(--jade)' : 'var(--jade-soft)',
+                  color: a.advisor || a.slow ? '#fff' : 'var(--jade-deep)',
+                  boxShadow: a.advisor ? '0 2px 10px rgba(222,145,29,.35)' : 'none',
                 }}
-                hover={busy ? {} : { background: a.slow ? 'var(--jade-deep)' : 'var(--jade)', color: '#fff' }}>
-                {a.slow ? '🧠' : '⚡'} {a.label}
+                hover={busy ? {} : { background: a.advisor ? 'linear-gradient(135deg,#DE911D,#CB6E17)' : a.slow ? 'var(--jade-deep)' : 'var(--jade)', color: '#fff' }}>
+                {a.advisor ? '💡' : a.slow ? '🧠' : '⚡'} {a.label}
               </Hover>
             ))}
           </div>

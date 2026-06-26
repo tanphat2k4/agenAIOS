@@ -8,6 +8,7 @@ come from TRADINGAGENTS_* settings.
 Commands (per vn_cli.py): analyze | snapshot | extras | macro | news
 """
 
+import json
 import os
 import re
 import subprocess
@@ -91,6 +92,66 @@ def _run(args: list[str], timeout: int) -> str:
 
 def snapshot(ticker: str) -> str:
     return _run(["snapshot", ticker], timeout=150)
+
+
+# Live intraday quote via vnstock price_board — the EOD snapshot lacks today's
+# in-session price, so this fills the "không có dữ liệu hôm nay" gap.
+_REALTIME_SCRIPT = (
+    "import json,warnings,io,contextlib,sys\n"
+    "warnings.filterwarnings('ignore')\n"
+    "tk=sys.argv[1]; buf=io.StringIO()\n"
+    "try:\n"
+    "    with contextlib.redirect_stdout(buf),contextlib.redirect_stderr(buf):\n"
+    "        from vnstock import Trading\n"
+    "        df=Trading(source='VCI').price_board([tk])\n"
+    "    r=df.iloc[0]\n"
+    "    def g(a,b):\n"
+    "        try:\n"
+    "            v=r[(a,b)]; return float(v) if v is not None else None\n"
+    "        except Exception: return None\n"
+    "    out={'match':g('match','match_price'),'ref':g('listing','ref_price'),'ceiling':g('listing','ceiling'),"
+    "'floor':g('listing','floor'),'open':g('match','open_price'),'high':g('match','highest'),'low':g('match','lowest'),"
+    "'vol':g('match','accumulated_volume'),'fbuy':g('match','foreign_buy_volume'),'fsell':g('match','foreign_sell_volume')}\n"
+    "    print('JSON:'+json.dumps(out))\n"
+    "except Exception as e: print('ERR:'+str(e)[:200])\n"
+)
+
+
+def realtime_quote(ticker: str) -> dict | None:
+    """Live intraday quote (prices in thousands) via vnstock price_board, or None
+    if unavailable (off-hours data issue / network). Robust: never raises."""
+    if not settings.TRADINGAGENTS_ENABLED:
+        return None
+    ticker = ticker.upper()
+    try:
+        proc = subprocess.run(
+            [settings.TRADINGAGENTS_PYTHON, "-c", _REALTIME_SCRIPT, ticker],
+            cwd=settings.TRADINGAGENTS_CWD, capture_output=True, text=True,
+            encoding="utf-8", errors="replace", timeout=45, env=_CLEAN_ENV,
+        )
+    except Exception:  # noqa: BLE001
+        return None
+    line = next((ln for ln in (proc.stdout or "").splitlines() if ln.startswith("JSON:")), None)
+    if not line:
+        return None
+    try:
+        d = json.loads(line[5:])
+    except Exception:  # noqa: BLE001
+        return None
+    if not d.get("match") or not d.get("ref"):
+        return None
+
+    def thou(v: float | None) -> float | None:
+        return round(v / 1000, 2) if v else None
+
+    price, ref = thou(d["match"]), thou(d["ref"])
+    change = round((price - ref) / ref * 100, 2) if price and ref else None
+    return {
+        "price": price, "ref": ref, "change": change,
+        "open": thou(d.get("open")), "high": thou(d.get("high")), "low": thou(d.get("low")),
+        "ceiling": thou(d.get("ceiling")), "floor": thou(d.get("floor")),
+        "vol": int(d.get("vol") or 0), "foreign_net": int((d.get("fbuy") or 0) - (d.get("fsell") or 0)),
+    }
 
 
 def news(ticker: str, days: int = 7) -> str:
