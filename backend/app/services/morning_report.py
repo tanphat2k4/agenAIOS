@@ -39,9 +39,12 @@ def _to_raw(text: str) -> list:
 
 def _build_prompt() -> str:
     return (
-        "Báo cáo sáng chứng khoán VN cho watchlist " + ", ".join(WATCHLIST) +
-        ": mỗi mã 1-2 dòng (giá mới nhất + xu hướng + lưu ý ngắn), thêm 1 dòng tỷ giá USD/VND. "
-        "Ngắn gọn, định dạng Telegram (bullet •, KHÔNG dùng bảng markdown)."
+        "Viết báo cáo sáng chứng khoán VN cho watchlist " + ", ".join(WATCHLIST) + ". "
+        "Mở đầu bằng 1 dòng TÓM TẮT NHANH tâm lý thị trường chung. "
+        "Rồi mỗi mã đúng 1 dòng: mã + giá + xu hướng (dùng 📈/📉) + khuyến nghị NGẮN (mua/giữ/bán/quan sát). "
+        "Kết bằng 1 dòng tỷ giá USD/VND. "
+        "ĐỊNH DẠNG (gửi qua Telegram — KHÔNG render markdown): TUYỆT ĐỐI không dùng ký tự ** hoặc # hoặc *; "
+        "viết chữ thường, dùng emoji + bullet •. Tối đa ~12 dòng, lời lẽ đời thường, dễ hiểu, tránh biệt ngữ."
     )
 
 
@@ -55,9 +58,9 @@ def _fallback_briefing(db: Session) -> str:
     data = "VĨ MÔ:\n" + macro + "\n\n" + "\n\n".join(f"{t}:\n{s}" for t, s in snaps.items())
     try:
         return ninerouter.chat(
-            [{"role": "system", "content": "Biên tập bản tin sáng CK VN, markdown ngắn: 1-2 câu vĩ mô rồi mỗi mã 1 dòng. KHÔNG bịa số."},
-             {"role": "user", "content": data[:6500]}],
-            max_tokens=700,
+            [{"role": "system", "content": "Biên tập bản tin sáng CK VN, ngắn gọn: 1-2 câu vĩ mô rồi mỗi mã 1 dòng. " + rec.ANTI_HALLUCINATION},
+             {"role": "user", "content": "CHỈ dùng số trong dữ liệu sau:\n" + data[:6500]}],
+            temperature=0.3, max_tokens=700,
         )["content"] or "(không có nội dung)"
     except Exception as exc:  # noqa: BLE001
         return f"(Lỗi 9Router: {exc})"
@@ -100,7 +103,7 @@ def run_morning_report(db: Session, *, manual: bool = False) -> str:
         ))
         c = ensure_morning_cron(db)
         c.last = now_hm()
-        c.spark = (list(c.spark or [0, 0, 0, 0, 0, 0, 0]) + [len(WATCHLIST)])[-7:]
+        c.spark = (list(c.spark or [0, 0, 0, 0, 0, 0, 0]) + [1])[-7:]  # 1 lần chạy (không phải số mã)
         db.commit()
     except Exception:  # noqa: BLE001
         db.rollback()

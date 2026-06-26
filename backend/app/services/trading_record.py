@@ -249,8 +249,72 @@ def record_analysis(db: Session, ticker: str, *, report: str = "", duration: str
         db.rollback()
 
 
+# ----------------------- anti-hallucination grounding (ALL models) -----------------------
+# Every LLM that comments on a stock must reason ONLY from fetched data, must
+# never invent numbers, and must not confuse the current price with target
+# levels. This rule + the deterministic price line below are shared by every
+# trading LLM path (chat, 5-agent pipeline, analyze TL;DR, morning briefing).
+ANTI_HALLUCINATION = (
+    "TUYỆT ĐỐI KHÔNG bịa số: chỉ dùng giá / chỉ báo / con số CÓ trong dữ liệu được cung cấp bên dưới. "
+    "Không suy đoán số liệu thiếu — nếu thiếu thì nói rõ 'không đủ dữ liệu', KHÔNG đoán bừa. "
+    "GIÁ HIỆN TẠI = giá đóng cửa mới nhất trong dữ liệu; KHÔNG nhầm nó với vùng mua / hỗ trợ / mục tiêu (thường thấp hơn)."
+)
+
+
+def _snap_field(snap: str, label: str) -> str | None:
+    m = re.search(rf"{re.escape(label)}\s*\|\s*([\d.,]+)", snap or "")
+    return m.group(1) if m else None
+
+
+def price_headline(ticker: str, snap: str) -> str:
+    """Deterministic, always-correct current-price line — prepended to single-ticker
+    outputs so the user sees the right price even if a model drifts."""
+    close = _snap_field(snap, "Close")
+    if not close:
+        return ""
+    rsi, sma50, sma200 = _snap_field(snap, "rsi"), _snap_field(snap, "close_50_sma"), _snap_field(snap, "close_200_sma")
+    trend = ""
+    try:
+        c = float(close.replace(",", "."))
+        if sma50 and sma200:
+            s50, s200 = float(sma50.replace(",", ".")), float(sma200.replace(",", "."))
+            trend = ("dưới SMA50 & SMA200 (xu hướng giảm)" if c < s50 and c < s200
+                     else "trên SMA50 & SMA200 (xu hướng tăng)" if c > s50 and c > s200
+                     else "đan xen quanh SMA (đi ngang)")
+    except ValueError:
+        pass
+    bits = [f"📍 {ticker} đang ở {close}"] + ([f"RSI {rsi}"] if rsi else []) + ([trend] if trend else [])
+    return " · ".join(bits)
+
+
+def live_directive(ticker: str, snap: str) -> str:
+    """A forceful, parsed price fact that overrides stale numbers in the context."""
+    close = _snap_field(snap, "Close")
+    if not close:
+        return ""
+    rsi, sma50, sma200 = _snap_field(snap, "rsi"), _snap_field(snap, "close_50_sma"), _snap_field(snap, "close_200_sma")
+    extra = " ".join(filter(None, [f"RSI {rsi}." if rsi else "", f"SMA50 {sma50}." if sma50 else "", f"SMA200 {sma200}." if sma200 else ""]))
+    return (
+        f"⚠️ GIÁ HIỆN TẠI của {ticker} = {close} (đóng cửa gần nhất). {extra} "
+        f"BẮT BUỘC: mọi nhận định 'giá hiện tại' / 'đang ở vùng' phải dùng đúng {close}. "
+        f"Các mức THẤP HƠN {close} (vùng mua / hỗ trợ / đáy) KHÔNG phải giá hiện tại — "
+        f"TUYỆT ĐỐI không nói {ticker} 'đang ở đáy' tại mức thấp hơn {close}. Số cũ lệch thì sửa theo {close}."
+    )
+
+
+def ground(ticker: str) -> tuple[str, str, str]:
+    """Fetch the live snapshot for a ticker → (snapshot, headline, directive).
+    Returns ('','','') if data is unavailable so callers fall back to plain mode."""
+    from app.services import tradingagents as ta
+
+    snap = ta.snapshot(ticker)
+    if not snap or snap.startswith(("Lỗi", "Hết", "Không", "Tích hợp", "(")):
+        return "", "", ""
+    return snap, price_headline(ticker, snap), live_directive(ticker, snap)
+
+
 # ----------------------- the real 5-agent pipeline -----------------------
-def run_pipeline(db: Session, ticker: str) -> tuple[list, bool]:
+def run_pipeline(db: Session, ticker: str) -> tuple[list, bool, str]:
     """Run the 5 distinct agents in sequence via 9Router, each a real LLM call.
 
     Returns ([(agent_dict, output_text), ...], ok). Records workflow steps,
@@ -263,20 +327,22 @@ def run_pipeline(db: Session, ticker: str) -> tuple[list, bool]:
 
     ticker = ticker.upper()
     t0 = time.time()
-    data = f"GIÁ + CHỈ BÁO:\n{ta.snapshot(ticker)}\n\nTIN TỨC:\n{ta.news(ticker)}\n\nKHỐI NGOẠI:\n{ta.extras(ticker)}"
+    snap = ta.snapshot(ticker)  # kept intact (never truncated) so price/indicators always reach the agents
+    headline = price_headline(ticker, snap)
+    data = f"GIÁ + CHỈ BÁO:\n{snap}\n\nTIN TỨC:\n{ta.news(ticker)[:1200]}\n\nKHỐI NGOẠI:\n{ta.extras(ticker)[:900]}"
 
     outputs: list = []
     prior = ""
     ok = True
     for a in _PIPELINE:
-        ctx = f"Mã cổ phiếu: {ticker}\n\nDỮ LIỆU THỊ TRƯỜNG:\n{data[:2400]}"
+        ctx = f"Mã cổ phiếu: {ticker}\n\nDỮ LIỆU THỊ TRƯỜNG (CHỈ dùng số trong đây):\n{data}"
         if prior:
             ctx += f"\n\nKẾT QUẢ CÁC BƯỚC TRƯỚC:\n{prior[:2600]}"
         try:
             reply = ninerouter.chat(
-                [{"role": "system", "content": a["persona"] + " Trả lời ngắn gọn bằng tiếng Việt, tối đa 6 câu."},
+                [{"role": "system", "content": a["persona"] + " " + ANTI_HALLUCINATION + " Trả lời ngắn gọn bằng tiếng Việt, tối đa 6 câu."},
                  {"role": "user", "content": ctx}],
-                max_tokens=420,
+                temperature=0.3, max_tokens=420,
             )["content"] or "(không có nội dung)"
         except Exception as exc:  # noqa: BLE001
             reply = f"Lỗi 9Router: {exc}"
@@ -284,11 +350,11 @@ def run_pipeline(db: Session, ticker: str) -> tuple[list, bool]:
         outputs.append((a, reply))
         prior += f"\n[{a['name']} — {a['role']}]:\n{reply}\n"
 
-    _record_pipeline(db, ticker, outputs, f"{int(time.time() - t0)}s", ok)
-    return outputs, ok
+    _record_pipeline(db, ticker, outputs, f"{int(time.time() - t0)}s", ok, headline)
+    return outputs, ok, headline
 
 
-def _record_pipeline(db: Session, ticker: str, outputs: list, dur: str, ok: bool) -> None:
+def _record_pipeline(db: Session, ticker: str, outputs: list, dur: str, ok: bool, headline: str = "") -> None:
     try:
         # workflow: each step shows its agent's real output excerpt
         w = ensure_analysis_workflow(db)
@@ -309,7 +375,7 @@ def _record_pipeline(db: Session, ticker: str, outputs: list, dur: str, ok: bool
                 sort=_top_sort(db, SessionLog),
             ))
         # knowledge: the full chained 5-agent report
-        report = f"# Pipeline 5-agent — {ticker}\n\n" + "\n\n".join(f"## {a['name']} · {a['role']}\n\n{txt}" for a, txt in outputs)
+        report = f"# Pipeline 5-agent — {ticker}\n\n" + (headline + "\n\n" if headline else "") + "\n\n".join(f"## {a['name']} · {a['role']}\n\n{txt}" for a, txt in outputs)
         db.add(KnowledgeEntry(
             id=uid("kn"), type="knowledge", title=f"Pipeline {ticker} ({now_hm()})", repo="trading/vn",
             ver="v1", time="vừa xong", private=False,

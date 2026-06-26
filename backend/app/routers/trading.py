@@ -120,8 +120,9 @@ def start_pipeline(body: PipelineIn):
     def work() -> None:
         db = SessionLocal()
         try:
-            outputs, ok = rec.run_pipeline(db, body.ticker)
-            text = "\n\n".join(f"### {a['name']} · {a['role']}\n{txt}" for a, txt in outputs)
+            outputs, ok, headline = rec.run_pipeline(db, body.ticker)
+            body_text = "\n\n".join(f"### {a['name']} · {a['role']}\n{txt}" for a, txt in outputs)
+            text = (headline + "\n\n" + body_text) if headline else body_text
             _jobs[key] = {"status": "done" if ok else "error", "result": text}
         except Exception as exc:  # noqa: BLE001
             _jobs[key] = {"status": "error", "result": f"Lỗi: {exc}"}
@@ -209,6 +210,32 @@ def _save_agent_msg(db: Session, channel_id: str, text: str) -> dict:
     return row_to_dict(m, exclude={"channel_id"})
 
 
+def _summarize_for_chat(ticker: str, full: str) -> str:
+    """Condense a long TradingAgents report into a short, plain-Vietnamese,
+    chat-friendly briefing (no markdown symbols). Falls back to the full text
+    if 9Router is unavailable — never blocks the analysis from surfacing."""
+    system = {
+        "role": "system",
+        "content": ("Bạn là biên tập viên bản tin chứng khoán VN, viết tiếng Việt đời thường, NGẮN GỌN, dễ hiểu. "
+                    "TUYỆT ĐỐI không dùng ký tự ** hoặc # hoặc * hoặc bảng markdown. " + rec.ANTI_HALLUCINATION +
+                    " Chỉ rút gọn đúng nội dung báo cáo, KHÔNG thêm số liệu mới."),
+    }
+    user = {
+        "role": "user",
+        "content": (
+            f"Rút gọn báo cáo phân tích {ticker} dưới đây thành bản tin ngắn dễ đọc:\n"
+            f"Dòng 1: '⭐ {ticker} — Khuyến nghị: <Mua / Tăng tỷ trọng / Giữ / Giảm tỷ trọng / Bán>' kèm 1 câu lý do chính.\n"
+            "Rồi 4-6 dòng, mỗi dòng bắt đầu bằng '• ': vùng giá mua/bán hợp lý, rủi ro chính, chất xúc tác sắp tới, lưu ý thanh khoản.\n"
+            "Tối đa ~10 dòng, chữ thường, tránh biệt ngữ nặng.\n\n" + (full or "")[:6500]
+        ),
+    }
+    try:
+        out = ninerouter.chat([system, user], temperature=0.3, max_tokens=600)["content"]
+        return out.strip() if out else full
+    except Exception:  # noqa: BLE001
+        return full
+
+
 def _bg_analyze(channel_id: str, ticker: str) -> None:
     import time
 
@@ -224,11 +251,32 @@ def _bg_analyze(channel_id: str, ticker: str) -> None:
         except Exception as exc:  # noqa: BLE001
             text = f"Lỗi phân tích {ticker}: {exc}"
             ok = False
-        _save_agent_msg(db, channel_id, text)
+        # Channel shows a deterministic price line + a clean TL;DR; full report kept in Knowledge.
+        if ok:
+            _snap, headline, _dir = rec.ground(ticker)
+            chat_text = (headline + "\n\n" if headline else "") + _summarize_for_chat(ticker, text) + "\n\n📄 Báo cáo đầy đủ đã lưu trong Kiến thức. Nghiên cứu, không phải lời khuyên đầu tư."
+        else:
+            chat_text = text
+        _save_agent_msg(db, channel_id, chat_text)
         _jobs[key] = {"status": "done", "result": text}
         rec.record_analysis(db, ticker, report=text, duration=f"{int(time.time() - t0)}s", ok=ok)
     finally:
         db.close()
+
+
+def _recent_ticker(history: list, current_text: str) -> str | None:
+    """The stock most recently asked about — prefer short user messages over the
+    noisy ALL-CAPS soup of agent reports, so follow-ups ('nên giữ không?') still
+    resolve to the right ticker."""
+    t = ta._extract_ticker(current_text)
+    if t:
+        return t
+    for mm in reversed(history):
+        if not mm.isAgent:
+            cand = ta._extract_ticker(_text_from_raw(mm.raw))
+            if cand:
+                return cand
+    return None
 
 
 def _llm_reply(db: Session, channel_id: str, _text: str) -> str:
@@ -239,17 +287,32 @@ def _llm_reply(db: Session, channel_id: str, _text: str) -> str:
     for mm in history:
         t = _text_from_raw(mm.raw)
         if t:
+            if mm.isAgent and len(t) > 500:  # trim long reports so stale numbers don't drown the live price
+                t = t[:500] + "…"
             convo.append({"role": "assistant" if mm.isAgent else "user", "content": t})
+
+    # Ground the answer in the CURRENT live price (snapshot ~2s) so follow-up
+    # questions don't parrot stale numbers from earlier in the conversation.
+    directive = headline = ""
+    ticker = _recent_ticker(history, _text)
+    if ticker:
+        _snap, headline, directive = rec.ground(ticker)
+
     system = {
         "role": "system",
         "content": ("Bạn là trợ lý phân tích chứng khoán Việt Nam, trả lời ngắn gọn bằng tiếng Việt, xưng 'em'. "
-                    "Giải thích khái niệm/chỉ báo (RSI, MACD, P/E...) khi được hỏi. Đây là công cụ nghiên cứu, "
-                    "KHÔNG phải lời khuyên đầu tư."),
+                    "Giải thích khái niệm/chỉ báo (RSI, MACD, P/E...) khi được hỏi. " + rec.ANTI_HALLUCINATION +
+                    " Đây là công cụ nghiên cứu, KHÔNG phải lời khuyên đầu tư."),
     }
+    # The price directive goes LAST (most salient) so it overrides stale conversation numbers.
+    messages = [system, *convo] + ([{"role": "system", "content": directive}] if directive else [])
     try:
-        return ninerouter.chat([system, *convo], max_tokens=500)["content"] or "(không có nội dung)"
+        # low temperature → reliably obeys the live-price directive over stale chat numbers
+        out = ninerouter.chat(messages, temperature=0.2, max_tokens=500)["content"] or "(không có nội dung)"
     except Exception as exc:  # noqa: BLE001
         return f"Lỗi 9Router: {exc}"
+    # Prepend our own always-correct price line so the user never sees a wrong current price.
+    return (headline + "\n\n" + out) if headline else out
 
 
 class ChatIn(BaseModel):
