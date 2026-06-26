@@ -304,6 +304,74 @@ def market_overview_text() -> str:
     return f"VN-Index {m['close']:.2f} {arrow}{abs(chg)}% (cao {m['high']:.2f} · thấp {m['low']:.2f} · KL {m['vol'] / 1e6:.0f} triệu cp)"
 
 
+# ---- watchlist screening ("nên mua mã nào") — one price_board call + parallel fundamentals ----
+SCREEN_LIST = ["FPT", "VCB", "HPG", "VNM", "MWG", "SSI", "VHM", "VIB", "TCB", "MBB"]
+
+_PRICEBOARD_SCRIPT = (
+    "import json,warnings,io,contextlib,sys\n"
+    "warnings.filterwarnings('ignore')\n"
+    "tks=sys.argv[1].split(','); buf=io.StringIO()\n"
+    "try:\n"
+    "    with contextlib.redirect_stdout(buf),contextlib.redirect_stderr(buf):\n"
+    "        from vnstock import Trading\n"
+    "        pb=Trading(source='VCI').price_board(tks)\n"
+    "    def g(r,a,b):\n"
+    "        try:\n"
+    "            v=r[(a,b)]; return float(v) if v==v and v is not None else None\n"
+    "        except Exception: return None\n"
+    "    out={}\n"
+    "    for i in range(len(pb)):\n"
+    "        r=pb.iloc[i]\n"
+    "        try: tk=str(r[('listing','symbol')])\n"
+    "        except Exception: tk=tks[i] if i<len(tks) else str(i)\n"
+    "        m=g(r,'match','match_price'); ref=g(r,'listing','ref_price')\n"
+    "        fb=g(r,'match','foreign_buy_volume') or 0; fs=g(r,'match','foreign_sell_volume') or 0\n"
+    "        out[tk]={'price':round(m/1000,2) if m else None,'change':round((m-ref)/ref*100,2) if m and ref else None,"
+    "'vol':int(g(r,'match','accumulated_volume') or 0),'foreign_net':int(fb-fs)}\n"
+    "    print('JSON:'+json.dumps(out))\n"
+    "except Exception as e: print('ERR:'+str(e)[:200])\n"
+)
+
+
+def _price_board_batch(tickers: list[str]) -> dict:
+    """All tickers' live quote in ONE price_board call → {ticker: {price,change,vol,foreign_net}}."""
+    if not settings.TRADINGAGENTS_ENABLED or not tickers:
+        return {}
+    try:
+        proc = subprocess.run(
+            [settings.TRADINGAGENTS_PYTHON, "-c", _PRICEBOARD_SCRIPT, ",".join(tickers)],
+            cwd=settings.TRADINGAGENTS_CWD, capture_output=True, text=True,
+            encoding="utf-8", errors="replace", timeout=60, env=_CLEAN_ENV,
+        )
+    except Exception:  # noqa: BLE001
+        return {}
+    line = next((ln for ln in (proc.stdout or "").splitlines() if ln.startswith("JSON:")), None)
+    try:
+        return json.loads(line[5:]) if line else {}
+    except Exception:  # noqa: BLE001
+        return {}
+
+
+def screen_watchlist(tickers: list[str] | None = None) -> list[dict]:
+    """Screen the watchlist: live quote (1 call) + fundamentals (parallel, cached) per ticker.
+    Returns [{ticker, price, change, vol, foreign_net, pe, roe}, ...]. Never raises."""
+    tickers = tickers or SCREEN_LIST
+    quotes = _price_board_batch(tickers)
+    valid = [tk for tk in tickers if quotes.get(tk) and quotes[tk].get("price") is not None]
+    funds: dict = {}
+    if valid:
+        from concurrent.futures import ThreadPoolExecutor
+        try:
+            with ThreadPoolExecutor(max_workers=6) as ex:
+                funds = dict(zip(valid, ex.map(lambda t: fundamentals(t) or {}, valid)))
+        except Exception:  # noqa: BLE001
+            funds = {}
+    return [
+        {"ticker": tk, **quotes[tk], "pe": funds.get(tk, {}).get("pe"), "roe": funds.get(tk, {}).get("roe")}
+        for tk in valid
+    ]
+
+
 def news(ticker: str, days: int = 7) -> str:
     return _run(["news", ticker, str(days)], timeout=150)
 

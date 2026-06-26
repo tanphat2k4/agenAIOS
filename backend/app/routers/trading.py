@@ -229,6 +229,16 @@ def _is_advisor_call(text: str) -> bool:
     return bool(re.search(r"\bsage\b", t)) or "cố vấn" in t or "covan" in t
 
 
+_SCREEN_KW = ("mua gì", "cổ phiếu gì", "cổ phiếu nào", "mã gì", "mã nào", "nên mua gì", "gợi ý mã",
+              "gợi ý mua", "chọn mã", "lọc mã", "đáng mua", "con nào", "mua con", "mã nào ngon")
+
+
+def _wants_screening(text: str) -> bool:
+    """True if the user asks WHICH stock to buy (watchlist screen), not about one ticker."""
+    t = (text or "").lower()
+    return any(k in t for k in _SCREEN_KW)
+
+
 def _summarize_for_chat(ticker: str, full: str) -> str:
     """Condense a long TradingAgents report into a short, plain-Vietnamese,
     chat-friendly briefing (no markdown symbols). Falls back to the full text
@@ -385,6 +395,49 @@ def _bg_advise(channel_id: str, ticker: str, question: str) -> None:
         db.close()
 
 
+def _bg_screen(channel_id: str, question: str) -> None:
+    """Sage screening: rank the watchlist (live quote + fundamentals) to answer 'nên mua mã nào'."""
+    key = _key("SCREEN", None)
+    db = SessionLocal()
+    try:
+        rows = ta.screen_watchlist()
+        if not rows:
+            _save_advisor_msg(db, channel_id, "Chưa lấy được dữ liệu watchlist, anh thử lại sau nhé.")
+            _jobs[key] = {"status": "done", "result": "empty"}
+            return
+        tbl = "\n".join(
+            f"{r['ticker']}: giá {r['price']} ({r['change']:+}%), KL {r['vol']:,}, khối ngoại {r['foreign_net']:+,} cp, "
+            f"P/E {r.get('pe', '?')}, ROE {r.get('roe', '?')}%" for r in rows
+        )
+        mkt = ta.market_overview_text()
+        system = {
+            "role": "system",
+            "content": (f"{rec.ADVISOR['persona']} {rec.ANTI_HALLUCINATION} "
+                        "Chỉ dùng các mã + số trong danh sách, KHÔNG bịa mã ngoài danh sách. Công cụ nghiên cứu, KHÔNG phải lời khuyên đầu tư."),
+        }
+        user = {
+            "role": "user",
+            "content": (f"Câu hỏi của anh: {question}\n\n"
+                        + (f"Tổng quan: {mkt}\n\n" if mkt else "")
+                        + f"Dữ liệu real-time watchlist hôm nay:\n{tbl}\n\n"
+                        "Xếp hạng 3-4 mã ĐÁNG MUA NHẤT lúc này — cân nhắc động lượng giá, khối ngoại mua ròng, "
+                        "định giá (P/E thấp + ROE cao). Mỗi mã 1-2 câu lý do + vùng giá tham khảo. "
+                        "Nêu 1-2 mã NÊN TRÁNH và vì sao. Gọn bằng gạch đầu dòng, kết bằng 1 dòng cảnh báo rủi ro."),
+        }
+        try:
+            synth = ninerouter.chat([system, user], temperature=0.3, max_tokens=750)["content"] or "(không có nội dung)"
+        except Exception as exc:  # noqa: BLE001
+            synth = f"(không tổng hợp được: {exc})"
+        head = "📊 Lọc watchlist" + (f" · {mkt}" if mkt else "")
+        _save_advisor_msg(db, channel_id, f"{head}\n\n{synth}")
+        _jobs[key] = {"status": "done", "result": "ok"}
+    except Exception as exc:  # noqa: BLE001
+        _save_advisor_msg(db, channel_id, f"{rec.ADVISOR['name']} gặp lỗi khi lọc mã: {exc}")
+        _jobs[key] = {"status": "error", "result": str(exc)}
+    finally:
+        db.close()
+
+
 class ChatIn(BaseModel):
     channel_id: str = TRADING_CHANNEL_ID
     text: str
@@ -414,9 +467,21 @@ def trading_chat(body: ChatIn, db: Session = Depends(get_db)):
     ensure_trading_channel(db)
     cmd, ticker = ta.classify(body.text)
 
-    # --- Sage: @gọi trong chat → chạy pipeline (tư vấn) hoặc hội thoại (giải đáp), real-time ---
+    # --- Sage: @gọi trong chat → screening / pipeline tư vấn / hội thoại, đều real-time ---
     if _is_advisor_call(body.text):
-        if ticker and ticker in body.text and (cmd == "analyze" or ta.is_opinion(body.text)):
+        has_ticker = bool(ticker and ticker in body.text)
+        # "nên mua mã nào?" (không nêu mã cụ thể) → lọc & xếp hạng watchlist
+        if not has_ticker and _wants_screening(body.text):
+            key = _key("SCREEN", None)
+            job = _jobs.get(key)
+            if not (job and job["status"] == "running"):
+                _jobs[key] = {"status": "running", "result": None}
+                interim = _save_advisor_msg(db, cid, f"📊 **{rec.ADVISOR['name']}** đang lọc watchlist (giá real-time + cơ bản) để chọn mã đáng mua, chờ chút…")
+                threading.Thread(target=_bg_screen, args=(cid, body.text), daemon=True).start()
+                return {"messages": [interim], "analyzing": "SCREEN"}
+            return {"messages": [_save_advisor_msg(db, cid, "Em đang lọc rồi, chờ chút nhé.")], "analyzing": "SCREEN"}
+        # mã cụ thể + ý kiến/phân tích → chạy pipeline 5-agent
+        if has_ticker and (cmd == "analyze" or ta.is_opinion(body.text)):
             key = _key(ticker, None)
             job = _jobs.get(key)
             if not (job and job["status"] == "running"):
