@@ -358,16 +358,16 @@ def live_directive(ticker: str, snap: str) -> str:
     )
 
 
-def ground(ticker: str) -> tuple[str, str, str]:
-    """Ground a stock answer → (snapshot, headline, directive). Prefers the LIVE
-    intraday price (vnstock price_board) over the EOD close so the analyst has
-    today's price; falls back to the EOD snapshot if real-time is unavailable.
-    Returns ('','','') if no data at all."""
+def ground(ticker: str) -> tuple[str, str, str, float | None]:
+    """Ground a stock answer → (snapshot, headline, directive, live_price). Prefers the LIVE
+    intraday price (vnstock price_board) over the EOD close so the analyst has today's price;
+    falls back to the EOD snapshot if real-time is unavailable. live_price (thousands) is the
+    real-time match price or None. Returns ('','','',None) if no data at all."""
     from app.services import tradingagents as ta
 
     snap = ta.snapshot(ticker)
     if not snap or snap.startswith(("Lỗi", "Hết", "Không", "Tích hợp", "(")):
-        return "", "", ""
+        return "", "", "", None
     rt = ta.realtime_quote(ticker)
     if rt and rt.get("price"):
         rsi = _snap_field(snap, "rsi")
@@ -382,8 +382,8 @@ def ground(ticker: str) -> tuple[str, str, str]:
             f"BẮT BUỘC: GIÁ HIỆN TẠI = {rt['price']} (real-time trong phiên hôm nay — TUYỆT ĐỐI KHÔNG nói 'không có dữ liệu hôm nay'). "
             f"Các mức thấp hơn {rt['price']} là vùng mua/hỗ trợ, không phải giá hiện tại. Đưa ra khuyến nghị vùng giá rõ ràng."
         )
-        return snap, headline, directive
-    return snap, price_headline(ticker, snap), live_directive(ticker, snap)
+        return snap, headline, directive, rt["price"]
+    return snap, price_headline(ticker, snap), live_directive(ticker, snap), None
 
 
 # ----------------------- the real 5-agent pipeline -----------------------
@@ -400,12 +400,12 @@ def run_pipeline(db: Session, ticker: str) -> tuple[list, bool, str]:
 
     ticker = ticker.upper()
     t0 = time.time()
-    snap, headline, directive = ground(ticker)  # prefer LIVE intraday price over EOD close
+    snap, headline, directive, price = ground(ticker)  # prefer LIVE intraday price over EOD close
     if not snap:  # data unavailable → fall back to EOD snapshot
         snap = ta.snapshot(ticker)
-        headline, directive = price_headline(ticker, snap), ""
+        headline, directive, price = price_headline(ticker, snap), "", None
     rt = (directive + "\n\n") if directive else ""
-    fund = ta.fundamentals_text(ticker)      # P/E, P/B, ROE, ROA, EPS (vnstock KBS, yearly)
+    fund = ta.fundamentals_text(ticker, price)   # P/E, P/B (live nếu có giá), ROE, ROA, EPS
     mkt = ta.market_overview_text()          # VN-Index + change%
     data = (
         f"{rt}GIÁ + CHỈ BÁO:\n{snap}\n\n"

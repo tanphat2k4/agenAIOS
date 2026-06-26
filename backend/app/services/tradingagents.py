@@ -179,7 +179,7 @@ _FUNDAMENTAL_SCRIPT = (
     "    cols=[str(c) for c in r.columns]\n"
     "    yrs=sorted([c for c in cols if 'Năm' in c])\n"
     "    latest=yrs[-1] if yrs else cols[-1]\n"
-    "    want={'pe_ratio':'pe','pb_ratio':'pb','roe':'roe','roa':'roa','trailing_eps':'eps','net_interest_margin_ni':'nim','dividend_yield':'divy'}\n"
+    "    want={'pe_ratio':'pe','pb_ratio':'pb','roe':'roe','roa':'roa','trailing_eps':'eps','book_value_per_share_b':'bvps','net_interest_margin_ni':'nim','dividend_yield':'divy'}\n"
     "    out={'year':str(latest).split('-')[0]}\n"
     "    for _,row in r.iterrows():\n"
     "        iid=str(row.get('item_id',''))\n"
@@ -223,15 +223,21 @@ def fundamentals(ticker: str) -> dict | None:
     return d
 
 
-def fundamentals_text(ticker: str) -> str:
-    """One-line fundamentals summary, or '' if unavailable."""
+def fundamentals_text(ticker: str, price: float | None = None) -> str:
+    """One-line fundamentals summary. If `price` (live, in thousands) is given, P/E & P/B are
+    computed LIVE from it (price×1000 / EPS or BVPS); otherwise the reported annual ratios."""
     f = fundamentals(ticker)
     if not f:
         return ""
+    live = bool(price and price > 0)
     parts = []
-    if f.get("pe") is not None:
+    if live and f.get("eps"):
+        parts.append(f"P/E {round(price * 1000 / f['eps'], 2)} (live)")
+    elif f.get("pe") is not None:
         parts.append(f"P/E {f['pe']}")
-    if f.get("pb") is not None:
+    if live and f.get("bvps"):
+        parts.append(f"P/B {round(price * 1000 / f['bvps'], 2)} (live)")
+    elif f.get("pb") is not None:
         parts.append(f"P/B {f['pb']}")
     if f.get("roe") is not None:
         parts.append(f"ROE {f['roe']}%")
@@ -241,7 +247,8 @@ def fundamentals_text(ticker: str) -> str:
         parts.append(f"EPS {int(f['eps']):,}đ")
     if f.get("nim") is not None:
         parts.append(f"NIM {f['nim']}%")
-    return (f"Cơ bản (năm {f.get('year', '?')}): " + " · ".join(parts)) if parts else ""
+    base = "Cơ bản" if live else f"Cơ bản (năm {f.get('year', '?')})"
+    return (f"{base}: " + " · ".join(parts)) if parts else ""
 
 
 # ---- market overview (VN-Index) via vnstock ----
@@ -370,6 +377,127 @@ def screen_watchlist(tickers: list[str] | None = None) -> list[dict]:
         {"ticker": tk, **quotes[tk], "pe": funds.get(tk, {}).get("pe"), "roe": funds.get(tk, {}).get("roe")}
         for tk in valid
     ]
+
+
+# ---- whole-market screen (toàn sàn HOSE + ngành + RSI/SMA) ----
+_HOSE_UNIVERSE_SCRIPT = (
+    "import json,warnings,io,contextlib\n"
+    "warnings.filterwarnings('ignore')\n"
+    "buf=io.StringIO()\n"
+    "try:\n"
+    "    with contextlib.redirect_stdout(buf),contextlib.redirect_stderr(buf):\n"
+    "        from vnstock import Listing\n"
+    "        bx=Listing().symbols_by_exchange(); ind=Listing().symbols_by_industries()\n"
+    "    hose=bx[(bx['exchange']=='HOSE') & (bx['type']=='stock')]['symbol'].tolist()\n"
+    "    im=dict(zip(ind['symbol'], ind['industry_name']))\n"
+    "    print('JSON:'+json.dumps({s: im.get(s,'Khác') for s in hose}, ensure_ascii=False))\n"
+    "except Exception as e: print('ERR:'+str(e)[:200])\n"
+)
+
+_INDICATORS_SCRIPT = (
+    "import json,warnings,io,contextlib,sys\n"
+    "warnings.filterwarnings('ignore')\n"
+    "tk=sys.argv[1]; buf=io.StringIO()\n"
+    "try:\n"
+    "    with contextlib.redirect_stdout(buf),contextlib.redirect_stderr(buf):\n"
+    "        from vnstock import Quote\n"
+    "        from datetime import date,timedelta\n"
+    "        end=date.today().isoformat(); start=(date.today()-timedelta(days=420)).isoformat()\n"
+    "        h=Quote(symbol=tk,source='VCI').history(start=start,end=end,interval='1D')\n"
+    "    c=h['close']\n"
+    "    if str(h['time'].iloc[-1])[:10]==end: c=c.iloc[:-1]\n"   # drop today's incomplete bar → match snapshot
+    "    if len(c)<20: print('ERR:short'); sys.exit()\n"
+    "    d=c.diff(); g=d.clip(lower=0).ewm(alpha=1/14,adjust=False).mean(); l=(-d.clip(upper=0)).ewm(alpha=1/14,adjust=False).mean()\n"
+    "    rsi=100-100/(1+g/l)\n"
+    "    out={'rsi':round(float(rsi.iloc[-1]),1),'sma50':round(float(c.tail(50).mean()),2),'sma200':round(float(c.tail(200).mean()),2) if len(c)>=200 else None}\n"
+    "    print('JSON:'+json.dumps(out))\n"
+    "except Exception as e: print('ERR:'+str(e)[:200])\n"
+)
+
+_universe_cache: dict = {}
+
+
+def _hose_universe() -> dict:
+    """{symbol: industry_name} for HOSE stocks, cached per-process (stable intraday)."""
+    if _universe_cache:
+        return _universe_cache
+    if not settings.TRADINGAGENTS_ENABLED:
+        return {}
+    try:
+        proc = subprocess.run([settings.TRADINGAGENTS_PYTHON, "-c", _HOSE_UNIVERSE_SCRIPT],
+                              cwd=settings.TRADINGAGENTS_CWD, capture_output=True, text=True,
+                              encoding="utf-8", errors="replace", timeout=60, env=_CLEAN_ENV)
+    except Exception:  # noqa: BLE001
+        return {}
+    line = next((ln for ln in (proc.stdout or "").splitlines() if ln.startswith("JSON:")), None)
+    try:
+        _universe_cache.update(json.loads(line[5:]) if line else {})
+    except Exception:  # noqa: BLE001
+        return {}
+    return _universe_cache
+
+
+def indicators(ticker: str) -> dict | None:
+    """RSI(14, Wilder) + SMA50/SMA200 to the last CLOSED session (matches the snapshot), or None."""
+    if not settings.TRADINGAGENTS_ENABLED:
+        return None
+    try:
+        proc = subprocess.run([settings.TRADINGAGENTS_PYTHON, "-c", _INDICATORS_SCRIPT, ticker.upper()],
+                              cwd=settings.TRADINGAGENTS_CWD, capture_output=True, text=True,
+                              encoding="utf-8", errors="replace", timeout=45, env=_CLEAN_ENV)
+    except Exception:  # noqa: BLE001
+        return None
+    line = next((ln for ln in (proc.stdout or "").splitlines() if ln.startswith("JSON:")), None)
+    try:
+        return json.loads(line[5:]) if line else None
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def market_screen(top_n: int = 16, min_vol: int = 300_000) -> dict:
+    """Screen the WHOLE HOSE board: 1 price_board call → liquid filter + first-pass rank
+    (momentum + foreign flow) → sector ranking → top-N finalists enriched with live P/E + RSI/SMA
+    (parallel). Returns {sectors, weakSectors, finalists, nLiquid}. Never raises."""
+    uni = _hose_universe()
+    if not uni:
+        return {}
+    quotes = _price_board_batch(list(uni.keys()))
+    rows = []
+    for tk, q in quotes.items():
+        if not q.get("price") or (q.get("vol") or 0) < min_vol:
+            continue
+        score = (q.get("change") or 0) + (q.get("foreign_net") or 0) / 500_000.0
+        rows.append({"ticker": tk, "industry": uni.get(tk, "Khác"), **q, "score": round(score, 2)})
+    if not rows:
+        return {}
+    rows.sort(key=lambda r: r["score"], reverse=True)
+    # sectors: avg change + total foreign per industry (≥2 mã)
+    sec: dict = {}
+    for r in rows:
+        s = sec.setdefault(r["industry"], {"industry": r["industry"], "n": 0, "chg": 0.0, "fnet": 0})
+        s["n"] += 1
+        s["chg"] += r.get("change") or 0
+        s["fnet"] += r.get("foreign_net") or 0
+    sectors = sorted(
+        ({"industry": s["industry"], "avgChange": round(s["chg"] / s["n"], 2), "foreignNet": s["fnet"], "n": s["n"]}
+         for s in sec.values() if s["n"] >= 2),
+        key=lambda x: x["avgChange"], reverse=True,
+    )
+    # finalists: top-N by first-pass score → enrich with live P/E + RSI/SMA (parallel)
+    from concurrent.futures import ThreadPoolExecutor
+
+    def _enrich(r: dict) -> dict:
+        f = fundamentals(r["ticker"]) or {}
+        ind = indicators(r["ticker"]) or {}
+        live_pe = round(r["price"] * 1000 / f["eps"], 2) if r.get("price") and f.get("eps") else f.get("pe")
+        return {**r, "pe": live_pe, "roe": f.get("roe"), "rsi": ind.get("rsi"), "sma50": ind.get("sma50"), "sma200": ind.get("sma200")}
+
+    try:
+        with ThreadPoolExecutor(max_workers=8) as ex:
+            finalists = list(ex.map(_enrich, rows[:top_n]))
+    except Exception:  # noqa: BLE001
+        finalists = rows[:top_n]
+    return {"sectors": sectors[:6], "weakSectors": sectors[-3:], "finalists": finalists, "nLiquid": len(rows)}
 
 
 def news(ticker: str, days: int = 7) -> str:

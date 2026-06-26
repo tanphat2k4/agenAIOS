@@ -292,7 +292,7 @@ def _bg_analyze(channel_id: str, ticker: str) -> None:
             ok = False
         # Channel shows a deterministic price line + a clean TL;DR; full report kept in Knowledge.
         if ok:
-            _snap, headline, _dir = rec.ground(ticker)
+            _snap, headline, _dir, _price = rec.ground(ticker)
             chat_text = (headline + "\n\n" if headline else "") + _summarize_for_chat(ticker, text) + "\n\n📄 Báo cáo đầy đủ đã lưu trong Kiến thức. Nghiên cứu, không phải lời khuyên đầu tư."
         else:
             chat_text = text
@@ -333,12 +333,13 @@ def _llm_reply(db: Session, channel_id: str, _text: str) -> str:
     # Ground the answer in the CURRENT live price (snapshot ~2s) so follow-up
     # questions don't parrot stale numbers from earlier in the conversation.
     directive = headline = ""
+    price = None
     # Market-overview questions must NOT borrow a ticker from earlier chat (else "thị
     # trường sao?" gets answered about the last stock discussed).
     is_market_q = any(k in _text.lower() for k in ("thị trường", "thi truong", "vn-index", "vnindex", "vn index"))
     ticker = ta._extract_ticker(_text) if is_market_q else _recent_ticker(history, _text)
     if ticker:
-        _snap, headline, directive = rec.ground(ticker)
+        _snap, headline, directive, price = rec.ground(ticker)
     # Enrich grounding with fundamentals (P/E/ROE when a ticker) + VN-Index context
     # (cached) so the advisor answers valuation + market questions, not just price.
     ctx_extra = []
@@ -346,7 +347,7 @@ def _llm_reply(db: Session, channel_id: str, _text: str) -> str:
     if mkt:
         ctx_extra.append("Tổng quan thị trường: " + mkt)
     if ticker:
-        fund = ta.fundamentals_text(ticker)
+        fund = ta.fundamentals_text(ticker, price)
         if fund:
             ctx_extra.append(f"{ticker} — {fund}")
     if ctx_extra:
@@ -379,6 +380,7 @@ def _bg_advise(channel_id: str, ticker: str, question: str) -> None:
     try:
         outputs, _ok, headline = rec.run_pipeline(db, ticker)
         team = "\n".join(f"[{a['name']} · {a['role']}]: {txt}" for a, txt in outputs)
+        mkt = ta.market_overview_text()
         system = {
             "role": "system",
             "content": (f"{rec.ADVISOR['persona']} {rec.ANTI_HALLUCINATION} "
@@ -386,10 +388,16 @@ def _bg_advise(channel_id: str, ticker: str, question: str) -> None:
         }
         user = {
             "role": "user",
-            "content": (f"Câu hỏi của anh: {question}\n\nKết quả phân tích của team về {ticker} (đã dùng giá real-time):\n{team[:3200]}\n\n"
-                        "Tổng hợp giúp anh thành lời khuyên: **MUA / BÁN / GIỮ**, vùng giá mua hợp lý, vùng chốt lời & cắt lỗ, "
-                        "gợi ý tỷ trọng vốn (đừng all-in), 2-3 lý do chính (kỹ thuật + khối ngoại). "
-                        "Gọn bằng gạch đầu dòng, kết bằng 1 dòng cảnh báo rủi ro."),
+            "content": (f"Câu hỏi của anh: {question}\n\n"
+                        + (f"Bối cảnh thị trường: {mkt}\n\n" if mkt else "")
+                        + f"Kết quả phân tích của team về {ticker} (giá real-time):\n{team[:3200]}\n\n"
+                        "Tổng hợp thành lời khuyên có cấu trúc, mỗi mục 1 dòng gạch đầu dòng:\n"
+                        "• **Khuyến nghị**: MUA / BÁN / GIỮ\n"
+                        "• **Ngắn hạn (lướt sóng)**: vùng mua, chốt lời, cắt lỗ + tín hiệu kỹ thuật (RSI/SMA)\n"
+                        "• **Dài hạn (đầu tư)**: định giá (P/E/ROE) + triển vọng — có nên tích lũy không\n"
+                        "• **Quản lý vốn**: tỷ trọng đề xuất (đừng all-in)\n"
+                        "• **Thị trường**: 1 câu VN-Index ảnh hưởng thế nào tới quyết định\n"
+                        "Kết bằng 1 dòng cảnh báo rủi ro."),
         }
         try:
             synth = ninerouter.chat([system, user, {"role": "system", "content": headline}], temperature=0.3, max_tokens=650)["content"] or ""
@@ -410,16 +418,18 @@ def _bg_screen(channel_id: str, question: str) -> None:
     key = _key("SCREEN", None)
     db = SessionLocal()
     try:
-        rows = ta.screen_watchlist()
-        if not rows:
-            _save_advisor_msg(db, channel_id, "Chưa lấy được dữ liệu watchlist, anh thử lại sau nhé.")
+        scr = ta.market_screen()
+        if not scr or not scr.get("finalists"):
+            _save_advisor_msg(db, channel_id, "Chưa lấy được dữ liệu sàn, anh thử lại sau nhé.")
             _jobs[key] = {"status": "done", "result": "empty"}
             return
-        tbl = "\n".join(
-            f"{r['ticker']}: giá {r['price']} ({r['change']:+}%), KL {r['vol']:,}, khối ngoại {r['foreign_net']:+,} cp, "
-            f"P/E {r.get('pe', '?')}, ROE {r.get('roe', '?')}%" for r in rows
-        )
         mkt = ta.market_overview_text()
+        sectors = "\n".join(f"{s['industry']}: TB {s['avgChange']:+}%, khối ngoại {s['foreignNet']:+,} ({s['n']} mã)" for s in scr["sectors"])
+        fin = "\n".join(
+            f"{f['ticker']} [{f['industry']}]: {f['price']} ({f['change']:+}%), khối ngoại {f['foreign_net']:+,}, "
+            f"P/E {f.get('pe', '?')}, ROE {f.get('roe', '?')}%, RSI {f.get('rsi', '?')}, "
+            f"{'trên' if f.get('sma50') and f['price'] > f['sma50'] else 'dưới'} SMA50" for f in scr["finalists"]
+        )
         system = {
             "role": "system",
             "content": (f"{rec.ADVISOR['persona']} {rec.ANTI_HALLUCINATION} "
@@ -428,17 +438,18 @@ def _bg_screen(channel_id: str, question: str) -> None:
         user = {
             "role": "user",
             "content": (f"Câu hỏi của anh: {question}\n\n"
-                        + (f"Tổng quan: {mkt}\n\n" if mkt else "")
-                        + f"Dữ liệu real-time watchlist hôm nay:\n{tbl}\n\n"
-                        "Xếp hạng 3-4 mã ĐÁNG MUA NHẤT lúc này — cân nhắc động lượng giá, khối ngoại mua ròng, "
-                        "định giá (P/E thấp + ROE cao). Mỗi mã 1-2 câu lý do + vùng giá tham khảo. "
-                        "Nêu 1-2 mã NÊN TRÁNH và vì sao. Gọn bằng gạch đầu dòng, kết bằng 1 dòng cảnh báo rủi ro."),
+                        + (f"Bối cảnh: {mkt}\n\n" if mkt else "")
+                        + f"Ngành MẠNH nhất sàn hôm nay:\n{sectors}\n\n"
+                        + f"Ứng viên (đã lọc {scr['nLiquid']} mã thanh khoản toàn sàn HOSE):\n{fin}\n\n"
+                        "Chọn 3-5 mã ĐÁNG MUA NHẤT — ưu tiên ngành mạnh + khối ngoại mua ròng + định giá hợp lý (P/E thấp, ROE cao) "
+                        "+ RSI chưa quá mua (>70 là rủi ro). Mỗi mã: hành động + vùng giá + lý do 1-2 câu. "
+                        "Nêu 1-2 mã/ngành NÊN TRÁNH. Gọn bằng gạch đầu dòng, kết bằng 1 dòng cảnh báo rủi ro."),
         }
         try:
-            synth = ninerouter.chat([system, user], temperature=0.3, max_tokens=750)["content"] or "(không có nội dung)"
+            synth = ninerouter.chat([system, user], temperature=0.3, max_tokens=800)["content"] or "(không có nội dung)"
         except Exception as exc:  # noqa: BLE001
             synth = f"(không tổng hợp được: {exc})"
-        head = "📊 Lọc watchlist" + (f" · {mkt}" if mkt else "")
+        head = f"📊 Lọc toàn sàn HOSE ({scr['nLiquid']} mã thanh khoản)" + (f" · {mkt}" if mkt else "")
         _save_advisor_msg(db, channel_id, f"{head}\n\n{synth}")
         _jobs[key] = {"status": "done", "result": "ok"}
     except Exception as exc:  # noqa: BLE001
@@ -480,16 +491,26 @@ def trading_chat(body: ChatIn, db: Session = Depends(get_db), current: User = De
     # --- Sage: @gọi trong chat → screening / pipeline tư vấn / hội thoại, đều real-time ---
     if _is_advisor_call(body.text):
         has_ticker = bool(ticker and ticker in body.text)
-        # "danh mục / lời lỗ?" → báo P/L real-time từ holdings của user
+        # "danh mục / lời lỗ?" → P/L real-time + phân tích từng mã (async)
         if _wants_portfolio(body.text):
-            return {"messages": [_save_advisor_msg(db, cid, _portfolio_report_text(_get_holdings(current)))], "analyzing": None}
+            holdings = _get_holdings(current)
+            if not holdings:
+                return {"messages": [_save_advisor_msg(db, cid, "Anh chưa có mã nào trong danh mục. Thêm ở mục **Danh mục của tôi** (màn Chứng khoán) rồi hỏi lại em nhé.")], "analyzing": None}
+            key = _key("PORTFOLIO", None)
+            job = _jobs.get(key)
+            if not (job and job["status"] == "running"):
+                _jobs[key] = {"status": "running", "result": None}
+                interim = _save_advisor_msg(db, cid, f"💼 **{rec.ADVISOR['name']}** đang xem danh mục + phân tích từng mã trên giá real-time…")
+                threading.Thread(target=_bg_portfolio, args=(cid, holdings, body.text), daemon=True).start()
+                return {"messages": [interim], "analyzing": "PORTFOLIO"}
+            return {"messages": [_save_advisor_msg(db, cid, "Em đang xem danh mục rồi, chờ chút nhé.")], "analyzing": "PORTFOLIO"}
         # "nên mua mã nào?" (không nêu mã cụ thể) → lọc & xếp hạng watchlist
         if not has_ticker and _wants_screening(body.text):
             key = _key("SCREEN", None)
             job = _jobs.get(key)
             if not (job and job["status"] == "running"):
                 _jobs[key] = {"status": "running", "result": None}
-                interim = _save_advisor_msg(db, cid, f"📊 **{rec.ADVISOR['name']}** đang lọc watchlist (giá real-time + cơ bản) để chọn mã đáng mua, chờ chút…")
+                interim = _save_advisor_msg(db, cid, f"📊 **{rec.ADVISOR['name']}** đang lọc TOÀN SÀN HOSE (giá real-time + cơ bản + kỹ thuật + ngành) để chọn mã, chờ ~1 phút…")
                 threading.Thread(target=_bg_screen, args=(cid, body.text), daemon=True).start()
                 return {"messages": [interim], "analyzing": "SCREEN"}
             return {"messages": [_save_advisor_msg(db, cid, "Em đang lọc rồi, chờ chút nhé.")], "analyzing": "SCREEN"}
@@ -572,21 +593,47 @@ def _portfolio_pnl(holdings: list) -> dict:
     }
 
 
-def _portfolio_report_text(holdings: list) -> str:
-    """Deterministic real-time P/L report for chat (exact numbers + rule-based action flags)."""
-    if not holdings:
-        return ("Anh chưa có mã nào trong danh mục. Thêm ở mục **Danh mục của tôi** (màn Chứng khoán) rồi hỏi lại em nhé.")
-    p = _portfolio_pnl(holdings)
-    lines = ["💼 **Danh mục của anh** — giá real-time\n"]
-    for r in p["holdings"]:
-        dot = "🟢" if r["pnlM"] >= 0 else "🔴"
-        flag = " ⚠️ cân nhắc cắt lỗ" if r["pnlPct"] <= -7 else (" 💰 cân nhắc chốt lời một phần" if r["pnlPct"] >= 15 else "")
-        price = r["price"] if r["price"] is not None else r["avg"]
-        lines.append(f"{dot} {r['ticker']}: {r['qty']:,.0f}cp · vốn {r['avg']} → {price} · {r['pnlM']:+}tr ({r['pnlPct']:+}%){flag}")
-    tdot = "🟢" if p["totalPnlM"] >= 0 else "🔴"
-    lines.append(f"\n{tdot} **Tổng**: vốn {p['totalCostM']}tr → {p['totalValueM']}tr · lãi/lỗ {p['totalPnlM']:+}tr ({p['totalPnlPct']:+}%)")
-    lines.append("\n⚠️ Công cụ nghiên cứu, không phải lời khuyên đầu tư.")
-    return "\n".join(lines)
+def _bg_portfolio(channel_id: str, holdings: list, question: str) -> None:
+    """Portfolio report: deterministic real-time P/L table (exact numbers, no hallucination)
+    + an LLM analysis of EACH position (giữ/bán/mua thêm) and the whole portfolio. Posts as Sage."""
+    key = _key("PORTFOLIO", None)
+    db = SessionLocal()
+    try:
+        p = _portfolio_pnl(holdings)
+        lines = ["💼 **Danh mục của anh** — giá real-time\n"]
+        for r in p["holdings"]:
+            dot = "🟢" if r["pnlM"] >= 0 else "🔴"
+            price = r["price"] if r["price"] is not None else r["avg"]
+            lines.append(f"{dot} {r['ticker']}: {r['qty']:,.0f}cp · vốn {r['avg']} → {price} · {r['pnlM']:+}tr ({r['pnlPct']:+}%)")
+        tdot = "🟢" if p["totalPnlM"] >= 0 else "🔴"
+        lines.append(f"\n{tdot} **Tổng**: vốn {p['totalCostM']}tr → {p['totalValueM']}tr · lãi/lỗ {p['totalPnlM']:+}tr ({p['totalPnlPct']:+}%)")
+        table = "\n".join(lines)
+        # LLM analysis per position + portfolio-level (grounded in the exact P/L above)
+        mkt = ta.market_overview_text()
+        tv = p["totalValueM"] or 1
+        data = "\n".join(
+            f"{r['ticker']}: P/L {r['pnlPct']:+}% (vốn {r['avg']} → {r['price']}, phiên {(r['change'] or 0):+}%), tỷ trọng {round(r['valueM'] / tv * 100)}%"
+            for r in p["holdings"]
+        )
+        system = {"role": "system", "content": (f"{rec.ADVISOR['persona']} {rec.ANTI_HALLUCINATION} "
+                                                 "Chỉ dùng số đã cho, KHÔNG bịa. Công cụ nghiên cứu, KHÔNG phải lời khuyên đầu tư.")}
+        user = {"role": "user", "content": (
+            (f"Bối cảnh: {mkt}\n\n" if mkt else "")
+            + f"Danh mục của anh (tổng P/L {p['totalPnlPct']:+}%):\n{data}\n\n"
+            "Với TỪNG mã, cho 1 hành động: **GIỮ / BÁN bớt / MUA THÊM** + lý do 1 câu (dựa P/L, đà giá phiên, tỷ trọng). "
+            "Rồi 1-2 câu nhận định tổng danh mục (đa dạng hoá, mã cần chú ý gấp). Gọn, gạch đầu dòng.")}
+        try:
+            comm = ninerouter.chat([system, user], temperature=0.3, max_tokens=600)["content"] or ""
+        except Exception as exc:  # noqa: BLE001
+            comm = f"(không phân tích được: {exc})"
+        final = table + (f"\n\n💬 **Nhận định:**\n{comm}" if comm.strip() else "") + "\n\n⚠️ Công cụ nghiên cứu, không phải lời khuyên đầu tư."
+        _save_advisor_msg(db, channel_id, final)
+        _jobs[key] = {"status": "done", "result": "ok"}
+    except Exception as exc:  # noqa: BLE001
+        _save_advisor_msg(db, channel_id, f"{rec.ADVISOR['name']} gặp lỗi khi xem danh mục: {exc}")
+        _jobs[key] = {"status": "error", "result": str(exc)}
+    finally:
+        db.close()
 
 
 @router.get("/portfolio")
