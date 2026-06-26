@@ -6,6 +6,10 @@ the result in-app. M1 = scaffolding (agents/room/channel/workflow) + batch trigg
 We do NOT touch the live music-system in WSL — only trigger + mirror.
 """
 
+import re
+import shlex
+import subprocess
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -123,6 +127,57 @@ def ensure_music_all(db: Session) -> None:
     ensure_music_channel(db)
     ensure_music_room(db)
     ensure_music_workflow(db)
+
+
+# ----------------------------- read the active batch (M2) -----------------------------
+_MUSIC_WS = "/root/.openclaw/workspaces/music-system"
+
+
+def _wsl_cat(path: str) -> str:
+    """Read a file from the live WSL music-system workspace (read-only)."""
+    try:
+        proc = subprocess.run(
+            ["wsl.exe", "-e", "bash", "-lc", f"cat {shlex.quote(path)} 2>/dev/null"],
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=20,
+        )
+        return proc.stdout or ""
+    except Exception:  # noqa: BLE001
+        return ""
+
+
+def _parse_lyrics(md: str) -> list:
+    """lyrics.md → songs, split on '## Bài N: <title>'."""
+    parts = re.split(r"(?m)^## Bài \d+:\s*(.+)$", md or "")
+    songs = []
+    for i in range(1, len(parts), 2):
+        title = parts[i].strip()
+        body = (parts[i + 1] if i + 1 < len(parts) else "").strip()
+        songs.append({"title": title, "lyrics": body[:4000]})
+    return songs
+
+
+def _parse_ranking(md: str) -> dict:
+    """score.md ranking lines ('🥇 <title> — <score> · <category> · …') → {title: {score, category}}."""
+    out: dict = {}
+    for line in (md or "").splitlines():
+        m = re.match(r"^\s*\S+\s+(.+?)\s+—\s+([\d.]+)\s*·\s*([^·\n]+)", line)
+        if m:
+            out[m.group(1).strip()] = {"score": m.group(2).strip(), "category": m.group(3).strip()}
+    return out
+
+
+def read_batch() -> dict:
+    """Surface the active music batch (songs + lyrics + hit-scores) for in-app review."""
+    batch_dir = (_wsl_cat(f"{_MUSIC_WS}/output/.active_batch") or "").strip().split("\n")[0].strip()
+    if not batch_dir:
+        return {"week": "", "songs": [], "count": 0, "note": "Chưa có batch active — chạy batch tuần trước đã."}
+    songs = _parse_lyrics(_wsl_cat(f"{batch_dir}/lyrics.md"))
+    ranking = _parse_ranking(_wsl_cat(f"{batch_dir}/score.md"))
+    for s in songs:
+        info = ranking.get(s["title"])
+        if info:
+            s.update(info)
+    return {"week": batch_dir.rsplit("/", 1)[-1], "songs": songs, "count": len(songs)}
 
 
 # ----------------------------- batch trigger -----------------------------

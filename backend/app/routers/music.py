@@ -93,3 +93,53 @@ def music_chat(body: ChatIn):
 @router.get("/chat")
 def music_chat_status():
     return _jobs.get("music|chat") or {"status": "idle", "result": None}
+
+
+# ----------------------- batch review + generate (M2) -----------------------
+@router.get("/batch/songs")
+def batch_songs():
+    """The active batch's songs (title + lyrics + hit-score) for in-app review."""
+    return music.read_batch()
+
+
+class GenIn(BaseModel):
+    title: str
+
+
+@router.post("/generate")
+def start_generate(body: GenIn):
+    """Relay 'generate bài <title>' to Beat — it runs run_generate.py (background, ~6'/song,
+    burns Suno credit) and pushes audio + a variant-pick gate to Telegram."""
+    key = "music|gen"
+    if (_jobs.get(key) or {}).get("status") == "running":
+        return {"status": "running"}
+    _jobs[key] = {"status": "running", "result": None}
+
+    def work() -> None:
+        from app.services import openclaw
+
+        db = SessionLocal()
+        try:
+            reply, _delivered = openclaw.send_agent(
+                f"generate bài {body.title}", agent=music.MUSIC_AGENT, deliver=True, timeout=300,
+            )
+            text = reply or f"🎵 Đã gửi lệnh generate bài '{body.title}' cho Beat (đang tạo ~6 phút)."
+            db.add(Message(
+                id=uid("m"), channel_id=music.CHANNEL_ID, authorName=_BOT[0], time=now_hm(),
+                avatarInitial=_BOT[1], avatarColor=_BOT[2], isAgent=True, raw=rec.md_to_blocks(text),
+                sort=next_sort(db, Message),
+            ))
+            db.commit()
+            _jobs[key] = {"status": "done", "result": text}
+        except Exception as exc:  # noqa: BLE001
+            _jobs[key] = {"status": "error", "result": f"Lỗi: {exc}"}
+        finally:
+            db.close()
+
+    threading.Thread(target=work, daemon=True).start()
+    return {"status": "running", "title": body.title}
+
+
+@router.get("/generate")
+def generate_status():
+    return _jobs.get("music|gen") or {"status": "idle", "result": None}
