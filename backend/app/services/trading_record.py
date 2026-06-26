@@ -26,23 +26,39 @@ ROOM_ID = "room-chung-khoan"
 _AGENT = ("Phân tích CK", "T", "#0A7B52")  # the chat assistant (P2)
 _TOOLS = ["analyze_vn_stock", "get_vn_stock_snapshot", "get_vn_news", "get_vn_extras", "get_vn_macro"]
 
-# The 5 distinct pipeline agents — each owns one workflow step and runs one real 9Router call.
+# Full TradingAgents-style pipeline (ảnh 1): 4 data agents (parallel) → Bull/Bear debate (parallel)
+# → Backtest (deterministic) → Risk → Trader → Portfolio (sequential). Each LLM agent = 1 real 9Router call.
 _PIPELINE = [
-    {"id": "agent-ck-analyst", "name": "Analyst", "role": "Phân tích dữ liệu", "initial": "A", "color": "#3B5BDB",
-     "io": "Thu thập + tóm tắt giá/tin/khối ngoại",
-     "persona": "Bạn là Analyst — thu thập và tóm tắt dữ liệu thị trường (giá, chỉ báo kỹ thuật, cơ bản P/E/P/B/ROE, tổng quan VN-Index, tin tức, khối ngoại) từ dữ liệu được cung cấp. Nêu súc tích các điểm chính, KHÔNG bịa số."},
-    {"id": "agent-ck-research", "name": "Researcher", "role": "Tranh luận Bull/Bear", "initial": "R", "color": "#E8A33D",
-     "io": "Tranh luận mua vs bán",
-     "persona": "Bạn là Researcher — tranh luận hai chiều: phe Mua (bull) và phe Bán (bear) dựa trên phần phân tích dữ liệu. Nêu luận điểm mạnh nhất mỗi phe."},
-    {"id": "agent-ck-trader", "name": "Trader", "role": "Quyết định giao dịch", "initial": "Tr", "color": "#0A7B52",
-     "io": "Đề xuất quyết định",
-     "persona": "Bạn là Trader — dựa trên tranh luận, đề xuất quyết định rõ ràng: MUA / BÁN / GIỮ, kèm vùng giá tham chiếu."},
-    {"id": "agent-ck-risk", "name": "Risk", "role": "Quản trị rủi ro", "initial": "Rk", "color": "#C94F3D",
-     "io": "Đánh giá rủi ro",
-     "persona": "Bạn là Risk Manager — đánh giá rủi ro của quyết định Trader (thanh khoản, biến động, vĩ mô) và đề xuất mức cắt lỗ."},
-    {"id": "agent-ck-portfolio", "name": "Portfolio", "role": "Quản lý danh mục", "initial": "P", "color": "#8B5CF6",
-     "io": "Chốt khuyến nghị cuối",
-     "persona": "Bạn là Portfolio Manager — chốt khuyến nghị cuối: Rating (Mua/Giữ/Bán), hành động cụ thể và tỷ trọng đề xuất. Kết bằng: 'Nghiên cứu, không phải lời khuyên đầu tư.'"},
+    # --- data layer (chạy song song, mỗi agent 1 mảng dữ liệu) ---
+    {"id": "agent-ck-market", "name": "Market Data", "role": "Dữ liệu thị trường", "initial": "M", "color": "#3B5BDB", "group": "data",
+     "io": "Giá/KL/khối ngoại real-time",
+     "persona": "Bạn là Market Data Agent — tóm tắt giá khớp, biến động, thanh khoản và dòng tiền khối ngoại real-time. Nêu các con số chính + nhận xét dòng tiền. KHÔNG bịa số."},
+    {"id": "agent-ck-fund", "name": "Fundamental", "role": "Phân tích cơ bản", "initial": "F", "color": "#0CA678", "group": "data",
+     "io": "P/E, P/B, ROE, định giá",
+     "persona": "Bạn là Fundamental Agent — phân tích định giá (P/E, P/B, ROE, EPS): cổ phiếu đang rẻ hay đắt, chất lượng doanh nghiệp ra sao. KHÔNG bịa số; nếu thiếu dữ liệu thì nói rõ."},
+    {"id": "agent-ck-tech", "name": "Technical", "role": "Phân tích kỹ thuật", "initial": "K", "color": "#E8A33D", "group": "data",
+     "io": "RSI/MACD/MA/mẫu hình",
+     "persona": "Bạn là Technical Agent — đọc tín hiệu kỹ thuật (RSI, MACD, MA, hỗ trợ/kháng cự, xu hướng, mẫu hình, breakout). Kết luận: tín hiệu kỹ thuật đang nghiêng mua hay bán. KHÔNG bịa số."},
+    {"id": "agent-ck-news", "name": "News/Sentiment", "role": "Tin tức & tâm lý", "initial": "N", "color": "#9C36B5", "group": "data",
+     "io": "Tin + chấm điểm tâm lý",
+     "persona": "Bạn là News/Sentiment Agent — tóm tắt tin tức chính và CHẤM ĐIỂM TÂM LÝ thị trường: Tích cực / Trung tính / Tiêu cực, kèm lý do ngắn. KHÔNG bịa tin."},
+    # --- debate (chạy song song, đối lập) ---
+    {"id": "agent-ck-bull", "name": "Bull", "role": "Phe Mua", "initial": "Bu", "color": "#0A7B52", "group": "debate",
+     "io": "Luận điểm MUA",
+     "persona": "Bạn là Bull Researcher (phe MUA) — nêu các luận điểm MẠNH NHẤT để MUA dựa trên phân tích. CHỈ tranh luận chiều mua, thuyết phục, có dẫn chứng số."},
+    {"id": "agent-ck-bear", "name": "Bear", "role": "Phe Bán", "initial": "Be", "color": "#C92A2A", "group": "debate",
+     "io": "Luận điểm BÁN",
+     "persona": "Bạn là Bear Researcher (phe BÁN) — nêu các luận điểm MẠNH NHẤT để BÁN/TRÁNH dựa trên phân tích + rủi ro. CHỈ tranh luận chiều bán, có dẫn chứng số."},
+    # --- decision (tuần tự) ---
+    {"id": "agent-ck-risk", "name": "Risk", "role": "Quản trị rủi ro", "initial": "Rk", "color": "#C94F3D", "group": "decision",
+     "io": "Rủi ro + cắt lỗ",
+     "persona": "Bạn là Risk Manager — đánh giá rủi ro (biến động, thanh khoản, khối ngoại, vĩ mô), đề xuất position sizing (tỷ trọng) và mức cắt lỗ cụ thể."},
+    {"id": "agent-ck-trader", "name": "Trader", "role": "Quyết định giao dịch", "initial": "Tr", "color": "#1971C2", "group": "decision",
+     "io": "MUA/BÁN/GIỮ",
+     "persona": "Bạn là Trader/Decision — cân nhắc tranh luận Bull/Bear + rủi ro + backtest, ra quyết định rõ ràng: MUA / BÁN / GIỮ + vùng giá vào/chốt/cắt + lý do chính."},
+    {"id": "agent-ck-portfolio", "name": "Portfolio", "role": "Quản lý danh mục", "initial": "P", "color": "#8B5CF6", "group": "decision",
+     "io": "Tỷ trọng + chốt",
+     "persona": "Bạn là Portfolio Manager — chốt khuyến nghị cuối: Rating (Mua/Giữ/Bán), hành động cụ thể và tỷ trọng đề xuất (không all-in). Kết bằng: 'Nghiên cứu, không phải lời khuyên đầu tư.'"},
 ]
 
 TOOL_OF = {"snapshot": "get_vn_stock_snapshot", "news": "get_vn_news", "extras": "get_vn_extras", "macro": "get_vn_macro", "analyze": "analyze_vn_stock"}
@@ -146,7 +162,11 @@ def ensure_trading_agent(db: Session) -> Agent:
 
 
 def ensure_pipeline_agents(db: Session) -> list:
-    """The 5 distinct pipeline agents as real Agent rows."""
+    """The pipeline agents as real Agent rows (+ remove rows from the old 5-agent layout)."""
+    for old_id in ("agent-ck-analyst", "agent-ck-research"):  # split into market/fund/tech/news + bull/bear
+        o = db.get(Agent, old_id)
+        if o:
+            db.delete(o)
     out = []
     for i, a in enumerate(_PIPELINE):
         ag = db.get(Agent, a["id"])  # dedup by id so renames are handled
@@ -198,8 +218,8 @@ def ensure_analysis_workflow(db: Session) -> Workflow:
     w = db.get(Workflow, WF_ID)
     if not w:
         w = Workflow(
-            id=WF_ID, name="Phân tích cổ phiếu (5 agent)",
-            desc="Pipeline 5 agent riêng: Analyst → Researcher → Trader → Risk → Portfolio.",
+            id=WF_ID, name="Phân tích cổ phiếu (đa-agent)",
+            desc="Pipeline: 4 data agent (Market/Fundamental/Technical/News) → Bull/Bear → Risk → Trader → Portfolio.",
             trigger="manual", triggerLabel="Khi chạy pipeline 5-agent", enabled=True,
             lastRun="", runs24=0, success=100, steps=template, runs=[], runState="idle", sort=-1,
         )
@@ -207,9 +227,9 @@ def ensure_analysis_workflow(db: Session) -> Workflow:
         db.commit()
         return w
     # migrate older single-agent steps to the 5 distinct agents (once)
-    if not w.steps or w.steps[0].get("agent") != template[0]["agent"]:
+    if not w.steps or w.steps[0].get("agent") != template[0]["agent"] or len(w.steps) != len(template):
         w.steps = template
-        w.name = "Phân tích cổ phiếu (5 agent)"
+        w.name = "Phân tích cổ phiếu (đa-agent)"
         db.commit()
     return w
 
@@ -386,55 +406,76 @@ def ground(ticker: str) -> tuple[str, str, str, float | None]:
     return snap, price_headline(ticker, snap), live_directive(ticker, snap), None
 
 
-# ----------------------- the real 5-agent pipeline -----------------------
-def run_pipeline(db: Session, ticker: str) -> tuple[list, bool, str]:
-    """Run the 5 distinct agents in sequence via 9Router, each a real LLM call.
+# ----------------------- the full TradingAgents-style pipeline -----------------------
+_BACKTEST_STEP = {"id": "agent-ck-backtest", "name": "Backtest", "role": "Kiểm chứng lịch sử",
+                  "initial": "BT", "color": "#495057", "group": "support", "io": "SMA-cross vs mua&giữ"}
 
-    Returns ([(agent_dict, output_text), ...], ok). Records workflow steps,
-    one session log per agent, and one chained knowledge report.
-    """
+
+def run_pipeline(db: Session, ticker: str) -> tuple[list, bool, str]:
+    """Full pipeline (ảnh 1): 4 data agents (song song) → Bull/Bear (song song) → Backtest
+    (deterministic) → Risk → Trader → Portfolio (tuần tự). Each LLM agent = 1 real 9Router call.
+    Returns ([(agent_dict, output_text), ...], ok, headline)."""
     import time
+    from concurrent.futures import ThreadPoolExecutor
 
     from app.services import ninerouter
     from app.services import tradingagents as ta
 
     ticker = ticker.upper()
     t0 = time.time()
+    ok = {"v": True}
     snap, headline, directive, price = ground(ticker)  # prefer LIVE intraday price over EOD close
-    if not snap:  # data unavailable → fall back to EOD snapshot
+    if not snap:
         snap = ta.snapshot(ticker)
         headline, directive, price = price_headline(ticker, snap), "", None
-    rt = (directive + "\n\n") if directive else ""
-    fund = ta.fundamentals_text(ticker, price)   # P/E, P/B (live nếu có giá), ROE, ROA, EPS
-    mkt = ta.market_overview_text()          # VN-Index + change%
-    data = (
-        f"{rt}GIÁ + CHỈ BÁO:\n{snap}\n\n"
-        + (f"CƠ BẢN:\n{fund}\n\n" if fund else "")
-        + (f"TỔNG QUAN THỊ TRƯỜNG:\n{mkt}\n\n" if mkt else "")
-        + f"TIN TỨC:\n{ta.news(ticker)[:1200]}\n\nKHỐI NGOẠI:\n{ta.extras(ticker)[:900]}"
-    )
 
-    outputs: list = []
-    prior = ""
-    ok = True
-    for a in _PIPELINE:
-        ctx = f"Mã cổ phiếu: {ticker}\n\nDỮ LIỆU THỊ TRƯỜNG (CHỈ dùng số trong đây):\n{data}"
-        if prior:
-            ctx += f"\n\nKẾT QUẢ CÁC BƯỚC TRƯỚC:\n{prior[:2600]}"
+    # ---- data bundle (fetch in parallel) ----
+    with ThreadPoolExecutor(max_workers=4) as ex:
+        ff, fn, fe, ftec = (ex.submit(ta.fundamentals_text, ticker, price), ex.submit(ta.news, ticker),
+                            ex.submit(ta.extras, ticker), ex.submit(ta.tech_analysis, ticker))
+    fund, news_txt, extras_txt, tech = ff.result(), (fn.result() or "")[:1100], (fe.result() or "")[:800], (ftec.result() or {})
+    mkt = ta.market_overview_text()
+    bt = ta.backtest_text(tech)
+    slice_of = {
+        "Market Data": f"{directive or headline}\n\nKHỐI NGOẠI:\n{extras_txt}",
+        "Fundamental": fund or "(không lấy được dữ liệu cơ bản)",
+        "Technical": ta.tech_text(tech) or snap,
+        "News/Sentiment": news_txt or "(không có tin gần đây)",
+    }
+
+    def _call(a: dict, ctx: str, mx: int = 380) -> tuple:
         try:
-            reply = ninerouter.chat(
-                [{"role": "system", "content": a["persona"] + " " + ANTI_HALLUCINATION + " Trả lời ngắn gọn bằng tiếng Việt, tối đa 6 câu."},
-                 {"role": "user", "content": ctx}],
-                temperature=0.3, max_tokens=420,
-            )["content"] or "(không có nội dung)"
+            r = ninerouter.chat(
+                [{"role": "system", "content": a["persona"] + " " + ANTI_HALLUCINATION + " Trả lời ngắn gọn bằng tiếng Việt, tối đa 5 câu."},
+                 {"role": "user", "content": ctx}], temperature=0.3, max_tokens=mx)["content"] or "(trống)"
         except Exception as exc:  # noqa: BLE001
-            reply = f"Lỗi 9Router: {exc}"
-            ok = False
-        outputs.append((a, reply))
-        prior += f"\n[{a['name']} — {a['role']}]:\n{reply}\n"
+            ok["v"] = False
+            r = f"Lỗi 9Router: {exc}"
+        return a, r
 
-    _record_pipeline(db, ticker, outputs, f"{int(time.time() - t0)}s", ok, headline)
-    return outputs, ok, headline
+    # ---- STAGE 1: data agents (parallel) ----
+    data_agents = [a for a in _PIPELINE if a["group"] == "data"]
+    with ThreadPoolExecutor(max_workers=4) as ex:
+        data_out = list(ex.map(lambda a: _call(a, f"Mã {ticker}\n\nDỮ LIỆU (chỉ dùng số trong đây):\n{slice_of.get(a['name'], '')}\n\nVN-Index: {mkt}"), data_agents))
+    analyses = "\n".join(f"[{a['name']}]: {r}" for a, r in data_out)
+
+    # ---- STAGE 2: Bull/Bear debate (parallel) ----
+    debate_agents = [a for a in _PIPELINE if a["group"] == "debate"]
+    with ThreadPoolExecutor(max_workers=2) as ex:
+        debate_out = list(ex.map(lambda a: _call(a, f"Mã {ticker}\n\nPHÂN TÍCH:\n{analyses}\n\nBACKTEST: {bt}\n\nNêu luận điểm phe mình."), debate_agents))
+    debate = "\n".join(f"[{a['name']}]: {r}" for a, r in debate_out)
+
+    # ---- STAGE 3: Risk → Trader → Portfolio (sequential, sees everything) ----
+    prior = f"PHÂN TÍCH:\n{analyses}\n\nTRANH LUẬN MUA/BÁN:\n{debate}\n\n{bt}"
+    decision_out = []
+    for a in [x for x in _PIPELINE if x["group"] == "decision"]:
+        _, r = _call(a, f"Mã {ticker}\n\n{prior[:3000]}\n\nVN-Index: {mkt}", mx=480)
+        decision_out.append((a, r))
+        prior += f"\n[{a['name']}]: {r}"
+
+    outputs = data_out + debate_out + [(_BACKTEST_STEP, bt or "(không backtest được)")] + decision_out
+    _record_pipeline(db, ticker, outputs, f"{int(time.time() - t0)}s", ok["v"], headline)
+    return outputs, ok["v"], headline
 
 
 def _record_pipeline(db: Session, ticker: str, outputs: list, dur: str, ok: bool, headline: str = "") -> None:

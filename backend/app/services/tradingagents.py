@@ -454,6 +454,80 @@ def indicators(ticker: str) -> dict | None:
         return None
 
 
+_TECH_SCRIPT = (
+    "import json,warnings,io,contextlib,sys\n"
+    "warnings.filterwarnings('ignore')\n"
+    "tk=sys.argv[1]; buf=io.StringIO()\n"
+    "try:\n"
+    "    with contextlib.redirect_stdout(buf),contextlib.redirect_stderr(buf):\n"
+    "        from vnstock import Quote\n"
+    "        from datetime import date,timedelta\n"
+    "        end=date.today().isoformat(); start=(date.today()-timedelta(days=560)).isoformat()\n"
+    "        h=Quote(symbol=tk,source='VCI').history(start=start,end=end,interval='1D')\n"
+    "    c=h['close'].astype(float); hi=h['high'].astype(float)\n"
+    "    if str(h['time'].iloc[-1])[:10]==end: c=c.iloc[:-1]; hi=hi.iloc[:-1]\n"
+    "    if len(c)<60: print('ERR:short'); sys.exit()\n"
+    "    dd=c.diff(); g=dd.clip(lower=0).ewm(alpha=1/14,adjust=False).mean(); l=(-dd.clip(upper=0)).ewm(alpha=1/14,adjust=False).mean()\n"
+    "    rsi=float((100-100/(1+g/l)).iloc[-1])\n"
+    "    sma50=float(c.tail(50).mean()); sma200=float(c.tail(200).mean()) if len(c)>=200 else None\n"
+    "    ema12=c.ewm(span=12,adjust=False).mean(); ema26=c.ewm(span=26,adjust=False).mean(); macd=float((ema12-ema26).iloc[-1])\n"
+    "    cur=float(c.iloc[-1]); w=c.tail(250); hi52=float(w.max()); lo52=float(w.min())\n"
+    "    breakout=bool(cur>float(hi.iloc[-21:-1].max())) if len(hi)>21 else False\n"
+    "    trend='tăng' if c.tail(10).mean()>c.iloc[-20:-10].mean() else 'giảm'\n"
+    "    s50=c.rolling(50).mean(); inpos=(c>s50).shift(1).fillna(False); dr=c.pct_change().fillna(0)\n"
+    "    strat=float((1+dr[inpos]).prod()-1); bh=float(c.iloc[-1]/c.iloc[0]-1); trades=int(((inpos)&(~inpos.shift(1).fillna(False))).sum())\n"
+    "    out={'rsi':round(rsi,1),'sma50':round(sma50,2),'sma200':round(sma200,2) if sma200 else None,'macd':round(macd,3),'price':round(cur,2),"
+    "'near_high':round((cur-hi52)/hi52*100,1),'near_low':round((cur-lo52)/lo52*100,1),'breakout':breakout,'trend20':trend,"
+    "'bt_strat':round(strat*100,1),'bt_bh':round(bh*100,1),'bt_trades':trades,'bt_days':len(c)}\n"
+    "    print('JSON:'+json.dumps(out))\n"
+    "except Exception as e: print('ERR:'+str(e)[:200])\n"
+)
+
+
+def tech_analysis(ticker: str) -> dict | None:
+    """Full technical read from history (1 fetch): RSI(Wilder)/SMA50/200/MACD + pattern
+    (trend, 52w high/low, breakout) + SMA50-cross backtest vs buy&hold. None on failure."""
+    if not settings.TRADINGAGENTS_ENABLED:
+        return None
+    try:
+        proc = subprocess.run([settings.TRADINGAGENTS_PYTHON, "-c", _TECH_SCRIPT, ticker.upper()],
+                              cwd=settings.TRADINGAGENTS_CWD, capture_output=True, text=True,
+                              encoding="utf-8", errors="replace", timeout=45, env=_CLEAN_ENV)
+    except Exception:  # noqa: BLE001
+        return None
+    line = next((ln for ln in (proc.stdout or "").splitlines() if ln.startswith("JSON:")), None)
+    try:
+        return json.loads(line[5:]) if line else None
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def tech_text(t: dict) -> str:
+    """Technical-analysis line for the Technical agent."""
+    if not t:
+        return ""
+    cur, s50, s200 = t.get("price"), t.get("sma50"), t.get("sma200")
+    pos = []
+    if cur and s50:
+        pos.append("trên SMA50" if cur > s50 else "dưới SMA50")
+    if cur and s200:
+        pos.append("trên SMA200" if cur > s200 else "dưới SMA200")
+    bits = [f"RSI {t.get('rsi')}", f"MACD {t.get('macd')}", f"SMA50 {s50}", f"SMA200 {s200}"]
+    extra = [f"xu hướng 20 phiên: {t.get('trend20')}", f"cách đỉnh 52w {t.get('near_high')}%", f"cách đáy 52w {t.get('near_low'):+}%"]
+    if t.get("breakout"):
+        extra.append("VỪA breakout đỉnh 20 phiên")
+    return " · ".join(bits + pos) + " · " + " · ".join(extra)
+
+
+def backtest_text(t: dict) -> str:
+    """Backtest summary line for the Backtest step."""
+    if not t or t.get("bt_strat") is None:
+        return ""
+    verdict = "trend-following ăn hơn mua&giữ" if t["bt_strat"] > t["bt_bh"] else "mua&giữ ăn hơn trend-following (cổ phiếu đi ngang/khó lướt)"
+    return (f"Backtest SMA50-cross {t['bt_days']} phiên: chiến lược {t['bt_strat']:+}% vs mua&giữ {t['bt_bh']:+}% "
+            f"({t['bt_trades']} lần vào lệnh) → {verdict}")
+
+
 def market_screen(top_n: int = 16, min_vol: int = 300_000) -> dict:
     """Screen the WHOLE HOSE board: 1 price_board call → liquid filter + first-pass rank
     (momentum + foreign flow) → sector ranking → top-N finalists enriched with live P/E + RSI/SMA

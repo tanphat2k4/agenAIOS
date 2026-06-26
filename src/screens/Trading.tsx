@@ -13,7 +13,7 @@ const ACTIONS: Action[] = [
   { key: 'extras', label: 'Khối ngoại' },
   { key: 'macro', label: 'Vĩ mô (tỷ giá/lãi suất)' },
   { key: 'analyze', label: 'Phân tích đầy đủ', slow: true },
-  { key: 'pipeline', label: 'Pipeline 5-agent', slow: true },
+  { key: 'pipeline', label: 'Pipeline đa-agent', slow: true },
 ]
 
 export function Trading() {
@@ -97,8 +97,8 @@ export function Trading() {
     const t = ticker.trim().toUpperCase()
     if (!t || busy) return
     setBusy(true)
-    setTitle('Pipeline 5-agent · ' + t)
-    setResult('⏳ 5 agent đang chạy lần lượt: Analyst → Researcher → Trader → Risk → Portfolio (mỗi con 1 lượt 9Router)…')
+    setTitle('Pipeline đa-agent · ' + t)
+    setResult('⏳ Pipeline đa-agent đang chạy: Market Data · Fundamental · Technical · News → Bull/Bear → Backtest → Risk → Trader → Portfolio (mỗi agent 1 lượt 9Router)…')
     try {
       await api.post('/trading/pipeline', { ticker: t })
       const poll = async () => {
