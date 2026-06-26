@@ -6,6 +6,7 @@ the result in-app. M1 = scaffolding (agents/room/channel/workflow) + batch trigg
 We do NOT touch the live music-system in WSL — only trigger + mirror.
 """
 
+import json
 import re
 import shlex
 import subprocess
@@ -14,7 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.crud import next_sort, now_hm, uid
-from app.models.agents import Agent, Workflow
+from app.models.agents import Agent, CronJob, Workflow
 from app.models.comms import Channel, Message, Notification, Room
 from app.models.ops import KnowledgeEntry
 from app.models.user import User
@@ -122,11 +123,29 @@ def ensure_music_workflow(db: Session) -> Workflow:
     return w
 
 
+MUSIC_CRON_ID = "cron-music-weekly"
+
+
+def ensure_music_cron(db: Session) -> CronJob:
+    c = db.get(CronJob, MUSIC_CRON_ID)
+    if c:
+        return c
+    c = CronJob(
+        id=MUSIC_CRON_ID, name="Batch nhạc tuần", target="Beat · 5 bài bắt trend / tuần", expr="0 8 * * 1",
+        last="—", next="T2 08:00", creator="Hệ thống", creatorInitial="H", creatorColor="#8B5CF6",
+        enabled=True, spark=[0, 0, 0, 0, 0, 0, 0], sort=-1,
+    )
+    db.add(c)
+    db.commit()
+    return c
+
+
 def ensure_music_all(db: Session) -> None:
     ensure_music_agents(db)
     ensure_music_channel(db)
     ensure_music_room(db)
     ensure_music_workflow(db)
+    ensure_music_cron(db)
 
 
 # ----------------------------- read the active batch (M2) -----------------------------
@@ -173,11 +192,39 @@ def read_batch() -> dict:
         return {"week": "", "songs": [], "count": 0, "note": "Chưa có batch active — chạy batch tuần trước đã."}
     songs = _parse_lyrics(_wsl_cat(f"{batch_dir}/lyrics.md"))
     ranking = _parse_ranking(_wsl_cat(f"{batch_dir}/score.md"))
+    try:
+        state = json.loads(_wsl_cat(f"{batch_dir}/state.json") or "{}")
+    except Exception:  # noqa: BLE001
+        state = {}
+    by_title = {(v.get("title") or "").strip(): (k, v) for k, v in state.items()}
     for s in songs:
         info = ranking.get(s["title"])
         if info:
             s.update(info)
+        st = by_title.get(s["title"].strip())
+        if st:
+            slug, sv = st
+            s["slug"] = slug
+            s["generated"] = bool(sv.get("generated"))
+            s["picked"] = sv.get("picked") or ""  # 'v1' | 'v2' | 'both' | 'skip' | ''
+            s["clipped"] = bool(sv.get("clipped"))
     return {"week": batch_dir.rsplit("/", 1)[-1], "songs": songs, "count": len(songs)}
+
+
+def _wsl_port_up(host: str, port: int) -> bool:
+    try:
+        r = subprocess.run(
+            ["wsl.exe", "-e", "bash", "-lc", f"timeout 3 bash -c '</dev/tcp/{host}/{port}' 2>/dev/null && echo up || echo down"],
+            capture_output=True, text=True, timeout=10,
+        )
+        return "up" in (r.stdout or "")
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def infra_health() -> dict:
+    """Ping the music pipeline's external infra (Suno-bot on PC-B + ComfyUI on PC-A)."""
+    return {"suno_bot": _wsl_port_up("192.168.1.3", 1243), "comfyui": _wsl_port_up("192.168.1.4", 8188)}
 
 
 # ----------------------------- batch trigger -----------------------------

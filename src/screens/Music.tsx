@@ -16,7 +16,7 @@ const PIPELINE_STEPS = [
   { initial: 'Cl', color: '#C0392B', label: 'Clipmaker' },
 ]
 
-interface Song { title: string; lyrics: string; score?: string; category?: string }
+interface Song { title: string; lyrics: string; score?: string; category?: string; slug?: string; generated?: boolean; picked?: string; clipped?: boolean }
 
 const MEDALS = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣', '6️⃣']
 const scoreColor = (sc?: string) => {
@@ -37,6 +37,11 @@ export function Music() {
   const [openLyrics, setOpenLyrics] = useState<number | null>(null)
   const [genBusy, setGenBusy] = useState<string | null>(null)
   const [genMsg, setGenMsg] = useState('')
+  const [health, setHealth] = useState<{ suno_bot: boolean; comfyui: boolean } | null>(null)
+  const [pickBusy, setPickBusy] = useState<string | null>(null)
+  const [clipBusy, setClipBusy] = useState<string | null>(null)
+
+  useEffect(() => { api.get('/music/health').then(setHealth).catch(() => {}) }, [])
 
   const loadBatch = async () => {
     setLoadingBatch(true)
@@ -102,6 +107,54 @@ export function Music() {
     }
   }
 
+  const handlePick = async (slug: string, choice: string) => {
+    if (pickBusy) return
+    setPickBusy(slug + choice)
+    setGenMsg(`🎧 Đang gửi chọn bản "${choice}" cho Beat…`)
+    try {
+      await api.post('/music/pick', { slug, choice })
+      const poll = async () => {
+        try {
+          const r = await api.get('/music/pick')
+          if (r.status === 'done' || r.status === 'error') {
+            setGenMsg(r.result || 'Đã chọn bản.')
+            setPickBusy(null)
+            loadBatch()
+            runMusicBatch()
+          } else { setTimeout(poll, 4000) }
+        } catch { setPickBusy(null) }
+      }
+      setTimeout(poll, 4000)
+    } catch (e) {
+      setGenMsg('Lỗi: ' + (e instanceof Error ? e.message : 'unknown'))
+      setPickBusy(null)
+    }
+  }
+
+  const handleClip = async (slug: string) => {
+    if (clipBusy) return
+    setClipBusy(slug)
+    setGenMsg(`🎬 Đang gửi lệnh làm clip cho "${slug}"…`)
+    try {
+      await api.post('/music/clip', { slug })
+      const poll = async () => {
+        try {
+          const r = await api.get('/music/clip')
+          if (r.status === 'done' || r.status === 'error') {
+            setGenMsg(r.result || 'Đã gửi lệnh làm clip.')
+            setClipBusy(null)
+            loadBatch()
+            runMusicBatch()
+          } else { setTimeout(poll, 4000) }
+        } catch { setClipBusy(null) }
+      }
+      setTimeout(poll, 4000)
+    } catch (e) {
+      setGenMsg('Lỗi: ' + (e instanceof Error ? e.message : 'unknown'))
+      setClipBusy(null)
+    }
+  }
+
   return (
     <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
       <header style={{ flex: 'none', background: 'var(--surface)', borderBottom: '1px solid var(--line)', padding: '16px 28px' }}>
@@ -151,7 +204,14 @@ export function Music() {
             </div>
             <Hover as="button" onClick={loadBatch} style={{ border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink-2)', borderRadius: 99, padding: '6px 13px', font: 'inherit', fontSize: 12, fontWeight: 600, cursor: 'pointer' }} hover={{ borderColor: 'var(--jade)', color: 'var(--jade-deep)' }}>↻ Tải lại</Hover>
           </div>
-          <div style={{ fontSize: 12, color: 'var(--ink-2)', marginBottom: 14 }}>🚪 Cổng duyệt: đọc lời + điểm hit-potential, chọn bài để Beat generate qua Suno.</div>
+          <div style={{ fontSize: 12, color: 'var(--ink-2)', marginBottom: 10 }}>🚪 Cổng duyệt: đọc lời + điểm hit-potential, chọn bài để Beat generate qua Suno.</div>
+          {health && (
+            <div style={{ display: 'flex', gap: 16, marginBottom: 14, fontSize: 12, fontWeight: 600, flexWrap: 'wrap', alignItems: 'center' }}>
+              <span style={{ color: health.suno_bot ? 'var(--jade-deep)' : 'var(--danger)' }}>{health.suno_bot ? '🟢' : '🔴'} Suno-bot (PC-B)</span>
+              <span style={{ color: health.comfyui ? 'var(--jade-deep)' : 'var(--danger)' }}>{health.comfyui ? '🟢' : '🔴'} ComfyUI</span>
+              <span style={{ color: 'var(--placeholder)', fontWeight: 500 }}>{health.suno_bot && health.comfyui ? 'Sẵn sàng generate + làm clip' : 'Cần bật máy thiếu để generate/clip'}</span>
+            </div>
+          )}
 
           {loadingBatch ? (
             <div style={{ padding: 24, textAlign: 'center', color: 'var(--placeholder)', fontSize: 13 }}>Đang tải batch…</div>
@@ -169,9 +229,23 @@ export function Music() {
                       {s.score && <span style={{ fontSize: 12, fontWeight: 800, color: sc.fg, background: sc.bg, padding: '3px 11px', borderRadius: 99, flex: 'none' }}>{s.score}đ</span>}
                       {s.category && <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--jade-deep)', background: 'var(--jade-soft)', padding: '3px 10px', borderRadius: 99, flex: 'none' }}>{s.category}</span>}
                     </div>
-                    <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' }}>
                       <Hover as="button" onClick={() => setOpenLyrics(openLyrics === i ? null : i)} style={{ border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink-2)', borderRadius: 99, padding: '7px 14px', font: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }} hover={{ borderColor: 'var(--jade)', color: 'var(--jade-deep)' }}>{openLyrics === i ? '▲ Ẩn lời' : '📄 Xem lời'}</Hover>
-                      <Hover as="button" onClick={() => handleGenerate(s.title)} disabled={!!genBusy} style={{ border: 'none', background: 'var(--jade)', color: '#fff', borderRadius: 99, padding: '7px 16px', font: 'inherit', fontSize: 12.5, fontWeight: 700, cursor: genBusy ? 'default' : 'pointer', opacity: genBusy && genBusy !== s.title ? 0.5 : 1 }} hover={genBusy ? {} : { background: 'var(--jade-deep)' }}>{genBusy === s.title ? '⏳ Đang gửi…' : '🎵 Generate bài này'}</Hover>
+                      {!s.generated && (
+                        <Hover as="button" onClick={() => handleGenerate(s.title)} disabled={!!genBusy} style={{ border: 'none', background: 'var(--jade)', color: '#fff', borderRadius: 99, padding: '7px 16px', font: 'inherit', fontSize: 12.5, fontWeight: 700, cursor: genBusy ? 'default' : 'pointer', opacity: genBusy && genBusy !== s.title ? 0.5 : 1 }} hover={genBusy ? {} : { background: 'var(--jade-deep)' }}>{genBusy === s.title ? '⏳ Đang gửi…' : '🎵 Generate bài này'}</Hover>
+                      )}
+                      {s.generated && !s.picked && s.slug && (<>
+                        <span style={{ fontSize: 11.5, color: 'var(--ink-2)', fontWeight: 600 }}>🎧 Chọn bản:</span>
+                        {['v1', 'v2', 'both', 'skip'].map((ch) => (
+                          <Hover key={ch} as="button" onClick={() => handlePick(s.slug as string, ch)} disabled={!!pickBusy} style={{ border: '1px solid var(--line)', background: ch === 'skip' ? 'var(--surface)' : 'var(--jade-soft)', color: ch === 'skip' ? 'var(--ink-2)' : 'var(--jade-deep)', borderRadius: 99, padding: '6px 13px', font: 'inherit', fontSize: 12, fontWeight: 700, cursor: pickBusy ? 'default' : 'pointer' }} hover={pickBusy ? {} : { background: 'var(--jade)', color: '#fff' }}>{pickBusy === (s.slug as string) + ch ? '…' : ch}</Hover>
+                        ))}
+                      </>)}
+                      {s.picked && s.picked !== 'skip' && <span style={{ fontSize: 11.5, fontWeight: 700, color: '#0A7B52', background: '#E2F3EC', padding: '5px 11px', borderRadius: 99 }}>✅ Đã chọn {s.picked}</span>}
+                      {s.picked && s.picked !== 'skip' && !s.clipped && s.slug && (
+                        <Hover as="button" onClick={() => handleClip(s.slug as string)} disabled={!!clipBusy} style={{ border: 'none', background: '#28409E', color: '#fff', borderRadius: 99, padding: '7px 15px', font: 'inherit', fontSize: 12.5, fontWeight: 700, cursor: clipBusy ? 'default' : 'pointer', opacity: clipBusy && clipBusy !== s.slug ? 0.5 : 1 }} hover={clipBusy ? {} : { background: '#1E2F7A' }}>{clipBusy === s.slug ? '⏳ Đang gửi…' : '🎬 Làm clip'}</Hover>
+                      )}
+                      {s.picked === 'skip' && <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--ink-2)', background: 'var(--bg)', padding: '5px 11px', borderRadius: 99 }}>⊘ Đã bỏ qua</span>}
+                      {s.clipped && <span style={{ fontSize: 11.5, fontWeight: 700, color: '#28409E', background: '#E8ECFB', padding: '5px 11px', borderRadius: 99 }}>🎬 Đã làm clip</span>}
                     </div>
                     {openLyrics === i && (
                       <div style={{ marginTop: 12, padding: '12px 14px', background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 12, fontSize: 13, lineHeight: 1.6, whiteSpace: 'pre-wrap', maxHeight: 360, overflow: 'auto', color: 'var(--ink)' }}>{s.lyrics}</div>

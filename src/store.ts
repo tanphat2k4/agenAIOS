@@ -913,6 +913,21 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
       setTimeout(poll, 4000)
       return
     }
+    if (id === 'cron-music-weekly') {
+      get().fireToast('Đang chạy batch nhạc tuần (Beat)…')
+      set((s) => ({ cronJobsData: s.cronJobsData.map((j) => j.id === id ? { ...j, last: 'đang chạy…' } : j) }))
+      api.post('/music/batch').catch(() => {})
+      const poll = () => {
+        api.get('/music/batch').then((r) => {
+          if (r.status === 'done' || r.status === 'error') {
+            get().fireToast(r.status === 'done' ? 'Batch nhạc xong ✓' : 'Batch nhạc gặp lỗi')
+            get().refreshAfterReport()
+          } else { setTimeout(poll, 5000) }
+        }).catch(() => {})
+      }
+      setTimeout(poll, 5000)
+      return
+    }
     persist(api.post(`/cron/${id}/run-now`))
     set((s) => ({ cronJobsData: s.cronJobsData.map((j) => j.id === id ? { ...j, last: 'vừa xong' } : j) }))
   },

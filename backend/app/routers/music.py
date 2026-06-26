@@ -143,3 +143,95 @@ def start_generate(body: GenIn):
 @router.get("/generate")
 def generate_status():
     return _jobs.get("music|gen") or {"status": "idle", "result": None}
+
+
+# ----------------------- infra health + variant pick (M3) -----------------------
+@router.get("/health")
+def music_health():
+    """Ping the pipeline's external infra (Suno-bot PC-B + ComfyUI)."""
+    return music.infra_health()
+
+
+class PickIn(BaseModel):
+    slug: str
+    choice: str  # v1 | v2 | both | skip
+
+
+@router.post("/pick")
+def start_pick(body: PickIn):
+    """Relay a variant pick to Beat (pick:<slug>:<choice>) — Beat records it + continues."""
+    key = "music|pick"
+    _jobs[key] = {"status": "running", "result": None}
+
+    def work() -> None:
+        from app.services import openclaw
+
+        db = SessionLocal()
+        try:
+            reply, _delivered = openclaw.send_agent(
+                f"pick:{body.slug}:{body.choice}", agent=music.MUSIC_AGENT, deliver=False, timeout=200,
+            )
+            text = reply or f"Đã chọn bản {body.choice} cho '{body.slug}'."
+            db.add(Message(
+                id=uid("m"), channel_id=music.CHANNEL_ID, authorName=_BOT[0], time=now_hm(),
+                avatarInitial=_BOT[1], avatarColor=_BOT[2], isAgent=True, raw=rec.md_to_blocks(text),
+                sort=next_sort(db, Message),
+            ))
+            db.commit()
+            _jobs[key] = {"status": "done", "result": text}
+        except Exception as exc:  # noqa: BLE001
+            _jobs[key] = {"status": "error", "result": f"Lỗi: {exc}"}
+        finally:
+            db.close()
+
+    threading.Thread(target=work, daemon=True).start()
+    return {"status": "running"}
+
+
+@router.get("/pick")
+def pick_status():
+    return _jobs.get("music|pick") or {"status": "idle", "result": None}
+
+
+# ----------------------- make clip (M4) -----------------------
+class ClipIn(BaseModel):
+    slug: str
+
+
+@router.post("/clip")
+def start_clip(body: ClipIn):
+    """Relay 'làm clip <slug>' to Beat — it runs run_clips.py (ffmpeg + ComfyUI cover,
+    background) and pushes the YT/TikTok/Canvas clips to Telegram."""
+    key = "music|clip"
+    if (_jobs.get(key) or {}).get("status") == "running":
+        return {"status": "running"}
+    _jobs[key] = {"status": "running", "result": None}
+
+    def work() -> None:
+        from app.services import openclaw
+
+        db = SessionLocal()
+        try:
+            reply, _delivered = openclaw.send_agent(
+                f"làm clip {body.slug}", agent=music.MUSIC_AGENT, deliver=True, timeout=300,
+            )
+            text = reply or f"🎬 Đã gửi lệnh làm clip cho '{body.slug}' (đang dựng nền)."
+            db.add(Message(
+                id=uid("m"), channel_id=music.CHANNEL_ID, authorName=_BOT[0], time=now_hm(),
+                avatarInitial=_BOT[1], avatarColor=_BOT[2], isAgent=True, raw=rec.md_to_blocks(text),
+                sort=next_sort(db, Message),
+            ))
+            db.commit()
+            _jobs[key] = {"status": "done", "result": text}
+        except Exception as exc:  # noqa: BLE001
+            _jobs[key] = {"status": "error", "result": f"Lỗi: {exc}"}
+        finally:
+            db.close()
+
+    threading.Thread(target=work, daemon=True).start()
+    return {"status": "running"}
+
+
+@router.get("/clip")
+def clip_status():
+    return _jobs.get("music|clip") or {"status": "idle", "result": None}
