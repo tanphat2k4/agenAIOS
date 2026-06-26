@@ -36,8 +36,17 @@ def _extract_ticker(text: str) -> str | None:
 def classify(text: str) -> tuple[str | None, str | None]:
     """Return (command, ticker). command in {analyze,news,extras,macro,snapshot} or None (chat)."""
     t = text.lower()
+    # Opinion / recommendation questions ("giá nào hợp lý", "nên mua không"…) must NOT dump
+    # raw data — they go to the analyst (_llm_reply, grounded) which reasons + recommends.
+    opinion = any(k in t for k in (
+        "hợp lý", "hop ly", "nên mua", "nen mua", "nên bán", "nen ban", "nên giữ", "nen giu",
+        "có nên", "co nen", "giá nào", "gia nao", "vào giá", "vao gia", "định giá", "dinh gia",
+        "đánh giá", "danh gia", "nhận định", "nhan dinh", "mục tiêu", "muc tieu", "vùng mua", "vung mua",
+    ))
     if any(k in t for k in ("phân tích", "phan tich", "khuyến nghị", "khuyen nghi", "analyze", "báo cáo", "bao cao")):
         cmd = "analyze"
+    elif opinion:
+        cmd = None  # conversational analyst → grounded recommendation, not a raw table
     elif any(k in t for k in ("tin tức", "tin tuc", "news", "tin ")):
         cmd = "news"
     elif any(k in t for k in ("khối ngoại", "khoi ngoai", "room", "thanh khoản", "thanh khoan")):
