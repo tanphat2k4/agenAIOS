@@ -21,6 +21,7 @@ export type RenderedBlock =
   | { isPara: true; node: ReactNode }
   | { isList: true; items: { num: number; node: ReactNode }[] }
   | { isAttach: true; icon: string; name: string; label: string; url?: string; mime?: string; fileKind?: string }
+  | { isTable: true; rows: string[][] }
   | { isTask: true; code: string; text: string }
 
 export function buildBlocks(raw: MsgBlock[]): RenderedBlock[] {
@@ -28,6 +29,7 @@ export function buildBlocks(raw: MsgBlock[]): RenderedBlock[] {
     if (bl.kind === 'para') return { isPara: true, node: <span>{renderRich(bl.rich)}</span> }
     if (bl.kind === 'list') return { isList: true, items: bl.items.map((it, i) => ({ num: i + 1, node: <span>{renderRich(it)}</span> })) }
     if (bl.kind === 'attach') return { isAttach: true, icon: bl.icon, name: bl.name, label: bl.label, url: bl.url, mime: bl.mime, fileKind: bl.fileKind }
+    if (bl.kind === 'table') return { isTable: true, rows: bl.rows }
     return { isTask: true, code: bl.code, text: bl.text }
   })
 }

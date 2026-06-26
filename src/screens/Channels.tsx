@@ -200,6 +200,21 @@ export function Channels() {
                   {blocks.map((block, bi) => {
                     if ('isPara' in block) return <div key={bi} style={{ fontSize: 14, lineHeight: 1.62, color: 'var(--ink)', margin: '0 0 8px' }}>{block.node}</div>
                     if ('isList' in block) return <div key={bi} style={{ margin: '0 0 10px', display: 'flex', flexDirection: 'column', gap: 7 }}>{block.items.map((it, ii) => <div key={ii} style={{ display: 'flex', gap: 10, fontSize: 14, lineHeight: 1.6, color: 'var(--ink)' }}><span style={{ fontWeight: 700, color: 'var(--jade)', flex: 'none', minWidth: 18 }}>{it.num}.</span><div style={{ minWidth: 0 }}>{it.node}</div></div>)}</div>
+                    if ('isTable' in block) return (
+                      <div key={bi} style={{ margin: '4px 0 10px', overflowX: 'auto' }}>
+                        <table style={{ borderCollapse: 'collapse', fontSize: 12.5 }}>
+                          <tbody>
+                            {block.rows.map((row, ri) => (
+                              <tr key={ri}>
+                                {row.map((cell, ci) => ri === 0
+                                  ? <th key={ci} style={{ border: '1px solid var(--line)', padding: '5px 12px', textAlign: ci === 0 ? 'left' : 'right', fontWeight: 700, color: 'var(--ink)', background: 'var(--bg)', whiteSpace: 'nowrap' }}>{cell}</th>
+                                  : <td key={ci} style={{ border: '1px solid var(--line)', padding: '5px 12px', textAlign: ci === 0 ? 'left' : 'right', color: 'var(--ink-2)', whiteSpace: 'nowrap' }}>{cell}</td>)}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )
                     if ('isTask' in block) return <div key={bi} style={{ display: 'inline-flex', alignItems: 'center', gap: 9, maxWidth: '100%', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, padding: '8px 13px', marginTop: 2, boxShadow: '0 1px 2px rgba(22,32,28,.04)' }}><span style={{ fontFamily: 'var(--mono)', fontSize: 11.5, fontWeight: 700, color: 'var(--jade-deep)', background: 'var(--jade-soft)', padding: '2px 8px', borderRadius: 7, flex: 'none' }}>{block.code}</span><span style={{ fontSize: 12.5, color: 'var(--ink-2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{block.text}</span></div>
                     // attach block: image → preview, file → download link, record → reference card
                     if (block.fileKind === 'image' && block.url) {

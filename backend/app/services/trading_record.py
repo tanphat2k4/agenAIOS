@@ -65,22 +65,49 @@ def _md_inline(text: str) -> list:
     return spans or [{"v": "", "isText": True}]
 
 
-def md_to_blocks(text: str) -> list:
-    """Lightweight markdown -> chat blocks so #/**/>/* don't show as raw chars.
+# LLM-internal directives that leak from TradingAgents tool output — never shown to the user.
+_DROP_PHRASES = (
+    "use this snapshot", "as the source of truth", "do not claim historical",
+    "flag the discrepancy", "inventing a reconciled number",
+    "rows after the requested analysis date",
+)
 
-    Headers (# …) become a bold line; **bold** -> bold spans; `> quote` and
-    stray `*` markers are stripped. Used for agent messages posted to channels.
+
+def md_to_blocks(text: str) -> list:
+    """Lightweight markdown -> chat blocks: headers/bold/quote tidied, `| a | b |`
+    tables become real table blocks, and LLM-internal directives are dropped.
+    Used for agent messages posted to channels.
     """
+    lines = (text or "").split("\n")
     blocks: list = []
-    for line in (text or "").split("\n"):
-        t = line.rstrip()
-        h = re.match(r"^#{1,4}\s+(.*)", t)
+    i, n = 0, len(lines)
+    while i < n:
+        raw = lines[i].rstrip()
+        low = raw.strip().lower()
+        if low and any(p in low for p in _DROP_PHRASES):
+            i += 1
+            continue
+        # markdown table: consecutive "| … |" lines (skip the |---|---| separator row)
+        if raw.strip().startswith("|") and raw.strip().endswith("|"):
+            rows: list = []
+            while i < n and lines[i].strip().startswith("|") and lines[i].strip().endswith("|"):
+                cells = [c.strip() for c in lines[i].strip().strip("|").split("|")]
+                if not all(re.fullmatch(r":?-{2,}:?", c or "x") for c in cells):
+                    rows.append(cells)
+                i += 1
+            if rows:
+                blocks.append({"kind": "table", "rows": rows})
+            continue
+        h = re.match(r"^#{1,4}\s+(.*)", raw)
         if h:
             blocks.append({"kind": "para", "rich": [{"v": h.group(1).replace("*", ""), "isBold": True}]})
+            i += 1
             continue
+        t = raw
         if t.startswith(">"):
             t = t.lstrip("> ").rstrip()
         blocks.append({"kind": "para", "rich": _md_inline(t)})
+        i += 1
     return blocks
 
 
