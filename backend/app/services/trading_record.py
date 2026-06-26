@@ -48,7 +48,7 @@ _PIPELINE = [
      "persona": "Bạn là Bull Researcher (phe MUA) — nêu các luận điểm MẠNH NHẤT để MUA dựa trên phân tích. CHỈ tranh luận chiều mua, thuyết phục, có dẫn chứng số."},
     {"id": "agent-ck-bear", "name": "Bear", "role": "Phe Bán", "initial": "Be", "color": "#C92A2A", "group": "debate",
      "io": "Luận điểm BÁN",
-     "persona": "Bạn là Bear Researcher (phe BÁN) — nêu các luận điểm MẠNH NHẤT để BÁN/TRÁNH dựa trên phân tích + rủi ro. CHỈ tranh luận chiều bán, có dẫn chứng số."},
+     "persona": "Bạn là Bear Researcher (phe BÁN) — PHẢN BIỆN trực tiếp lập luận của phe Mua, bác bỏ từng lý lẽ của họ, rồi nêu luận điểm BÁN/rủi ro mạnh nhất kèm dẫn chứng số."},
     # --- decision (tuần tự) ---
     {"id": "agent-ck-risk", "name": "Risk", "role": "Quản trị rủi ro", "initial": "Rk", "color": "#C94F3D", "group": "decision",
      "io": "Rủi ro + cắt lỗ",
@@ -214,7 +214,12 @@ def ensure_advisor_agent(db: Session) -> Agent:
 
 
 def ensure_analysis_workflow(db: Session) -> Workflow:
-    template = [{"agent": a["name"], "initial": a["initial"], "color": a["color"], "title": a["role"], "io": a["io"], "status": "idle", "dur": ""} for a in _PIPELINE]
+    seq: list = []
+    for a in _PIPELINE:
+        seq.append(a)
+        if a["id"] == "agent-ck-bear":   # Backtest step runs right after the Bull/Bear debate
+            seq.append(_BACKTEST_STEP)
+    template = [{"agent": a["name"], "initial": a["initial"], "color": a["color"], "title": a["role"], "io": a.get("io", ""), "status": "idle", "dur": ""} for a in seq]
     w = db.get(Workflow, WF_ID)
     if not w:
         w = Workflow(
@@ -459,11 +464,13 @@ def run_pipeline(db: Session, ticker: str) -> tuple[list, bool, str]:
         data_out = list(ex.map(lambda a: _call(a, f"Mã {ticker}\n\nDỮ LIỆU (chỉ dùng số trong đây):\n{slice_of.get(a['name'], '')}\n\nVN-Index: {mkt}"), data_agents))
     analyses = "\n".join(f"[{a['name']}]: {r}" for a, r in data_out)
 
-    # ---- STAGE 2: Bull/Bear debate (parallel) ----
-    debate_agents = [a for a in _PIPELINE if a["group"] == "debate"]
-    with ThreadPoolExecutor(max_workers=2) as ex:
-        debate_out = list(ex.map(lambda a: _call(a, f"Mã {ticker}\n\nPHÂN TÍCH:\n{analyses}\n\nBACKTEST: {bt}\n\nNêu luận điểm phe mình."), debate_agents))
-    debate = "\n".join(f"[{a['name']}]: {r}" for a, r in debate_out)
+    # ---- STAGE 2: Bull/Bear DEBATE — Bull lập luận, rồi Bear ĐỌC lý lẽ Bull và PHẢN BIỆN (tranh luận thật) ----
+    bull = next(a for a in _PIPELINE if a["id"] == "agent-ck-bull")
+    bear = next(a for a in _PIPELINE if a["id"] == "agent-ck-bear")
+    _, bull_r = _call(bull, f"Mã {ticker}\n\nPHÂN TÍCH:\n{analyses}\n\nBACKTEST: {bt}\n\nNêu luận điểm MUA mạnh nhất.")
+    _, bear_r = _call(bear, f"Mã {ticker}\n\nPHÂN TÍCH:\n{analyses}\n\nBACKTEST: {bt}\n\nPHE MUA lập luận:\n«{bull_r}»\n\nMở đầu BẮT BUỘC bằng 'Phản biện phe Mua:' rồi bác bỏ từng lý lẽ của họ (vì sao chưa chắc đúng / rủi ro gì), sau đó nêu luận điểm BÁN mạnh nhất. Phải trích lại ý phe Mua khi bác.")
+    debate_out = [(bull, bull_r), (bear, bear_r)]
+    debate = f"[Bull]: {bull_r}\n[Bear (phản biện Bull)]: {bear_r}"
 
     # ---- STAGE 3: Risk → Trader → Portfolio (sequential, sees everything) ----
     prior = f"PHÂN TÍCH:\n{analyses}\n\nTRANH LUẬN MUA/BÁN:\n{debate}\n\n{bt}"
