@@ -1,7 +1,13 @@
+import time
+
 from sqlalchemy import JSON, Boolean, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
+
+
+def _now_epoch() -> int:
+    return int(time.time())
 
 
 class Channel(Base):
@@ -22,6 +28,7 @@ class Channel(Base):
     wfTotal: Mapped[int] = mapped_column(Integer, default=0)
     wfNote: Mapped[str] = mapped_column(Text, default="")
     unread: Mapped[int] = mapped_column(Integer, default=0)
+    autoDeleteSeconds: Mapped[int] = mapped_column(Integer, default=0)  # 0 = off; Telegram-style self-destruct TTL
     sort: Mapped[int] = mapped_column(Integer, default=0)
 
 
@@ -54,6 +61,7 @@ class Message(Base):
     avatarColor: Mapped[str] = mapped_column(String, default="#3B5BDB")
     isAgent: Mapped[bool] = mapped_column(Boolean, default=False)
     raw: Mapped[list] = mapped_column(JSON, default=list)
+    created_at: Mapped[int] = mapped_column(Integer, default=_now_epoch)  # epoch secs, for auto-delete TTL
     sort: Mapped[int] = mapped_column(Integer, default=0)
 
 

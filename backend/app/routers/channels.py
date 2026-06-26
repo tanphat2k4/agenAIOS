@@ -1,4 +1,5 @@
 import re
+import time
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
@@ -174,9 +175,22 @@ class SendIn(BaseModel):
     attach: dict | None = None  # {icon, name, label}
 
 
+def _expire_messages(db: Session, ch: Channel) -> int:
+    """Telegram-style auto-delete: drop messages older than the channel's TTL."""
+    ttl = getattr(ch, "autoDeleteSeconds", 0) or 0
+    if ttl <= 0:
+        return 0
+    cutoff = int(time.time()) - ttl
+    n = db.execute(delete(Message).where(Message.channel_id == ch.id, Message.created_at < cutoff)).rowcount
+    if n:
+        db.commit()
+    return n or 0
+
+
 @router.get("/channels/{channel_id}/messages")
 def list_messages(channel_id: str, db: Session = Depends(get_db)):
-    get_or_404(db, Channel, channel_id)
+    ch = get_or_404(db, Channel, channel_id)
+    _expire_messages(db, ch)
     msgs = db.scalars(
         select(Message).where(Message.channel_id == channel_id).order_by(Message.sort, Message.id)
     )
@@ -207,6 +221,29 @@ def send_message(
     db.add(m)
     db.commit()
     return row_to_dict(m, exclude={"channel_id"})
+
+
+@router.delete("/channels/{channel_id}/messages")
+def clear_messages(channel_id: str, db: Session = Depends(get_db)):
+    """Clear the channel's chat history (all messages)."""
+    get_or_404(db, Channel, channel_id)
+    n = db.execute(delete(Message).where(Message.channel_id == channel_id)).rowcount
+    db.commit()
+    return {"deleted": n or 0}
+
+
+class AutoDeleteIn(BaseModel):
+    seconds: int = 0
+
+
+@router.patch("/channels/{channel_id}/auto-delete")
+def set_auto_delete(channel_id: str, body: AutoDeleteIn, db: Session = Depends(get_db)):
+    """Set the Telegram-style self-destruct timer (0 = off)."""
+    ch = get_or_404(db, Channel, channel_id)
+    ch.autoDeleteSeconds = max(0, int(body.seconds))
+    db.commit()
+    _expire_messages(db, ch)
+    return {"autoDeleteSeconds": ch.autoDeleteSeconds}
 
 
 # ------------------------ real agent reply (9Router) ------------------------

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useStore } from '@/store'
+import { useStore, AUTO_DELETE_OPTIONS, autoDeleteLabel } from '@/store'
 import { assetUrl } from '@/api/client'
 import { Hover } from '@/components/ui/Hover'
 import { buildBlocks } from '@/lib/richtext'
@@ -77,6 +77,8 @@ export function Channels() {
   const draftHas = !!s.draft.trim()
   const wfTotal = active?.wfTotal || 0
 
+  // ---- channel options menu (clear history + auto-delete timer) ----
+  const [chanMenu, setChanMenu] = useState(false)
   // ---- @mention autocomplete (real channel members) ----
   const [mention, setMention] = useState<{ q: string; start: number } | null>(null)
   const mentionMatches = mention ? members.filter((m) => m.name.toLowerCase().includes(mention.q.toLowerCase())).slice(0, 8) : []
@@ -161,6 +163,7 @@ export function Channels() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
               <span style={{ fontSize: 15, color: 'var(--ink-2)', flex: 'none' }}>{isDM ? '💬' : isPublic ? '#' : '🔒'}</span>
               <span style={{ fontSize: 17, fontWeight: 800, letterSpacing: '-.2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{active?.name}</span>
+              {(active?.autoDeleteSeconds || 0) > 0 && <span title="Tự động xóa tin nhắn" style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--jade-deep)', background: 'var(--jade-soft)', padding: '2px 9px', borderRadius: 99, flex: 'none' }}>⏱ {autoDeleteLabel(active?.autoDeleteSeconds)}</span>}
             </div>
             <div style={{ fontSize: 12, color: 'var(--ink-2)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{active?.desc}</div>
           </div>
@@ -173,6 +176,24 @@ export function Channels() {
             <Hover as="button" onClick={s.confirmLeave} style={{ display: 'flex', alignItems: 'center', gap: 7, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink-2)', borderRadius: 99, padding: '8px 15px', font: 'inherit', fontSize: 12.5, fontWeight: 500, cursor: 'pointer' }} hover={{ borderColor: 'var(--danger)', color: 'var(--danger)' }}>↩</Hover>
             {headerBtn('Tìm trong hội thoại', '🔍', s.toggleChatSearch)}
             {headerBtn('Thông báo', '🔔', s.openNotifs)}
+            <div style={{ position: 'relative' }}>
+              {headerBtn('Tùy chọn kênh', '⋯', () => setChanMenu((v) => !v))}
+              {chanMenu && active && (
+                <div style={{ position: 'absolute', top: 40, right: 0, width: 234, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, boxShadow: '0 12px 32px rgba(22,32,28,.18)', padding: 6, zIndex: 40, animation: 'pop .15s ease both' }}>
+                  <Hover onClick={() => { setChanMenu(false); if (window.confirm(`Xóa toàn bộ lịch sử trò chuyện kênh "${active.name}"? Không thể hoàn tác.`)) s.clearHistory(active.id) }} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 11px', borderRadius: 10, cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--danger)' }} hover={{ background: '#FBEAE7' }}>🗑 Xóa lịch sử trò chuyện</Hover>
+                  <div style={{ borderTop: '1px solid var(--line)', margin: '5px 4px' }} />
+                  <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.4px', textTransform: 'uppercase', color: 'var(--placeholder)', padding: '6px 11px 4px' }}>⏱ Tự động xóa sau</div>
+                  {AUTO_DELETE_OPTIONS.map((o) => {
+                    const sel = (active.autoDeleteSeconds || 0) === o.seconds
+                    return (
+                      <Hover key={o.seconds} onClick={() => { setChanMenu(false); s.setAutoDelete(active.id, o.seconds) }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 11px', borderRadius: 10, cursor: 'pointer', fontSize: 13, fontWeight: sel ? 700 : 500, color: sel ? 'var(--jade-deep)' : 'var(--ink)', background: sel ? 'var(--jade-soft)' : 'transparent' }} hover={{ background: 'var(--jade-soft)' }}>
+                        <span>{o.label}</span>{sel && <span style={{ color: 'var(--jade-deep)' }}>✓</span>}
+                      </Hover>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         </header>
 

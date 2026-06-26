@@ -229,6 +229,7 @@ export interface Channel {
   tasks: { id: string; status: string; assignee: string; text: string; time: string }[]
   wfTotal: number
   wfNote: string
+  autoDeleteSeconds?: number
 }
 
 export interface RoomDef {

@@ -66,6 +66,16 @@ export interface WfFormStep { agent: string; title: string; io: string }
 export interface WfForm { name: string; desc: string; trigger: 'cron' | 'event' | 'manual'; triggerLabel: string; steps: WfFormStep[] }
 export interface Attach { icon: string; name: string; label: string; url?: string; mime?: string; fileKind?: string }
 
+export const AUTO_DELETE_OPTIONS = [
+  { seconds: 0, label: 'Tắt' },
+  { seconds: 3600, label: '1 giờ' },
+  { seconds: 86400, label: '1 ngày' },
+  { seconds: 604800, label: '1 tuần' },
+  { seconds: 2592000, label: '1 tháng' },
+]
+export const autoDeleteLabel = (s?: number): string =>
+  AUTO_DELETE_OPTIONS.find((o) => o.seconds === (s || 0))?.label || `${s}s`
+
 export interface AppState {
   // navigation
   authed: boolean
@@ -496,6 +506,8 @@ export interface AppActions {
   pickAttach: (kind: string) => void
   uploadAttach: (file: File) => Promise<void>
   clearAttach: () => void
+  clearHistory: (id: string) => void
+  setAutoDelete: (id: string, seconds: number) => void
   openFiles: () => void
   openFile: (f: RoomFile) => void
   openAddMember: () => void
@@ -1097,6 +1109,18 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
     }
   },
   clearAttach: () => set({ pendingAttach: null }),
+  clearHistory: (id) => {
+    persist(api.del(`/channels/${id}/messages`))
+    set((s) => ({ messages: { ...s.messages, [id]: [] } }))
+    get().fireToast('Đã xóa lịch sử trò chuyện')
+  },
+  setAutoDelete: (id, seconds) => {
+    persist(api.patch(`/channels/${id}/auto-delete`, { seconds }))
+    const upd = (list: Channel[]) => list.map((c) => (c.id === id ? { ...c, autoDeleteSeconds: seconds } : c))
+    set((s) => ({ publicData: upd(s.publicData), privateData: upd(s.privateData), directData: upd(s.directData) }))
+    if (seconds > 0) api.get(`/channels/${id}/messages`).then((msgs) => set((st) => ({ messages: { ...st.messages, [id]: msgs } }))).catch(() => {})
+    get().fireToast(seconds > 0 ? `Đã bật tự xóa sau ${autoDeleteLabel(seconds)}` : 'Đã tắt tự xóa')
+  },
   openFiles: () => set({ overlay: 'files' }),
   openFile: (f) => set({ fileDetail: f, overlay: 'fileView' }),
   openAddMember: () => set({ overlay: 'addMember' }),
