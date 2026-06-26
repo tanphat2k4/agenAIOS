@@ -19,7 +19,7 @@ export type MsgBlock =
   | { kind: 'para'; rich: RichSpan[] }
   | { kind: 'list'; items: RichSpan[][] }
   | { kind: 'task'; code: string; text: string }
-  | { kind: 'attach'; icon: string; name: string; label: string }
+  | { kind: 'attach'; icon: string; name: string; label: string; url?: string; mime?: string; fileKind?: string }
 
 export interface ChatMessage {
   authorName: string

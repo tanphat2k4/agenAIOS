@@ -1,8 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
 from app.routers import api_router
+from app.routers.uploads import UPLOAD_DIR
 
 app = FastAPI(title="AgentAIOS API", version="0.1.0")
 
@@ -21,6 +23,7 @@ def health():
 
 
 app.include_router(api_router)
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 
 @app.on_event("startup")

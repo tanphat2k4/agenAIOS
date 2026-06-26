@@ -42,10 +42,29 @@ async function req(method: string, path: string, body?: unknown): Promise<any> {
   return ct.includes('application/json') ? res.json() : res.text()
 }
 
+async function upload(path: string, file: File): Promise<any> {
+  const headers: Record<string, string> = {}
+  const tok = getToken()
+  if (tok) headers.Authorization = `Bearer ${tok}`
+  const fd = new FormData()
+  fd.append('file', file)
+  const res = await fetch(BASE + path, { method: 'POST', headers, body: fd })
+  if (!res.ok) {
+    let detail = `${res.status} ${res.statusText}`
+    try { const j = await res.json(); if (j?.detail) detail = typeof j.detail === 'string' ? j.detail : JSON.stringify(j.detail) } catch { /* non-JSON */ }
+    throw new Error(detail)
+  }
+  return res.json()
+}
+
+/** Resolve a backend-relative asset path (e.g. /uploads/x.png) to a full URL. */
+export const assetUrl = (p: string) => (!p ? '' : p.startsWith('http') ? p : BASE + p)
+
 export const api = {
   get: (p: string) => req('GET', p),
   post: (p: string, b?: unknown) => req('POST', p, b ?? {}),
   patch: (p: string, b?: unknown) => req('PATCH', p, b ?? {}),
   del: (p: string) => req('DELETE', p),
+  upload,
   base: BASE,
 }

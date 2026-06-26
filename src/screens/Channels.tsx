@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useStore } from '@/store'
+import { assetUrl } from '@/api/client'
 import { Hover } from '@/components/ui/Hover'
 import { buildBlocks } from '@/lib/richtext'
 import type { Channel } from '@/types'
@@ -44,6 +45,20 @@ const sectionLabel: React.CSSProperties = { fontSize: 10, fontWeight: 700, lette
 export function Channels() {
   const s = useStore()
   const composerRef = useRef<HTMLTextAreaElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const onPickAttach = (kind: string) => {
+    if (kind === 'record') { s.pickAttach('record'); return }  // pickAttach closes the menu
+    s.toggleAttachMenu()  // close menu, then open the real file dialog
+    if (fileInputRef.current) {
+      fileInputRef.current.accept = kind === 'image' ? 'image/*' : '*/*'
+      fileInputRef.current.click()
+    }
+  }
+  const onFileChosen = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0]
+    if (f) s.uploadAttach(f)
+    e.target.value = ''
+  }
   const active = s.findChannel(s.activeId) || s.privateData[2] || s.publicData[0]
   const isDM = s.directData.some((d) => d.id === active?.id)
   const isPublic = s.publicData.some((p) => p.id === active?.id)
@@ -158,7 +173,14 @@ export function Channels() {
                     if ('isPara' in block) return <div key={bi} style={{ fontSize: 14, lineHeight: 1.62, color: 'var(--ink)', margin: '0 0 8px' }}>{block.node}</div>
                     if ('isList' in block) return <div key={bi} style={{ margin: '0 0 10px', display: 'flex', flexDirection: 'column', gap: 7 }}>{block.items.map((it, ii) => <div key={ii} style={{ display: 'flex', gap: 10, fontSize: 14, lineHeight: 1.6, color: 'var(--ink)' }}><span style={{ fontWeight: 700, color: 'var(--jade)', flex: 'none', minWidth: 18 }}>{it.num}.</span><div style={{ minWidth: 0 }}>{it.node}</div></div>)}</div>
                     if ('isTask' in block) return <div key={bi} style={{ display: 'inline-flex', alignItems: 'center', gap: 9, maxWidth: '100%', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, padding: '8px 13px', marginTop: 2, boxShadow: '0 1px 2px rgba(22,32,28,.04)' }}><span style={{ fontFamily: 'var(--mono)', fontSize: 11.5, fontWeight: 700, color: 'var(--jade-deep)', background: 'var(--jade-soft)', padding: '2px 8px', borderRadius: 7, flex: 'none' }}>{block.code}</span><span style={{ fontSize: 12.5, color: 'var(--ink-2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{block.text}</span></div>
-                    return <div key={bi} style={{ display: 'inline-flex', alignItems: 'center', gap: 11, maxWidth: '100%', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, padding: '10px 14px', marginTop: 4 }}><span style={{ fontSize: 20, flex: 'none' }}>{block.icon}</span><div style={{ minWidth: 0 }}><div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{block.name}</div><div style={{ fontSize: 11, color: 'var(--placeholder)' }}>{block.label}</div></div><span style={{ fontSize: 14, color: 'var(--jade-deep)', marginLeft: 6 }}>↓</span></div>
+                    // attach block: image → preview, file → download link, record → reference card
+                    if (block.fileKind === 'image' && block.url) {
+                      return <a key={bi} href={assetUrl(block.url)} target="_blank" rel="noreferrer" style={{ display: 'block', marginTop: 4 }}><img src={assetUrl(block.url)} alt={block.name} style={{ maxWidth: 340, maxHeight: 260, borderRadius: 12, border: '1px solid var(--line)', display: 'block' }} /></a>
+                    }
+                    if (block.url) {
+                      return <a key={bi} href={assetUrl(block.url)} target="_blank" rel="noreferrer" download={block.name} style={{ display: 'inline-flex', alignItems: 'center', gap: 11, maxWidth: '100%', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, padding: '10px 14px', marginTop: 4, textDecoration: 'none', color: 'inherit' }}><span style={{ fontSize: 20, flex: 'none' }}>{block.icon}</span><div style={{ minWidth: 0 }}><div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{block.name}</div><div style={{ fontSize: 11, color: 'var(--placeholder)' }}>{block.label}</div></div><span style={{ fontSize: 14, color: 'var(--jade-deep)', marginLeft: 6 }}>↓</span></a>
+                    }
+                    return <div key={bi} style={{ display: 'inline-flex', alignItems: 'center', gap: 11, maxWidth: '100%', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, padding: '10px 14px', marginTop: 4 }}><span style={{ fontSize: 20, flex: 'none' }}>{block.icon}</span><div style={{ minWidth: 0 }}><div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{block.name}</div><div style={{ fontSize: 11, color: 'var(--placeholder)' }}>{block.label}</div></div></div>
                   })}
                 </div>
               </div>
@@ -170,9 +192,12 @@ export function Channels() {
         {/* composer */}
         <div style={{ flex: 'none', padding: '10px 22px 18px' }}>
           <div style={{ background: 'var(--surface)', border: `1.5px solid ${s.composerFocused ? 'var(--jade)' : 'var(--line)'}`, borderRadius: 22, padding: '10px 12px 8px', transition: 'border-color .15s' }}>
+            <input ref={fileInputRef} type="file" style={{ display: 'none' }} onChange={onFileChosen} />
             {s.pendingAttach && (
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 12, padding: '8px 11px', margin: '2px 4px 8px' }}>
-                <span style={{ fontSize: 18 }}>{s.pendingAttach.icon}</span>
+                {s.pendingAttach.fileKind === 'image' && s.pendingAttach.url
+                  ? <img src={assetUrl(s.pendingAttach.url)} alt="" style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover', flex: 'none' }} />
+                  : <span style={{ fontSize: 18 }}>{s.pendingAttach.icon}</span>}
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--ink)' }}>{s.pendingAttach.name}</div>
                   <div style={{ fontSize: 10.5, color: 'var(--placeholder)' }}>{s.pendingAttach.label}</div>
@@ -196,7 +221,7 @@ export function Channels() {
                   {s.attachMenuOpen && (
                     <div style={{ position: 'absolute', bottom: 44, left: 0, width: 210, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, boxShadow: '0 12px 32px rgba(22,32,28,.16)', padding: 6, zIndex: 20, animation: 'pop .15s ease both' }}>
                       {[['file', '📎', 'Tệp đính kèm'], ['image', '🖼', 'Hình ảnh'], ['record', '🗄', 'Bản ghi database']].map(([k, ic, lb]) => (
-                        <Hover key={k} onClick={() => s.pickAttach(k)} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '9px 11px', borderRadius: 10, cursor: 'pointer', fontSize: 13, fontWeight: 500 }} hover={{ background: 'var(--jade-soft)' }}><span style={{ fontSize: 16 }}>{ic}</span>{lb}</Hover>
+                        <Hover key={k} onClick={() => onPickAttach(k)} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '9px 11px', borderRadius: 10, cursor: 'pointer', fontSize: 13, fontWeight: 500 }} hover={{ background: 'var(--jade-soft)' }}><span style={{ fontSize: 16 }}>{ic}</span>{lb}</Hover>
                       ))}
                     </div>
                   )}
