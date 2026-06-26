@@ -1,3 +1,4 @@
+import re
 import threading
 
 from fastapi import APIRouter, Depends
@@ -211,7 +212,7 @@ def _save_agent_msg(db: Session, channel_id: str, text: str) -> dict:
 
 
 def _save_advisor_msg(db: Session, channel_id: str, text: str) -> dict:
-    """Post a message as the Cố Vấn CK advisor agent."""
+    """Post a message as the Sage advisor agent."""
     m = Message(
         id=uid("m"), channel_id=channel_id, authorName=rec.ADVISOR["name"], time=now_hm(),
         avatarInitial=rec.ADVISOR["initial"], avatarColor=rec.ADVISOR["color"], isAgent=True,
@@ -223,9 +224,9 @@ def _save_advisor_msg(db: Session, channel_id: str, text: str) -> dict:
 
 
 def _is_advisor_call(text: str) -> bool:
-    """True if the user @mentions / addresses the Cố Vấn CK advisor."""
+    """True if the user @mentions / addresses the Sage advisor (English name + VN aliases)."""
     t = (text or "").lower()
-    return "cố vấn" in t or "co van" in t or "covan" in t
+    return bool(re.search(r"\bsage\b", t)) or "cố vấn" in t or "covan" in t
 
 
 def _summarize_for_chat(ticker: str, full: str) -> str:
@@ -334,7 +335,7 @@ def _llm_reply(db: Session, channel_id: str, _text: str) -> str:
 
 
 def _bg_advise(channel_id: str, ticker: str, question: str) -> None:
-    """Cố Vấn CK: run the 5-agent pipeline on REAL-TIME data, then synthesize a clear
+    """Sage: run the 5-agent pipeline on REAL-TIME data, then synthesize a clear
     advisory that answers the user's question. Posts as the advisor agent."""
     key = _key(ticker, None)
     db = SessionLocal()
@@ -361,7 +362,7 @@ def _bg_advise(channel_id: str, ticker: str, question: str) -> None:
         _save_advisor_msg(db, channel_id, final)
         _jobs[key] = {"status": "done", "result": "ok"}
     except Exception as exc:  # noqa: BLE001
-        _save_advisor_msg(db, channel_id, f"Cố Vấn CK gặp lỗi khi phân tích {ticker}: {exc}")
+        _save_advisor_msg(db, channel_id, f"{rec.ADVISOR['name']} gặp lỗi khi phân tích {ticker}: {exc}")
         _jobs[key] = {"status": "error", "result": str(exc)}
     finally:
         db.close()
@@ -396,18 +397,18 @@ def trading_chat(body: ChatIn, db: Session = Depends(get_db)):
     ensure_trading_channel(db)
     cmd, ticker = ta.classify(body.text)
 
-    # --- Cố Vấn CK: @gọi trong chat → chạy pipeline (tư vấn) hoặc hội thoại (giải đáp), real-time ---
+    # --- Sage: @gọi trong chat → chạy pipeline (tư vấn) hoặc hội thoại (giải đáp), real-time ---
     if _is_advisor_call(body.text):
         if ticker and (cmd == "analyze" or ta.is_opinion(body.text)):
             key = _key(ticker, None)
             job = _jobs.get(key)
             if not (job and job["status"] == "running"):
                 _jobs[key] = {"status": "running", "result": None}
-                interim = _save_advisor_msg(db, cid, f"💼 **Cố Vấn CK** đang hỏi team (Analyst → Bull/Bear → Trader → Risk → Portfolio) cho **{ticker}** trên giá real-time, chờ ~30 giây…")
+                interim = _save_advisor_msg(db, cid, f"💼 **{rec.ADVISOR['name']}** đang hỏi team (Analyst → Bull/Bear → Trader → Risk → Portfolio) cho **{ticker}** trên giá real-time, chờ ~30 giây…")
                 threading.Thread(target=_bg_advise, args=(cid, ticker, body.text), daemon=True).start()
                 return {"messages": [interim], "analyzing": ticker}
             return {"messages": [_save_advisor_msg(db, cid, f"Em đang phân tích {ticker} rồi, chờ chút nhé.")], "analyzing": ticker}
-        # general question / follow-up → conversational reply, signed Cố Vấn CK
+        # general question / follow-up → conversational reply, signed Sage
         return {"messages": [_save_advisor_msg(db, cid, _llm_reply(db, cid, body.text))], "analyzing": None}
 
     if cmd == "analyze":

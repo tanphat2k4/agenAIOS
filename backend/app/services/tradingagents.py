@@ -20,9 +20,10 @@ _STOP = {
     "GIA", "TIN", "TUC", "PHAN", "TICH", "KHOI", "NGOAI", "ROOM", "LAI", "SUAT",
     "MACRO", "VND", "USD", "RSI", "MACD", "CUA", "CHO", "NHE", "VOI", "NAO",
     "SAO", "BAO", "CAO", "EM", "ANH", "VND", "CK",  # CK = chứng khoán, not a ticker
+    "SAGE", "MUA", "BAN", "GIU", "NEN",  # advisor name + buy/sell/hold verbs — never tickers
 }
 
-# Opinion / advice keywords — shared so the Cố Vấn CK agent can detect advice requests.
+# Opinion / advice keywords — shared so the Sage agent can detect advice requests.
 _OPINION_KW = (
     "hợp lý", "hop ly", "nên mua", "nen mua", "nên bán", "nen ban", "nên giữ", "nen giu",
     "có nên", "co nen", "giá nào", "gia nao", "vào giá", "vao gia", "định giá", "dinh gia",

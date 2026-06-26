@@ -165,11 +165,11 @@ def ensure_pipeline_agents(db: Session) -> list:
     return out
 
 
-# Cố Vấn CK — the chat-callable advisor that runs the pipeline on real-time data
+# Sage — the chat-callable advisor that runs the pipeline on real-time data
 # and answers follow-up questions. The pipeline agents above are its workers.
 ADVISOR = {
-    "id": "agent-ck-covan", "name": "Cố Vấn CK", "handle": "@covan", "initial": "C", "color": "#0E9F6E",
-    "persona": ("Bạn là Cố Vấn CK — cố vấn đầu tư cá nhân. Anh @gọi em trong chat; em chạy pipeline "
+    "id": "agent-ck-covan", "name": "Sage", "handle": "@sage", "initial": "S", "color": "#0E9F6E",
+    "persona": ("Bạn là Sage — cố vấn đầu tư cá nhân. Anh @gọi em trong chat; em chạy pipeline "
                 "(Analyst → Bull/Bear → Trader → Risk → Portfolio) trên dữ liệu real-time rồi tổng hợp "
                 "thành lời khuyên rõ ràng (mua/bán/giữ, vùng giá, tỷ trọng vốn, rủi ro) và giải đáp thắc mắc."),
 }
@@ -187,7 +187,8 @@ def ensure_advisor_agent(db: Session) -> Agent:
         )
         db.add(ag)
     else:
-        ag.name, ag.role, ag.color, ag.bio = ADVISOR["name"], "Cố vấn đầu tư", ADVISOR["color"], ADVISOR["persona"]
+        ag.name, ag.handle, ag.role, ag.initial, ag.color, ag.bio = (
+            ADVISOR["name"], ADVISOR["handle"], "Cố vấn đầu tư", ADVISOR["initial"], ADVISOR["color"], ADVISOR["persona"])
     db.commit()
     return ag
 
