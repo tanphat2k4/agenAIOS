@@ -10,14 +10,14 @@ import subprocess
 from app.core.config import settings
 
 
-def send_agent(prompt: str, *, deliver: bool = True, timeout: int = 300) -> tuple[str, bool]:
+def send_agent(prompt: str, *, agent: str | None = None, deliver: bool = True, timeout: int = 300) -> tuple[str, bool]:
     """Run one OpenClaw agent turn (via WSL), optionally delivering the reply to
-    Telegram. Returns (reply_text, delivered)."""
+    Telegram. `agent` defaults to settings.OPENCLAW_AGENT. Returns (reply_text, delivered)."""
     if not settings.OPENCLAW_ENABLED:
         return "", False
     parts = [
         "openclaw agent",
-        f"--agent {shlex.quote(settings.OPENCLAW_AGENT)}",
+        f"--agent {shlex.quote(agent or settings.OPENCLAW_AGENT)}",
         "--channel telegram",
         f"--to {shlex.quote(settings.OPENCLAW_TELEGRAM_CHAT)}",
         f"-m {shlex.quote(prompt)}",

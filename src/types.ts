@@ -257,6 +257,6 @@ export interface PersonCard {
 }
 
 export type ViewName =
-  | 'channels' | 'rooms' | 'cron' | 'knowledge' | 'editor' | 'workflow' | 'trading'
+  | 'channels' | 'rooms' | 'cron' | 'knowledge' | 'editor' | 'workflow' | 'trading' | 'music'
   | 'overview' | 'agents' | 'mcp' | 'tasks' | 'devices' | 'logs'
   | 'perms' | 'billing' | 'plans' | 'users' | 'notifs' | 'language' | 'profile'
