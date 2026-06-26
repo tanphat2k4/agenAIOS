@@ -19,8 +19,22 @@ from app.core.config import settings
 _STOP = {
     "GIA", "TIN", "TUC", "PHAN", "TICH", "KHOI", "NGOAI", "ROOM", "LAI", "SUAT",
     "MACRO", "VND", "USD", "RSI", "MACD", "CUA", "CHO", "NHE", "VOI", "NAO",
-    "SAO", "BAO", "CAO", "EM", "ANH", "VND",
+    "SAO", "BAO", "CAO", "EM", "ANH", "VND", "CK",  # CK = chứng khoán, not a ticker
 }
+
+# Opinion / advice keywords — shared so the Cố Vấn CK agent can detect advice requests.
+_OPINION_KW = (
+    "hợp lý", "hop ly", "nên mua", "nen mua", "nên bán", "nen ban", "nên giữ", "nen giu",
+    "có nên", "co nen", "giá nào", "gia nao", "vào giá", "vao gia", "định giá", "dinh gia",
+    "đánh giá", "danh gia", "nhận định", "nhan dinh", "mục tiêu", "muc tieu", "vùng mua", "vung mua",
+    "tư vấn", "tu van", "khuyến nghị", "khuyen nghi", "có ăn", "co an", "ôm", "bắt đáy", "bat day",
+)
+
+
+def is_opinion(text: str) -> bool:
+    """True if the text asks for an opinion/recommendation (vs a raw-data request)."""
+    t = text.lower()
+    return any(k in t for k in _OPINION_KW)
 
 
 def _extract_ticker(text: str) -> str | None:
@@ -39,11 +53,7 @@ def classify(text: str) -> tuple[str | None, str | None]:
     t = text.lower()
     # Opinion / recommendation questions ("giá nào hợp lý", "nên mua không"…) must NOT dump
     # raw data — they go to the analyst (_llm_reply, grounded) which reasons + recommends.
-    opinion = any(k in t for k in (
-        "hợp lý", "hop ly", "nên mua", "nen mua", "nên bán", "nen ban", "nên giữ", "nen giu",
-        "có nên", "co nen", "giá nào", "gia nao", "vào giá", "vao gia", "định giá", "dinh gia",
-        "đánh giá", "danh gia", "nhận định", "nhan dinh", "mục tiêu", "muc tieu", "vùng mua", "vung mua",
-    ))
+    opinion = is_opinion(text)
     if any(k in t for k in ("phân tích", "phan tich", "khuyến nghị", "khuyen nghi", "analyze", "báo cáo", "bao cao")):
         cmd = "analyze"
     elif opinion:

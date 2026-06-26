@@ -165,6 +165,33 @@ def ensure_pipeline_agents(db: Session) -> list:
     return out
 
 
+# Cố Vấn CK — the chat-callable advisor that runs the pipeline on real-time data
+# and answers follow-up questions. The pipeline agents above are its workers.
+ADVISOR = {
+    "id": "agent-ck-covan", "name": "Cố Vấn CK", "handle": "@covan", "initial": "C", "color": "#0E9F6E",
+    "persona": ("Bạn là Cố Vấn CK — cố vấn đầu tư cá nhân. Anh @gọi em trong chat; em chạy pipeline "
+                "(Analyst → Bull/Bear → Trader → Risk → Portfolio) trên dữ liệu real-time rồi tổng hợp "
+                "thành lời khuyên rõ ràng (mua/bán/giữ, vùng giá, tỷ trọng vốn, rủi ro) và giải đáp thắc mắc."),
+}
+
+
+def ensure_advisor_agent(db: Session) -> Agent:
+    ag = db.get(Agent, ADVISOR["id"])
+    if not ag:
+        ag = Agent(
+            id=ADVISOR["id"], name=ADVISOR["name"], handle=ADVISOR["handle"], role="Cố vấn đầu tư",
+            roleType="research", initial=ADVISOR["initial"], color=ADVISOR["color"], status="online",
+            model="fast-chat", modelType="local", tasks=0, rooms=1, success=100,
+            skills=["Tư vấn real-time", "Pipeline 5-agent"], lastActive="vừa xong",
+            bio=ADVISOR["persona"], roomsList=["#chung-khoan"], recentTasks=[], sort=-1,
+        )
+        db.add(ag)
+    else:
+        ag.name, ag.role, ag.color, ag.bio = ADVISOR["name"], "Cố vấn đầu tư", ADVISOR["color"], ADVISOR["persona"]
+    db.commit()
+    return ag
+
+
 def ensure_analysis_workflow(db: Session) -> Workflow:
     template = [{"agent": a["name"], "initial": a["initial"], "color": a["color"], "title": a["role"], "io": a["io"], "status": "idle", "dur": ""} for a in _PIPELINE]
     w = db.get(Workflow, WF_ID)
@@ -210,6 +237,7 @@ def ensure_all(db: Session) -> None:
     ensure_mcp_server(db)
     ensure_trading_agent(db)
     ensure_pipeline_agents(db)
+    ensure_advisor_agent(db)
     ensure_analysis_workflow(db)
     ensure_trading_room(db)
 
@@ -371,9 +399,12 @@ def run_pipeline(db: Session, ticker: str) -> tuple[list, bool, str]:
 
     ticker = ticker.upper()
     t0 = time.time()
-    snap = ta.snapshot(ticker)  # kept intact (never truncated) so price/indicators always reach the agents
-    headline = price_headline(ticker, snap)
-    data = f"GIÁ + CHỈ BÁO:\n{snap}\n\nTIN TỨC:\n{ta.news(ticker)[:1200]}\n\nKHỐI NGOẠI:\n{ta.extras(ticker)[:900]}"
+    snap, headline, directive = ground(ticker)  # prefer LIVE intraday price over EOD close
+    if not snap:  # data unavailable → fall back to EOD snapshot
+        snap = ta.snapshot(ticker)
+        headline, directive = price_headline(ticker, snap), ""
+    rt = (directive + "\n\n") if directive else ""
+    data = f"{rt}GIÁ + CHỈ BÁO:\n{snap}\n\nTIN TỨC:\n{ta.news(ticker)[:1200]}\n\nKHỐI NGOẠI:\n{ta.extras(ticker)[:900]}"
 
     outputs: list = []
     prior = ""

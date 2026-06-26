@@ -52,34 +52,6 @@ def macro(db: Session = Depends(get_db)):
     return {"text": text}
 
 
-@router.get("/advise/{ticker}")
-def advise(ticker: str, db: Session = Depends(get_db)):
-    """Real-time advisor: a grounded BUY/SELL/HOLD recommendation built on the LIVE
-    intraday price (vnstock price_board) + EOD indicators — not the stale EOD close."""
-    ticker = ticker.strip().upper()
-    _snap, headline, directive = rec.ground(ticker)
-    rec.record_mcp_call(db, "snapshot", ok=bool(directive))
-    if not directive:
-        return {"ticker": ticker, "text": f"Chưa lấy được dữ liệu cho **{ticker}**. Kiểm tra lại mã hoặc thử lại sau."}
-    system = {
-        "role": "system",
-        "content": ("Bạn là cố vấn phân tích chứng khoán Việt Nam, trả lời bằng tiếng Việt, xưng 'em'. "
-                    + rec.ANTI_HALLUCINATION + " Đây là công cụ nghiên cứu, KHÔNG phải lời khuyên đầu tư."),
-    }
-    user = {
-        "role": "user",
-        "content": (f"Dựa trên dữ liệu real-time, đưa khuyến nghị cho {ticker}: nêu rõ **MUA / BÁN / GIỮ**, "
-                    "vùng giá mua hợp lý, vùng chốt lời & cắt lỗ, kèm lý do ngắn gọn (RSI, xu hướng SMA50/200, khối ngoại). "
-                    "Trình bày gọn bằng gạch đầu dòng, kết bằng 1 dòng nhận định tổng thể."),
-    }
-    messages = [system, user, {"role": "system", "content": directive}]
-    try:
-        out = ninerouter.chat(messages, temperature=0.3, max_tokens=600)["content"] or "(không có nội dung)"
-    except Exception as exc:  # noqa: BLE001
-        out = f"Lỗi gọi LLM: {exc}"
-    return {"ticker": ticker, "text": f"{headline}\n\n{out}"}
-
-
 # ------------------- full analysis (slow, LLM) — background -------------------
 _jobs: dict[str, dict] = {}
 
@@ -238,6 +210,24 @@ def _save_agent_msg(db: Session, channel_id: str, text: str) -> dict:
     return row_to_dict(m, exclude={"channel_id"})
 
 
+def _save_advisor_msg(db: Session, channel_id: str, text: str) -> dict:
+    """Post a message as the Cố Vấn CK advisor agent."""
+    m = Message(
+        id=uid("m"), channel_id=channel_id, authorName=rec.ADVISOR["name"], time=now_hm(),
+        avatarInitial=rec.ADVISOR["initial"], avatarColor=rec.ADVISOR["color"], isAgent=True,
+        raw=rec.md_to_blocks(text), sort=next_sort(db, Message),
+    )
+    db.add(m)
+    db.commit()
+    return row_to_dict(m, exclude={"channel_id"})
+
+
+def _is_advisor_call(text: str) -> bool:
+    """True if the user @mentions / addresses the Cố Vấn CK advisor."""
+    t = (text or "").lower()
+    return "cố vấn" in t or "co van" in t or "covan" in t
+
+
 def _summarize_for_chat(ticker: str, full: str) -> str:
     """Condense a long TradingAgents report into a short, plain-Vietnamese,
     chat-friendly briefing (no markdown symbols). Falls back to the full text
@@ -343,6 +333,40 @@ def _llm_reply(db: Session, channel_id: str, _text: str) -> str:
     return (headline + "\n\n" + out) if headline else out
 
 
+def _bg_advise(channel_id: str, ticker: str, question: str) -> None:
+    """Cố Vấn CK: run the 5-agent pipeline on REAL-TIME data, then synthesize a clear
+    advisory that answers the user's question. Posts as the advisor agent."""
+    key = _key(ticker, None)
+    db = SessionLocal()
+    try:
+        outputs, _ok, headline = rec.run_pipeline(db, ticker)
+        team = "\n".join(f"[{a['name']} · {a['role']}]: {txt}" for a, txt in outputs)
+        system = {
+            "role": "system",
+            "content": (f"{rec.ADVISOR['persona']} {rec.ANTI_HALLUCINATION} "
+                        "KHÔNG lặp lại dòng giá đầu (đã có sẵn). Đây là công cụ nghiên cứu, KHÔNG phải lời khuyên đầu tư."),
+        }
+        user = {
+            "role": "user",
+            "content": (f"Câu hỏi của anh: {question}\n\nKết quả phân tích của team về {ticker} (đã dùng giá real-time):\n{team[:3200]}\n\n"
+                        "Tổng hợp giúp anh thành lời khuyên: **MUA / BÁN / GIỮ**, vùng giá mua hợp lý, vùng chốt lời & cắt lỗ, "
+                        "gợi ý tỷ trọng vốn (đừng all-in), 2-3 lý do chính (kỹ thuật + khối ngoại). "
+                        "Gọn bằng gạch đầu dòng, kết bằng 1 dòng cảnh báo rủi ro."),
+        }
+        try:
+            synth = ninerouter.chat([system, user, {"role": "system", "content": headline}], temperature=0.3, max_tokens=650)["content"] or ""
+        except Exception as exc:  # noqa: BLE001
+            synth = f"(không tổng hợp được: {exc})"
+        final = f"{headline}\n\n{synth}" if synth.strip() else (f"{headline}\n\n{outputs[-1][1]}" if outputs else f"{headline}\n\nChưa có kết quả.")
+        _save_advisor_msg(db, channel_id, final)
+        _jobs[key] = {"status": "done", "result": "ok"}
+    except Exception as exc:  # noqa: BLE001
+        _save_advisor_msg(db, channel_id, f"Cố Vấn CK gặp lỗi khi phân tích {ticker}: {exc}")
+        _jobs[key] = {"status": "error", "result": str(exc)}
+    finally:
+        db.close()
+
+
 class ChatIn(BaseModel):
     channel_id: str = TRADING_CHANNEL_ID
     text: str
@@ -356,6 +380,7 @@ def ensure_channel(db: Session = Depends(get_db), current: User = Depends(get_cu
     add_channel_member(db, ch.id, name=current.name, initial=current.initial, color=current.color,
                        role="Owner" if getattr(current, "role", "") == "owner" else "Member", userId=current.id)
     add_channel_member(db, ch.id, name=_AGENT_NAME, initial=_AGENT_INITIAL, color=_AGENT_COLOR, role="Agent", isAgent=True)
+    add_channel_member(db, ch.id, name=rec.ADVISOR["name"], initial=rec.ADVISOR["initial"], color=rec.ADVISOR["color"], role="Agent", isAgent=True)
     for a in rec._PIPELINE:
         add_channel_member(db, ch.id, name=a["name"], initial=a["initial"], color=a["color"], role="Agent", isAgent=True)
     rec.ensure_all(db)
@@ -370,6 +395,20 @@ def trading_chat(body: ChatIn, db: Session = Depends(get_db)):
     cid = body.channel_id or TRADING_CHANNEL_ID
     ensure_trading_channel(db)
     cmd, ticker = ta.classify(body.text)
+
+    # --- Cố Vấn CK: @gọi trong chat → chạy pipeline (tư vấn) hoặc hội thoại (giải đáp), real-time ---
+    if _is_advisor_call(body.text):
+        if ticker and (cmd == "analyze" or ta.is_opinion(body.text)):
+            key = _key(ticker, None)
+            job = _jobs.get(key)
+            if not (job and job["status"] == "running"):
+                _jobs[key] = {"status": "running", "result": None}
+                interim = _save_advisor_msg(db, cid, f"💼 **Cố Vấn CK** đang hỏi team (Analyst → Bull/Bear → Trader → Risk → Portfolio) cho **{ticker}** trên giá real-time, chờ ~30 giây…")
+                threading.Thread(target=_bg_advise, args=(cid, ticker, body.text), daemon=True).start()
+                return {"messages": [interim], "analyzing": ticker}
+            return {"messages": [_save_advisor_msg(db, cid, f"Em đang phân tích {ticker} rồi, chờ chút nhé.")], "analyzing": ticker}
+        # general question / follow-up → conversational reply, signed Cố Vấn CK
+        return {"messages": [_save_advisor_msg(db, cid, _llm_reply(db, cid, body.text))], "analyzing": None}
 
     if cmd == "analyze":
         if not ticker:
