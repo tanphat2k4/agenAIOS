@@ -491,6 +491,7 @@ export interface AppActions {
   pollTradingAnalyze: (channelId: string, ticker: string) => void
   pollMusicChat: (channelId: string) => void
   refreshTradingOps: () => void
+  reloadWorkflows: () => void
   refreshAfterReport: () => void
   runMusicBatch: () => void
   toggleChatSearch: () => void
@@ -1062,6 +1063,11 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
   refreshTradingOps: () => {
     Promise.all([api.get('/mcp'), api.get('/workflows'), api.get('/sessions'), api.get('/knowledge')])
       .then(([mcp, workflows, sessions, knowledge]) => set({ mcpData: mcp, workflows, sessionsData: sessions, knowledgeData: knowledge }))
+      .catch(() => {})
+  },
+  reloadWorkflows: () => {
+    Promise.all([api.get('/workflows'), api.get('/sessions')])
+      .then(([workflows, sessions]) => { set({ workflows, sessionsData: sessions }); get().fireToast('Đã tải lại workflow') })
       .catch(() => {})
   },
   runMusicBatch: () => {

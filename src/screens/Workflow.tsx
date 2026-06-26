@@ -1,3 +1,4 @@
+import { type MouseEvent } from 'react'
 import { useStore } from '@/store'
 import { Hover } from '@/components/ui/Hover'
 import type { Workflow, WorkflowStep } from '@/types'
@@ -195,7 +196,12 @@ export function WorkflowView() {
                 hover={{ borderColor: 'var(--jade)' }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 8 }}>
                   <span style={{ fontSize: 14, fontWeight: 700, color: w.nameColor, lineHeight: 1.35 }}>{w.name}</span>
-                  <span style={{ width: 9, height: 9, borderRadius: 99, background: w.dotColor, flex: 'none', marginTop: 5, animation: w.dotPulse }}></span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 'none', marginTop: 1 }}>
+                    <Hover as="button" onClick={(e: MouseEvent) => { e.stopPropagation(); s.reloadWorkflows() }} title="Tải lại dữ liệu workflow"
+                      style={{ width: 24, height: 24, borderRadius: 99, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink-2)', fontSize: 13, lineHeight: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+                      hover={{ borderColor: 'var(--jade)', color: 'var(--jade-deep)' }}>⟳</Hover>
+                    <span style={{ width: 9, height: 9, borderRadius: 99, background: w.dotColor, flex: 'none', animation: w.dotPulse }}></span>
+                  </div>
                 </div>
                 <div style={{ fontSize: 11.5, color: 'var(--ink-2)', lineHeight: 1.45, marginBottom: 11 }}>{w.desc}</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
