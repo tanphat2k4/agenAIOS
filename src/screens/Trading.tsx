@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api } from '@/api/client'
 import { Hover } from '@/components/ui/Hover'
 import { useStore } from '@/store'
@@ -22,6 +22,25 @@ export function Trading() {
   const [busy, setBusy] = useState(false)
   const [title, setTitle] = useState('')
   const [result, setResult] = useState('')
+  const [portfolio, setPortfolio] = useState<{ holdings: any[]; totalPnlM: number; totalPnlPct: number; totalValueM: number; totalCostM: number } | null>(null)
+  const [pfForm, setPfForm] = useState({ ticker: '', qty: '', avg: '' })
+  const [pfBusy, setPfBusy] = useState(false)
+
+  useEffect(() => { api.get('/trading/portfolio').then(setPortfolio).catch(() => {}) }, [])
+
+  const addHolding = async () => {
+    const t = pfForm.ticker.trim().toUpperCase()
+    const qty = parseFloat(pfForm.qty)
+    const avg = parseFloat(pfForm.avg)
+    if (!t || !(qty > 0) || !(avg > 0) || pfBusy) return
+    setPfBusy(true)
+    try {
+      setPortfolio(await api.post('/trading/portfolio', { ticker: t, qty, avg }))
+      setPfForm({ ticker: '', qty: '', avg: '' })
+    } catch { /* ignore */ } finally { setPfBusy(false) }
+  }
+  const removeHolding = async (t: string) => { try { setPortfolio(await api.del('/trading/portfolio/' + t)) } catch { /* ignore */ } }
+  const pfInput = { border: '1.5px solid var(--line)', borderRadius: 10, padding: '8px 10px', font: 'inherit', fontSize: 12.5, background: 'var(--bg)', color: 'var(--ink)', outline: 'none' } as const
 
   const runFast = async (key: string, label: string) => {
     const t = ticker.trim().toUpperCase()
@@ -149,6 +168,41 @@ export function Trading() {
                 style={{ border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink-2)', borderRadius: 99, padding: '4px 11px', font: 'inherit', fontSize: 11.5, fontWeight: 700, cursor: 'pointer' }}
                 hover={{ borderColor: 'var(--jade)', color: 'var(--jade-deep)' }}>{t}</Hover>
             ))}
+          </div>
+        </div>
+
+        {/* portfolio card */}
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, padding: '16px 20px', marginBottom: 18 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+            <span style={{ fontSize: 14, fontWeight: 800, letterSpacing: '-.2px' }}>💼 Danh mục của tôi</span>
+            {portfolio && portfolio.holdings.length > 0 && (
+              <span style={{ fontSize: 13, fontWeight: 700, color: portfolio.totalPnlM >= 0 ? 'var(--jade-deep)' : '#C94F3D' }}>
+                {portfolio.totalValueM}tr · P/L {portfolio.totalPnlM >= 0 ? '+' : ''}{portfolio.totalPnlM}tr ({portfolio.totalPnlPct >= 0 ? '+' : ''}{portfolio.totalPnlPct}%)
+              </span>
+            )}
+          </div>
+          {portfolio && portfolio.holdings.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
+              {portfolio.holdings.map((h) => {
+                const up = h.pnlM >= 0
+                return (
+                  <div key={h.ticker} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12.5, padding: '7px 10px', background: 'var(--bg)', borderRadius: 10 }}>
+                    <span style={{ fontWeight: 800, width: 44 }}>{h.ticker}</span>
+                    <span style={{ color: 'var(--ink-2)', flex: 1, minWidth: 0 }}>{Number(h.qty).toLocaleString()}cp · vốn {h.avg} → {h.price ?? '—'}</span>
+                    <span style={{ fontWeight: 700, color: up ? 'var(--jade-deep)' : '#C94F3D' }}>{up ? '+' : ''}{h.pnlM}tr ({up ? '+' : ''}{h.pnlPct}%)</span>
+                    <Hover as="button" onClick={() => removeHolding(h.ticker)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--placeholder)', fontSize: 15, lineHeight: 1, padding: 2 }} hover={{ color: '#C94F3D' }}>✕</Hover>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <div style={{ fontSize: 12.5, color: 'var(--placeholder)', marginBottom: 12 }}>Chưa có mã nào — thêm cổ phiếu anh đang giữ để theo dõi lãi/lỗ real-time (giá vốn nhập theo nghìn đồng, vd 15.5).</div>
+          )}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <input value={pfForm.ticker} onChange={(e) => setPfForm({ ...pfForm, ticker: e.target.value.toUpperCase() })} placeholder="Mã" style={{ ...pfInput, width: 70, fontWeight: 700, letterSpacing: '.5px' }} />
+            <input value={pfForm.qty} onChange={(e) => setPfForm({ ...pfForm, qty: e.target.value.replace(/[^\d]/g, '') })} placeholder="Số CP" inputMode="numeric" style={{ ...pfInput, width: 90 }} />
+            <input value={pfForm.avg} onChange={(e) => setPfForm({ ...pfForm, avg: e.target.value.replace(/[^\d.]/g, '') })} onKeyDown={(e) => { if (e.key === 'Enter') addHolding() }} placeholder="Giá vốn (nghìn)" inputMode="decimal" style={{ ...pfInput, width: 120 }} />
+            <Hover as="button" onClick={addHolding} disabled={pfBusy} style={{ border: 'none', borderRadius: 10, padding: '9px 18px', font: 'inherit', fontSize: 12.5, fontWeight: 700, cursor: pfBusy ? 'default' : 'pointer', background: 'var(--jade)', color: '#fff', opacity: pfBusy ? 0.6 : 1 }} hover={pfBusy ? {} : { background: 'var(--jade-deep)' }}>＋ Thêm</Hover>
           </div>
         </div>
 

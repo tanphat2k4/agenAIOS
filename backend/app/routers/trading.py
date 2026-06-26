@@ -239,6 +239,16 @@ def _wants_screening(text: str) -> bool:
     return any(k in t for k in _SCREEN_KW)
 
 
+_PORTFOLIO_KW = ("danh mục", "danh muc", "portfolio", "lời lỗ", "loi lo", "lãi lỗ", "lai lo",
+                 "p/l", "pnl", "đang giữ", "dang giu", "cổ phiếu tôi", "tài khoản của", "nav của")
+
+
+def _wants_portfolio(text: str) -> bool:
+    """True if the user asks about their portfolio / P&L."""
+    t = (text or "").lower()
+    return any(k in t for k in _PORTFOLIO_KW)
+
+
 def _summarize_for_chat(ticker: str, full: str) -> str:
     """Condense a long TradingAgents report into a short, plain-Vietnamese,
     chat-friendly briefing (no markdown symbols). Falls back to the full text
@@ -462,7 +472,7 @@ def ensure_channel(db: Session = Depends(get_db), current: User = Depends(get_cu
 
 
 @router.post("/chat")
-def trading_chat(body: ChatIn, db: Session = Depends(get_db)):
+def trading_chat(body: ChatIn, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
     cid = body.channel_id or TRADING_CHANNEL_ID
     ensure_trading_channel(db)
     cmd, ticker = ta.classify(body.text)
@@ -470,6 +480,9 @@ def trading_chat(body: ChatIn, db: Session = Depends(get_db)):
     # --- Sage: @gọi trong chat → screening / pipeline tư vấn / hội thoại, đều real-time ---
     if _is_advisor_call(body.text):
         has_ticker = bool(ticker and ticker in body.text)
+        # "danh mục / lời lỗ?" → báo P/L real-time từ holdings của user
+        if _wants_portfolio(body.text):
+            return {"messages": [_save_advisor_msg(db, cid, _portfolio_report_text(_get_holdings(current)))], "analyzing": None}
         # "nên mua mã nào?" (không nêu mã cụ thể) → lọc & xếp hạng watchlist
         if not has_ticker and _wants_screening(body.text):
             key = _key("SCREEN", None)
@@ -516,3 +529,84 @@ def trading_chat(body: ChatIn, db: Session = Depends(get_db)):
 
     # general question / follow-up → conversational reply via 9Router
     return {"messages": [_save_agent_msg(db, cid, _llm_reply(db, cid, body.text))], "analyzing": None}
+
+
+# ----------------------- portfolio (holdings + real-time P/L) -----------------------
+class HoldingIn(BaseModel):
+    ticker: str
+    qty: float
+    avg: float  # giá vốn (nghìn đồng/cp, cùng thang với giá hiển thị)
+
+
+def _get_holdings(current: User) -> list:
+    return list((current.settings or {}).get("holdings", []))
+
+
+def _save_holdings(db: Session, current: User, holdings: list) -> None:
+    current.settings = {**(current.settings or {}), "holdings": holdings}  # reassign so SQLAlchemy tracks it
+    db.commit()
+
+
+def _portfolio_pnl(holdings: list) -> dict:
+    """Compute real-time P/L (in million VND) for a list of holdings. One price_board call."""
+    tickers = [h["ticker"] for h in holdings]
+    quotes = ta._price_board_batch(tickers) if tickers else {}
+    rows, tcost, tval = [], 0.0, 0.0
+    for h in holdings:
+        q = quotes.get(h["ticker"], {})
+        price = q.get("price")
+        cur = price if price is not None else h["avg"]
+        cost_m = h["avg"] * h["qty"] / 1000.0   # triệu VND
+        val_m = cur * h["qty"] / 1000.0
+        pnl_m = val_m - cost_m
+        rows.append({
+            "ticker": h["ticker"], "qty": h["qty"], "avg": h["avg"], "price": price, "change": q.get("change"),
+            "costM": round(cost_m, 2), "valueM": round(val_m, 2), "pnlM": round(pnl_m, 2),
+            "pnlPct": round(pnl_m / cost_m * 100, 2) if cost_m else 0,
+        })
+        tcost += cost_m
+        tval += val_m
+    return {
+        "holdings": rows, "totalCostM": round(tcost, 2), "totalValueM": round(tval, 2),
+        "totalPnlM": round(tval - tcost, 2), "totalPnlPct": round((tval - tcost) / tcost * 100, 2) if tcost else 0,
+    }
+
+
+def _portfolio_report_text(holdings: list) -> str:
+    """Deterministic real-time P/L report for chat (exact numbers + rule-based action flags)."""
+    if not holdings:
+        return ("Anh chưa có mã nào trong danh mục. Thêm ở mục **Danh mục của tôi** (màn Chứng khoán) rồi hỏi lại em nhé.")
+    p = _portfolio_pnl(holdings)
+    lines = ["💼 **Danh mục của anh** — giá real-time\n"]
+    for r in p["holdings"]:
+        dot = "🟢" if r["pnlM"] >= 0 else "🔴"
+        flag = " ⚠️ cân nhắc cắt lỗ" if r["pnlPct"] <= -7 else (" 💰 cân nhắc chốt lời một phần" if r["pnlPct"] >= 15 else "")
+        price = r["price"] if r["price"] is not None else r["avg"]
+        lines.append(f"{dot} {r['ticker']}: {r['qty']:,.0f}cp · vốn {r['avg']} → {price} · {r['pnlM']:+}tr ({r['pnlPct']:+}%){flag}")
+    tdot = "🟢" if p["totalPnlM"] >= 0 else "🔴"
+    lines.append(f"\n{tdot} **Tổng**: vốn {p['totalCostM']}tr → {p['totalValueM']}tr · lãi/lỗ {p['totalPnlM']:+}tr ({p['totalPnlPct']:+}%)")
+    lines.append("\n⚠️ Công cụ nghiên cứu, không phải lời khuyên đầu tư.")
+    return "\n".join(lines)
+
+
+@router.get("/portfolio")
+def get_portfolio(current: User = Depends(get_current_user)):
+    return _portfolio_pnl(_get_holdings(current))
+
+
+@router.post("/portfolio")
+def add_holding(body: HoldingIn, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
+    tk = body.ticker.strip().upper()
+    if not tk or body.qty <= 0 or body.avg <= 0:
+        return {"error": "Mã, số lượng và giá vốn phải hợp lệ."}
+    holdings = [h for h in _get_holdings(current) if h["ticker"] != tk]  # upsert by ticker
+    holdings.append({"ticker": tk, "qty": body.qty, "avg": body.avg})
+    _save_holdings(db, current, holdings)
+    return _portfolio_pnl(holdings)
+
+
+@router.delete("/portfolio/{ticker}")
+def remove_holding(ticker: str, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
+    holdings = [h for h in _get_holdings(current) if h["ticker"] != ticker.strip().upper()]
+    _save_holdings(db, current, holdings)
+    return _portfolio_pnl(holdings)
