@@ -53,8 +53,8 @@ def classify(text: str) -> tuple[str | None, str | None]:
         cmd = "extras"
     elif any(k in t for k in ("tỷ giá", "ty gia", "lãi suất", "lai suat", "vĩ mô", "vi mo", "macro", "usd/vnd")):
         cmd = "macro"
-    elif any(k in t for k in ("giá", "gia ", "snapshot", "chỉ báo", "chi bao", "ohlc")):
-        cmd = "snapshot"
+    elif any(k in t for k in ("snapshot", "ohlc", "dữ liệu", "du lieu", "chỉ báo", "chi bao", "bảng giá", "bang gia")):
+        cmd = "snapshot"  # explicit raw-data request only — bare "giá"/price questions go to the analyst
     else:
         cmd = None
     return cmd, (None if cmd == "macro" else _extract_ticker(text))
