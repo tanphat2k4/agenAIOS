@@ -11,6 +11,7 @@ from app.routers import (
     knowledge,
     logs,
     mcp,
+    music,
     notifs,
     overview,
     profile,
@@ -18,6 +19,7 @@ from app.routers import (
     rooms,
     tasks,
     trading,
+    uploads,
     users,
     workflows,
 )
@@ -41,4 +43,6 @@ api_router.include_router(notifs.router)
 api_router.include_router(billing.router)
 api_router.include_router(overview.router)
 api_router.include_router(trading.router)
+api_router.include_router(music.router)
+api_router.include_router(uploads.router)
 api_router.include_router(ai.router)

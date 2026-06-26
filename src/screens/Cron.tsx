@@ -168,7 +168,7 @@ export function Cron() {
           <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ fontSize: 15 }}>🕓</span>
             <span style={{ fontSize: 14, fontWeight: 700 }}>Scheduled flows</span>
-            <span style={{ fontSize: 11.5, color: 'var(--placeholder)' }}>click row để xem lịch sử</span>
+            <span style={{ fontSize: 11.5, color: 'var(--placeholder)' }}>click dòng để sửa cấu hình</span>
           </div>
           <div style={{ overflowX: 'auto' }}>
             <div style={{ minWidth: 1180 }}>
@@ -298,7 +298,7 @@ export function Cron() {
               value={f.target}
               onChange={(e) => s.onCronField('target', e.target.value)}
               style={{ width: '100%', border: '1.5px solid var(--line)', borderRadius: 14, fontFamily: 'inherit', fontSize: 14, padding: '13px 14px', background: 'var(--surface)', color: 'var(--ink)', outline: 'none', marginBottom: 18, cursor: 'pointer' }}>
-              {CRON_TARGETS.map((t) => <option key={t} value={t}>{t}</option>)}
+              {(!f.target || CRON_TARGETS.includes(f.target) ? CRON_TARGETS : [f.target, ...CRON_TARGETS]).map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
 
             {/* freq tabs */}

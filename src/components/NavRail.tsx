@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useStore } from '@/store'
 import { Hover } from './ui/Hover'
 import { langLabel } from '@/data/langs'
+import { useT } from '@/i18n'
 import type { ViewName } from '@/types'
 
 interface NavItem { label: string; icon: string; view: ViewName }
@@ -12,6 +13,7 @@ const WORKSPACE: NavItem[] = [
   { label: 'Cron', icon: '⏱', view: 'cron' },
   { label: 'Agent Workflow', icon: '🧩', view: 'workflow' },
   { label: 'Chứng khoán', icon: '📈', view: 'trading' },
+  { label: 'Âm nhạc', icon: '🎵', view: 'music' },
 ]
 const LEAD: NavItem[] = [
   { label: 'Tổng quan', icon: '▦', view: 'overview' },
@@ -35,18 +37,19 @@ const sectionLabel: React.CSSProperties = {
 function NavSection({ title, items, first, collapsed }: { title: string; items: NavItem[]; first?: boolean; collapsed?: boolean }) {
   const view = useStore((s) => s.view)
   const setView = useStore((s) => s.setView)
+  const t = useT()
   return (
     <>
       {collapsed
         ? <div style={{ height: first ? 4 : 14 }} />
-        : <div style={{ ...sectionLabel, paddingTop: first ? 0 : 16 }}>{title}</div>}
+        : <div style={{ ...sectionLabel, paddingTop: first ? 0 : 16 }}>{t(title)}</div>}
       {items.map((n) => {
         const active = n.view === view
         return (
           <Hover
             key={n.label}
             onClick={() => setView(n.view)}
-            title={collapsed ? n.label : undefined}
+            title={collapsed ? t(n.label) : undefined}
             style={{
               display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'flex-start',
               gap: collapsed ? 0 : 11, padding: collapsed ? '10px 0' : '8px 10px', borderRadius: 10,
@@ -57,7 +60,7 @@ function NavSection({ title, items, first, collapsed }: { title: string; items: 
             hover={{ background: 'rgba(255,255,255,.08)' }}
           >
             <span style={{ width: 18, textAlign: 'center', fontSize: 14 }}>{n.icon}</span>
-            {!collapsed && <span>{n.label}</span>}
+            {!collapsed && <span>{t(n.label)}</span>}
           </Hover>
         )
       })}
@@ -66,6 +69,7 @@ function NavSection({ title, items, first, collapsed }: { title: string; items: 
 }
 
 export function NavRail() {
+  const t = useT()
   const view = useStore((s) => s.view)
   const openNotifs = useStore((s) => s.openNotifs)
   const openLanguage = useStore((s) => s.openLanguage)
@@ -80,7 +84,7 @@ export function NavRail() {
       {/* logo — click to collapse / expand the rail */}
       <Hover
         onClick={() => setCollapsed((c) => !c)}
-        title={collapsed ? 'Mở rộng thanh điều hướng' : 'Thu gọn thanh điều hướng'}
+        title={collapsed ? t('Mở rộng thanh điều hướng') : t('Thu gọn thanh điều hướng')}
         style={{ padding: collapsed ? '18px 0 12px' : '18px 16px 12px', display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'flex-start', gap: 10, cursor: 'pointer' }}
         hover={{ background: 'rgba(255,255,255,.06)' }}
       >
@@ -105,11 +109,11 @@ export function NavRail() {
       <div style={{ borderTop: '1px solid rgba(255,255,255,.1)', padding: collapsed ? '8px 6px' : '8px 10px' }}>
         <Hover
           onClick={openNotifs}
-          title={collapsed ? 'Thông báo' : undefined}
+          title={collapsed ? t('Thông báo') : undefined}
           style={{ display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'space-between', padding: collapsed ? '9px 0' : '8px 10px', borderRadius: 10, cursor: 'pointer', fontSize: 13, position: 'relative', background: view === 'notifs' ? 'rgba(255,255,255,.16)' : 'transparent', color: view === 'notifs' ? '#fff' : 'rgba(255,255,255,.9)' }}
           hover={{ background: 'rgba(255,255,255,.08)' }}
         >
-          <span style={{ display: 'flex', alignItems: 'center', gap: collapsed ? 0 : 11 }}><span style={{ width: 18, textAlign: 'center' }}>🔔</span>{!collapsed && 'Thông báo'}</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: collapsed ? 0 : 11 }}><span style={{ width: 18, textAlign: 'center' }}>🔔</span>{!collapsed && t('Thông báo')}</span>
           {unread > 0 && (collapsed
             ? <span style={{ position: 'absolute', top: 6, right: 14, width: 7, height: 7, borderRadius: 99, background: 'var(--danger)' }} />
             : <span style={{ fontSize: 10, fontWeight: 700, background: 'var(--danger)', color: '#fff', padding: '2px 6px', borderRadius: 99 }}>{unread}</span>)}
@@ -134,7 +138,7 @@ export function NavRail() {
             <>
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div style={{ fontSize: 12.5, fontWeight: 600, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{profileData.name}</div>
-                <div style={{ fontSize: 10.5, color: 'rgba(255,255,255,.5)' }}>Owner</div>
+                <div style={{ fontSize: 10.5, color: 'rgba(255,255,255,.5)' }}>{t('Owner')}</div>
               </div>
               <span style={{ color: 'rgba(255,255,255,.5)', fontSize: 16 }}>›</span>
             </>

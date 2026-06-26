@@ -64,7 +64,7 @@ function cronParse(expr: string) {
 export interface CronForm { name: string; target: string; freq: string; time: string; dow: number; interval: number; enabled: boolean }
 export interface WfFormStep { agent: string; title: string; io: string }
 export interface WfForm { name: string; desc: string; trigger: 'cron' | 'event' | 'manual'; triggerLabel: string; steps: WfFormStep[] }
-export interface Attach { icon: string; name: string; label: string }
+export interface Attach { icon: string; name: string; label: string; url?: string; mime?: string; fileKind?: string }
 
 export interface AppState {
   // navigation
@@ -479,8 +479,10 @@ export interface AppActions {
   replyTo: (name: string) => void
   sendMessage: () => void
   pollTradingAnalyze: (channelId: string, ticker: string) => void
+  pollMusicChat: (channelId: string) => void
   refreshTradingOps: () => void
   refreshAfterReport: () => void
+  runMusicBatch: () => void
   toggleChatSearch: () => void
   onChatSearch: (v: string) => void
   confirmLeave: () => void
@@ -492,6 +494,7 @@ export interface AppActions {
   doDeleteChannel: () => void
   toggleAttachMenu: () => void
   pickAttach: (kind: string) => void
+  uploadAttach: (file: File) => Promise<void>
   clearAttach: () => void
   openFiles: () => void
   openFile: (f: RoomFile) => void
@@ -604,12 +607,15 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
     }
   },
   hydrate: async () => {
-    await api.post('/trading/channel/ensure').catch(() => {})
-    const [channels, agents, mcp, workflows, cron, tasks, devices, sessions, audit, knowledge, rooms, roles, users, invites, signups, notifs, bill, profile, activity] = await Promise.all([
+    await Promise.all([
+      api.post('/trading/channel/ensure').catch(() => {}),
+      api.post('/music/ensure').catch(() => {}),
+    ])
+    const [channels, agents, mcp, workflows, cron, tasks, devices, sessions, audit, knowledge, rooms, roles, users, invites, signups, notifs, bill, profile, activity, settings] = await Promise.all([
       api.get('/channels'), api.get('/agents'), api.get('/mcp'), api.get('/workflows'), api.get('/cron'),
       api.get('/tasks'), api.get('/devices'), api.get('/sessions'), api.get('/audit'), api.get('/knowledge'),
       api.get('/rooms'), api.get('/roles'), api.get('/users'), api.get('/invites'), api.get('/signups'),
-      api.get('/notifs'), api.get('/billing/months'), api.get('/profile'), api.get('/activity'),
+      api.get('/notifs'), api.get('/billing/months'), api.get('/profile'), api.get('/activity'), api.get('/settings'),
     ])
     const roomMembersById: Record<string, RoomMember[]> = {}
     rooms.forEach((r: { id: string; members?: RoomMember[] }) => { roomMembersById[r.id] = r.members || [] })
@@ -625,6 +631,9 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
       rolesData: roles, rolePerms, usersData: users, invitesData: invites,
       signupsData: signups, notifsData: notifs, billMonths: bill, recentActivity: activity, unread,
       profileData: { name: profile.name, email: profile.email, phone: profile.phone, title: profile.title, bio: profile.bio, location: profile.location },
+      activeLang: settings.activeLang || 'vi', agentLang: settings.agentLang || 'user',
+      timeFormat: settings.timeFormat || '24h', dateFormat: settings.dateFormat || 'dmy',
+      weekStart: settings.weekStart || 'mon', timezone: settings.timezone || 'hcm', currency: settings.currency || 'vnd',
     })
     const id = get().activeId
     try {
@@ -968,12 +977,15 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
     const id = get().activeId
     const raw: ChatMessage['raw'] = []
     if (text) raw.push({ kind: 'para', rich: [{ v: text, isText: true }] })
-    if (att) raw.push({ kind: 'attach', icon: att.icon, name: att.name, label: att.label })
-    const msg: ChatMessage = { authorName: 'Nguyễn Thiện Giang', time: nowTime(), avatarInitial: 'N', avatarColor: '#3B5BDB', isAgent: false, raw }
+    const attachBlock = att ? { icon: att.icon, name: att.name, label: att.label, url: att.url, mime: att.mime, fileKind: att.fileKind } : null
+    if (attachBlock) raw.push({ kind: 'attach', ...attachBlock })
+    const me = get().profileData
+    const meInitial = ((me.name || '').trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join('') || 'U').toUpperCase()
+    const msg: ChatMessage = { authorName: me.name || 'Bạn', time: nowTime(), avatarInitial: meInitial, avatarColor: '#3B5BDB', isAgent: false, raw }
     set((s) => ({ messages: { ...s.messages, [id]: [...(s.messages[id] || []), msg] }, draft: '', pendingAttach: null }))
     const dm = get().directData.find((c) => c.id === id)
     persist(
-      api.post(`/channels/${id}/messages`, { text, attach: att ? { icon: att.icon, name: att.name, label: att.label } : null }).then(() => {
+      api.post(`/channels/${id}/messages`, { text, attach: attachBlock }).then(() => {
         // Trading channel: route to the TradingAgents tools / 9Router analyst
         if (id === 'chung-khoan' && text) {
           return api.post('/trading/chat', { channel_id: id, text }).then((res) => {
@@ -981,6 +993,10 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
             set((s) => ({ messages: { ...s.messages, [id]: [...(s.messages[id] || []), ...replies] } }))
             if (res && res.analyzing) get().pollTradingAnalyze(id, res.analyzing)
           })
+        }
+        // Music channel: forward to Beat (music-orchestrator), reply arrives async
+        if (id === 'am-nhac' && text) {
+          return api.post('/music/chat', { text }).then(() => get().pollMusicChat(id))
         }
         // DM channels are 1:1 with an agent — auto-generate a real reply via 9Router
         if (dm && text) {
@@ -1004,9 +1020,34 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
     }
     setTimeout(tick, 4000)
   },
+  pollMusicChat: (channelId) => {
+    const tick = () => {
+      api.get('/music/chat').then((r) => {
+        if (r.status === 'done' || r.status === 'error') {
+          api.get(`/channels/${channelId}/messages`).then((msgs) => set((s) => ({ messages: { ...s.messages, [channelId]: msgs } }))).catch(() => {})
+        } else {
+          setTimeout(tick, 4000)
+        }
+      }).catch(() => {})
+    }
+    setTimeout(tick, 4000)
+  },
   refreshTradingOps: () => {
     Promise.all([api.get('/mcp'), api.get('/workflows'), api.get('/sessions'), api.get('/knowledge')])
       .then(([mcp, workflows, sessions, knowledge]) => set({ mcpData: mcp, workflows, sessionsData: sessions, knowledgeData: knowledge }))
+      .catch(() => {})
+  },
+  runMusicBatch: () => {
+    Promise.all([api.get('/workflows'), api.get('/knowledge'), api.get('/notifs'), api.get('/channels')])
+      .then(([workflows, knowledge, notifs, channels]) => {
+        const c = channels as { public?: unknown[]; private?: unknown[]; direct?: unknown[] }
+        set({
+          workflows, knowledgeData: knowledge, notifsData: notifs,
+          publicData: c.public as never ?? get().publicData,
+          privateData: c.private as never ?? get().privateData,
+          directData: c.direct as never ?? get().directData,
+        })
+      })
       .catch(() => {})
   },
   toggleChatSearch: () => set((s) => ({ chatSearchOpen: !s.chatSearchOpen, chatSearch: '' })),
@@ -1019,7 +1060,27 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
   doRename: () => { const id = get().renameTarget, name = get().renameValue.trim(); if (!id || !name) return; persist(api.patch('/channels/' + id, { name })); const ren = (arr: Channel[]) => arr.map((c) => c.id === id ? { ...c, name } : c); set((s) => ({ publicData: ren(s.publicData), privateData: ren(s.privateData), directData: ren(s.directData), overlay: null, renameTarget: null })) },
   doDeleteChannel: () => { const id = get().deleteTarget; if (!id) return; persist(api.del('/channels/' + id)); const drop = (arr: Channel[]) => arr.filter((c) => c.id !== id); set((s) => { const pub = drop(s.publicData), pri = drop(s.privateData), dir = drop(s.directData); const messages = { ...s.messages }; delete messages[id]; const activeId = s.activeId === id ? ((pub[0] || pri[0] || dir[0] || ({} as Channel)).id || '') : s.activeId; return { publicData: pub, privateData: pri, directData: dir, messages, activeId, overlay: null, deleteTarget: null } }) },
   toggleAttachMenu: () => set((s) => ({ attachMenuOpen: !s.attachMenuOpen })),
-  pickAttach: (kind) => { const map: Record<string, Attach> = { file: { icon: '📎', name: 'tai-lieu.pdf', label: 'Tệp đính kèm' }, image: { icon: '🖼', name: 'anh-bai-viet.png', label: 'Hình ảnh' }, record: { icon: '🗄', name: 'POST-015 · facebook_post_cho', label: 'Bản ghi database' } }; set({ pendingAttach: map[kind], attachMenuOpen: false }) },
+  pickAttach: (kind) => {
+    // file/image are handled by the composer's real <input type=file> → uploadAttach.
+    // 'record' attaches a reference to the most recent real Knowledge entry.
+    if (kind === 'record') {
+      const k = get().knowledgeData[0]
+      if (!k) { get().fireToast('Chưa có bản ghi nào trong Kiến thức'); set({ attachMenuOpen: false }); return }
+      set({ pendingAttach: { icon: '🗄', name: k.title, label: 'Bản ghi · ' + (k.repo || 'knowledge'), fileKind: 'record' }, attachMenuOpen: false })
+    } else {
+      set({ attachMenuOpen: false })
+    }
+  },
+  uploadAttach: async (file) => {
+    set({ attachMenuOpen: false })
+    try {
+      const r = await api.upload('/upload', file)
+      const isImg = r.kind === 'image'
+      set({ pendingAttach: { icon: isImg ? '🖼' : '📎', name: r.name, label: isImg ? 'Hình ảnh' : 'Tệp đính kèm', url: r.url, mime: r.mime, fileKind: r.kind } })
+    } catch (e) {
+      get().fireToast('Tải tệp thất bại: ' + (e instanceof Error ? e.message : 'lỗi'))
+    }
+  },
   clearAttach: () => set({ pendingAttach: null }),
   openFiles: () => set({ overlay: 'files' }),
   openFile: (f) => set({ fileDetail: f, overlay: 'fileView' }),

@@ -1,5 +1,6 @@
 import { useStore } from '@/store'
 import { Hover } from '@/components/ui/Hover'
+import { useT } from '@/i18n'
 import { TIMEZONES, CURRENCIES } from '@/data/langs'
 
 // Lang cards matching the prototype (5 entries)
@@ -13,6 +14,7 @@ const LANG_CARDS = [
 
 export function Language() {
   const s = useStore()
+  const t = useT()
 
   // ---- computed view-model (mirrors renderVals) ----
   const sampleDate =
@@ -55,8 +57,8 @@ export function Language() {
   const agentLangSeg = seg(
     s.agentLang,
     [
-      { k: 'user', label: 'Theo người dùng' },
-      { k: 'vi', label: 'Tiếng Việt' },
+      { k: 'user', label: t('Theo người dùng') },
+      { k: 'vi', label: t('Tiếng Việt') },
       { k: 'en', label: 'English' },
     ] as const,
     s.setAgentLang,
@@ -65,8 +67,8 @@ export function Language() {
   const timeSeg = seg(
     s.timeFormat,
     [
-      { k: '24h', label: '24 giờ' },
-      { k: '12h', label: '12 giờ (AM/PM)' },
+      { k: '24h', label: t('24 giờ') },
+      { k: '12h', label: t('12 giờ (AM/PM)') },
     ] as const,
     s.setTimeFormat,
   )
@@ -84,8 +86,8 @@ export function Language() {
   const weekSeg = seg(
     s.weekStart,
     [
-      { k: 'mon', label: 'Thứ 2' },
-      { k: 'sun', label: 'Chủ nhật' },
+      { k: 'mon', label: t('Thứ 2') },
+      { k: 'sun', label: t('Chủ nhật') },
     ] as const,
     s.setWeekStart,
   )
@@ -102,25 +104,25 @@ export function Language() {
       onSelect: () => (s.langPicker === 'timezone' ? s.setTimezone(o.k) : s.setCurrency(o.k)),
     }
   })
-  const pickerTitle = s.langPicker === 'timezone' ? 'Chọn múi giờ' : 'Chọn đơn vị tiền tệ'
+  const pickerTitle = s.langPicker === 'timezone' ? t('Chọn múi giờ') : t('Chọn đơn vị tiền tệ')
 
   return (
     <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
       <header style={{ flex: 'none', background: 'var(--surface)', borderBottom: '1px solid var(--line)', padding: '16px 28px' }}>
-        <div style={{ fontSize: 11.5, color: 'var(--placeholder)', marginBottom: 3 }}>Workspace › Ngôn ngữ &amp; khu vực</div>
+        <div style={{ fontSize: 11.5, color: 'var(--placeholder)', marginBottom: 3 }}>{t('Workspace › Ngôn ngữ & khu vực')}</div>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
-          <span style={{ fontSize: 21, fontWeight: 800, letterSpacing: '-.4px' }}>Ngôn ngữ &amp; khu vực</span>
-          <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>Chọn ngôn ngữ hiển thị và định dạng vùng</span>
+          <span style={{ fontSize: 21, fontWeight: 800, letterSpacing: '-.4px' }}>{t('Ngôn ngữ & khu vực')}</span>
+          <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>{t('Chọn ngôn ngữ hiển thị và định dạng vùng')}</span>
         </div>
       </header>
 
       <div style={{ flex: 1, overflow: 'auto', padding: '24px 28px 32px' }}>
-        <div style={{ maxWidth: 760 }}>
+        <div style={{ maxWidth: 760, margin: '0 auto' }}>
 
           {/* === display language === */}
           <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, padding: '20px 22px', marginBottom: 18 }}>
-            <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: '-.2px', marginBottom: 3 }}>Ngôn ngữ hiển thị</div>
-            <div style={{ fontSize: 12, color: 'var(--ink-2)', marginBottom: 16 }}>Áp dụng cho giao diện AgentAIOS trên thiết bị này</div>
+            <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: '-.2px', marginBottom: 3 }}>{t('Ngôn ngữ hiển thị')}</div>
+            <div style={{ fontSize: 12, color: 'var(--ink-2)', marginBottom: 16 }}>{t('Áp dụng cho giao diện AgentAIOS trên thiết bị này')}</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 10 }}>
               {langCards.map((l) => (
                 <Hover
@@ -132,7 +134,7 @@ export function Language() {
                   <span style={{ fontSize: 24, flex: 'none' }}>{l.flag}</span>
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ink)' }}>{l.native}</div>
-                    <div style={{ fontSize: 11.5, color: 'var(--placeholder)' }}>{l.name}</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--placeholder)' }}>{t(l.name)}</div>
                   </div>
                   <span style={{ width: 20, height: 20, borderRadius: 99, border: `2px solid ${l.checkBorder}`, background: l.checkBg, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flex: 'none' }}>
                     {l.check}
@@ -146,8 +148,8 @@ export function Language() {
           <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, padding: '20px 22px', marginBottom: 18 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: '-.2px', marginBottom: 3 }}>Ngôn ngữ agent trả lời</div>
-                <div style={{ fontSize: 12, color: 'var(--ink-2)' }}>Ngôn ngữ mặc định khi agent phản hồi trong hội thoại</div>
+                <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: '-.2px', marginBottom: 3 }}>{t('Ngôn ngữ agent trả lời')}</div>
+                <div style={{ fontSize: 12, color: 'var(--ink-2)' }}>{t('Ngôn ngữ mặc định khi agent phản hồi trong hội thoại')}</div>
               </div>
               <div style={{ display: 'flex', background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 99, padding: 3, flex: 'none' }}>
                 {agentLangSeg.map((o) => (
@@ -164,15 +166,15 @@ export function Language() {
           {/* === region & format === */}
           <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, overflow: 'hidden' }}>
             <div style={{ padding: '18px 22px 14px' }}>
-              <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: '-.2px' }}>Khu vực &amp; định dạng</div>
+              <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: '-.2px' }}>{t('Khu vực & định dạng')}</div>
               <div style={{ fontSize: 12, color: 'var(--ink-2)', marginTop: 2 }}>
-                Ví dụ: <b style={{ color: 'var(--ink)' }}>{sampleDate}</b> · <b style={{ color: 'var(--ink)' }}>{sampleTime}</b>
+                {t('Ví dụ:')} <b style={{ color: 'var(--ink)' }}>{sampleDate}</b> · <b style={{ color: 'var(--ink)' }}>{sampleTime}</b>
               </div>
             </div>
 
             {/* timezone */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '14px 22px', borderTop: '1px solid var(--line)' }}>
-              <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink)' }}>🌏 Múi giờ</span>
+              <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink)' }}>🌏 {t('Múi giờ')}</span>
               <Hover
                 as="button"
                 onClick={() => s.openLangPicker('timezone')}
@@ -183,7 +185,7 @@ export function Language() {
 
             {/* date format */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '14px 22px', borderTop: '1px solid var(--line)' }}>
-              <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink)' }}>📅 Định dạng ngày</span>
+              <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink)' }}>📅 {t('Định dạng ngày')}</span>
               <div style={{ display: 'flex', background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 99, padding: 3, flex: 'none' }}>
                 {dateSeg.map((o) => (
                   <button
@@ -197,7 +199,7 @@ export function Language() {
 
             {/* time format */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '14px 22px', borderTop: '1px solid var(--line)' }}>
-              <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink)' }}>🕐 Định dạng giờ</span>
+              <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink)' }}>🕐 {t('Định dạng giờ')}</span>
               <div style={{ display: 'flex', background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 99, padding: 3, flex: 'none' }}>
                 {timeSeg.map((o) => (
                   <button
@@ -211,7 +213,7 @@ export function Language() {
 
             {/* week start */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '14px 22px', borderTop: '1px solid var(--line)' }}>
-              <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink)' }}>🗓 Ngày đầu tuần</span>
+              <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink)' }}>🗓 {t('Ngày đầu tuần')}</span>
               <div style={{ display: 'flex', background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 99, padding: 3, flex: 'none' }}>
                 {weekSeg.map((o) => (
                   <button
@@ -225,7 +227,7 @@ export function Language() {
 
             {/* currency */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '14px 22px', borderTop: '1px solid var(--line)' }}>
-              <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink)' }}>💱 Đơn vị tiền tệ</span>
+              <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink)' }}>💱 {t('Đơn vị tiền tệ')}</span>
               <Hover
                 as="button"
                 onClick={() => s.openLangPicker('currency')}
@@ -242,13 +244,13 @@ export function Language() {
               onClick={s.resetLangDefaults}
               style={{ border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink-2)', borderRadius: 99, padding: '11px 22px', font: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
               hover={{ background: 'var(--bg)' }}
-            >Khôi phục mặc định</Hover>
+            >{t('Khôi phục mặc định')}</Hover>
             <Hover
               as="button"
               onClick={s.saveLang}
               style={{ border: 'none', background: 'var(--jade)', color: '#fff', borderRadius: 99, padding: '11px 26px', font: 'inherit', fontSize: 13, fontWeight: 700, cursor: 'pointer', boxShadow: '0 6px 16px rgba(10,92,72,.2)' }}
               hover={{ background: 'var(--jade-deep)' }}
-            >Lưu thay đổi</Hover>
+            >{t('Lưu thay đổi')}</Hover>
           </div>
         </div>
       </div>
