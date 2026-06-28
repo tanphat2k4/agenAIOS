@@ -1,4 +1,5 @@
 import { useStore } from '@/store'
+import { useT } from '@/i18n'
 import { Hover } from '@/components/ui/Hover'
 import { Modal } from '@/components/ui/Modal'
 import { ConfirmModal } from '@/screens/channels/ChannelModals'
@@ -31,6 +32,7 @@ function CloseBtn({ onClick }: { onClick: () => void }) {
 
 export function Knowledge() {
   const s = useStore()
+  const t = useT()
 
   // ---- counts derived from real data ----
   const kc = (ty: string) => s.knowledgeData.filter((k) => k.type === ty).length
@@ -80,12 +82,12 @@ export function Knowledge() {
     .filter((k) => !kq || k.title.toLowerCase().includes(kq))
 
   const knowCats = ['all', 'zy-novel', 'zypage', 'zy-tech'].map((c) => ({
-    label: c === 'all' ? 'Tất cả category' : c,
+    label: c === 'all' ? t('Tất cả category') : c,
     value: c,
     active: c === s.knowledgeCategory,
     onSelect: () => s.setKnowCategory(c),
   }))
-  const knowCatLabel = s.knowledgeCategory === 'all' ? 'Tất cả category' : s.knowledgeCategory
+  const knowCatLabel = s.knowledgeCategory === 'all' ? t('Tất cả category') : s.knowledgeCategory
 
   const knowRows = knowVisible.map((k) => ({
     type: k.type,
@@ -116,7 +118,7 @@ export function Knowledge() {
               <div style={{ fontSize: 11.5, color: 'var(--placeholder)', marginBottom: 3 }}>Workspace › Knowledge</div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
                 <span style={{ fontSize: 21, fontWeight: 800, letterSpacing: '-.4px' }}>Knowledge</span>
-                <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>{s.knowledgeData.length} item · 0 chờ duyệt · 0 hot-edit</span>
+                <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>{s.knowledgeData.length} item · 0 {t('chờ duyệt')} · 0 hot-edit</span>
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
@@ -184,7 +186,7 @@ export function Knowledge() {
                 <input
                   value={s.knowledgeQuery}
                   onChange={(e) => s.onKnowQuery(e.target.value)}
-                  placeholder="Tìm theo title hoặc nội dung…"
+                  placeholder={t('Tìm theo title hoặc nội dung…')}
                   style={{ flex: 1, border: 'none', outline: 'none', fontFamily: 'inherit', fontSize: 12.5, background: 'transparent', color: 'var(--ink)' }}
                 />
               </div>
@@ -197,7 +199,7 @@ export function Knowledge() {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--line)' }}>
                 <div>
                   <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: '-.2px' }}>Knowledge library</div>
-                  <div style={{ fontSize: 11.5, color: 'var(--ink-2)', marginTop: 2 }}>{knowRows.length} mục đang hiển thị</div>
+                  <div style={{ fontSize: 11.5, color: 'var(--ink-2)', marginTop: 2 }}>{knowRows.length} {t('mục đang hiển thị')}</div>
                 </div>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, fontWeight: 700, color: '#0A7B52', background: '#E2F3EC', padding: '5px 12px', borderRadius: 99 }}>● healthy</span>
               </div>
@@ -237,13 +239,13 @@ export function Knowledge() {
                       <div style={{ fontSize: 12, color: 'var(--placeholder)' }}>{k.time}</div>
                       {/* actions */}
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 3 }}>
-                        <Hover as="button" onClick={k.onEdit} title="Sửa"
+                        <Hover as="button" onClick={k.onEdit} title={t('Sửa')}
                           style={{ width: 28, height: 28, borderRadius: 7, border: 'none', background: 'transparent', color: 'var(--ink-2)', fontSize: 12, cursor: 'pointer' }}
                           hover={{ background: 'var(--jade-soft)', color: 'var(--jade-deep)' }}>✎</Hover>
-                        <Hover as="button" onClick={k.onDuplicate} title="Nhân bản"
+                        <Hover as="button" onClick={k.onDuplicate} title={t('Nhân bản')}
                           style={{ width: 28, height: 28, borderRadius: 7, border: 'none', background: 'transparent', color: 'var(--ink-2)', fontSize: 12, cursor: 'pointer' }}
                           hover={{ background: 'var(--jade-soft)', color: 'var(--jade-deep)' }}>⧉</Hover>
-                        <Hover as="button" onClick={k.onDelete} title="Xóa"
+                        <Hover as="button" onClick={k.onDelete} title={t('Xóa')}
                           style={{ width: 28, height: 28, borderRadius: 7, border: 'none', background: 'transparent', color: 'var(--ink-2)', fontSize: 12, cursor: 'pointer' }}
                           hover={{ background: '#FBEAE7', color: 'var(--danger)' }}>🗑</Hover>
                       </div>
@@ -258,8 +260,8 @@ export function Knowledge() {
           {knowTabPending && (
             <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, padding: 60, textAlign: 'center', color: 'var(--ink-2)' }}>
               <div style={{ fontSize: 36, marginBottom: 14 }}>✅</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--ink)', marginBottom: 6 }}>Không có thay đổi chờ duyệt</div>
-              <div style={{ fontSize: 13 }}>Mọi chỉnh sửa knowledge đã được duyệt và áp dụng.</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--ink)', marginBottom: 6 }}>{t('Không có thay đổi chờ duyệt')}</div>
+              <div style={{ fontSize: 13 }}>{t('Mọi chỉnh sửa knowledge đã được duyệt và áp dụng.')}</div>
             </div>
           )}
 
@@ -267,8 +269,8 @@ export function Knowledge() {
           {knowTabOverrides && (
             <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, padding: 60, textAlign: 'center', color: 'var(--ink-2)' }}>
               <div style={{ fontSize: 36, marginBottom: 14 }}>🧩</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--ink)', marginBottom: 6 }}>Chưa có override nào đang hoạt động</div>
-              <div style={{ fontSize: 13 }}>Override cho phép ghi đè knowledge theo từng phòng hoặc agent.</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--ink)', marginBottom: 6 }}>{t('Chưa có override nào đang hoạt động')}</div>
+              <div style={{ fontSize: 13 }}>{t('Override cho phép ghi đè knowledge theo từng phòng hoặc agent.')}</div>
             </div>
           )}
 
@@ -276,8 +278,8 @@ export function Knowledge() {
           {knowTabTrash && (
             <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, padding: 60, textAlign: 'center', color: 'var(--ink-2)' }}>
               <div style={{ fontSize: 36, marginBottom: 14 }}>🗑</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--ink)', marginBottom: 6 }}>26 mục trong thùng rác</div>
-              <div style={{ fontSize: 13 }}>Các knowledge đã xóa được giữ 30 ngày trước khi xóa vĩnh viễn.</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--ink)', marginBottom: 6 }}>26 {t('mục trong thùng rác')}</div>
+              <div style={{ fontSize: 13 }}>{t('Các knowledge đã xóa được giữ 30 ngày trước khi xóa vĩnh viễn.')}</div>
             </div>
           )}
 
@@ -293,13 +295,13 @@ export function Knowledge() {
             <div style={{ fontSize: 19, fontWeight: 800, letterSpacing: '-.3px' }}>Export knowledge</div>
             <CloseBtn onClick={s.closeOverlay} />
           </div>
-          <div style={{ fontSize: 12.5, color: 'var(--ink-2)', marginBottom: 18, lineHeight: 1.5 }}>Xuất toàn bộ knowledge đang hiển thị ra file để sao lưu hoặc chia sẻ.</div>
+          <div style={{ fontSize: 12.5, color: 'var(--ink-2)', marginBottom: 18, lineHeight: 1.5 }}>{t('Xuất toàn bộ knowledge đang hiển thị ra file để sao lưu hoặc chia sẻ.')}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 9, marginBottom: 22 }}>
             <Hover style={{ display: 'flex', alignItems: 'center', gap: 12, border: '1px solid var(--line)', borderRadius: 12, padding: '13px 15px', cursor: 'pointer' }} hover={{ borderColor: 'var(--jade)', background: 'var(--jade-soft)' }}>
               <span style={{ fontSize: 18 }}>🗂</span>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ink)' }}>JSON</div>
-                <div style={{ fontSize: 11.5, color: 'var(--placeholder)' }}>Giữ nguyên cấu trúc &amp; metadata</div>
+                <div style={{ fontSize: 11.5, color: 'var(--placeholder)' }}>{t('Giữ nguyên cấu trúc & metadata')}</div>
               </div>
               <span style={{ color: 'var(--jade-deep)' }}>↓</span>
             </Hover>
@@ -307,7 +309,7 @@ export function Knowledge() {
               <span style={{ fontSize: 18 }}>📄</span>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ink)' }}>Markdown</div>
-                <div style={{ fontSize: 11.5, color: 'var(--placeholder)' }}>Mỗi entry một file .md</div>
+                <div style={{ fontSize: 11.5, color: 'var(--placeholder)' }}>{t('Mỗi entry một file .md')}</div>
               </div>
               <span style={{ color: 'var(--jade-deep)' }}>↓</span>
             </Hover>
@@ -315,7 +317,7 @@ export function Knowledge() {
               <span style={{ fontSize: 18 }}>🗄</span>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ink)' }}>CSV</div>
-                <div style={{ fontSize: 11.5, color: 'var(--placeholder)' }}>Bảng tổng hợp title · type · version</div>
+                <div style={{ fontSize: 11.5, color: 'var(--placeholder)' }}>{t('Bảng tổng hợp title · type · version')}</div>
               </div>
               <span style={{ color: 'var(--jade-deep)' }}>↓</span>
             </Hover>
@@ -323,7 +325,7 @@ export function Knowledge() {
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <Hover as="button" onClick={s.closeOverlay}
               style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: 'var(--jade)', border: 'none', borderRadius: 99, padding: '10px 22px', cursor: 'pointer', fontFamily: 'inherit' }}
-              hover={{ background: 'var(--jade-deep)' }}>Xong</Hover>
+              hover={{ background: 'var(--jade-deep)' }}>{t('Xong')}</Hover>
           </div>
         </Modal>
       )}
@@ -335,17 +337,17 @@ export function Knowledge() {
             <div style={{ fontSize: 19, fontWeight: 800, letterSpacing: '-.3px' }}>Import knowledge</div>
             <CloseBtn onClick={s.closeOverlay} />
           </div>
-          <div style={{ fontSize: 12.5, color: 'var(--ink-2)', marginBottom: 18, lineHeight: 1.5 }}>Tải lên file JSON / Markdown / CSV để thêm vào thư viện knowledge.</div>
+          <div style={{ fontSize: 12.5, color: 'var(--ink-2)', marginBottom: 18, lineHeight: 1.5 }}>{t('Tải lên file JSON / Markdown / CSV để thêm vào thư viện knowledge.')}</div>
           <Hover style={{ border: '2px dashed var(--line)', borderRadius: 16, padding: 34, textAlign: 'center', marginBottom: 22, cursor: 'pointer', display: 'block' }} hover={{ borderColor: 'var(--jade)', background: 'var(--jade-soft)' }}>
             <div style={{ fontSize: 34, marginBottom: 10 }}>📥</div>
-            <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ink)', marginBottom: 4 }}>Kéo thả file vào đây</div>
-            <div style={{ fontSize: 12, color: 'var(--placeholder)' }}>hoặc bấm để chọn từ máy · tối đa 20 MB</div>
+            <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ink)', marginBottom: 4 }}>{t('Kéo thả file vào đây')}</div>
+            <div style={{ fontSize: 12, color: 'var(--placeholder)' }}>{t('hoặc bấm để chọn từ máy · tối đa 20 MB')}</div>
           </Hover>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-            <Hover as="button" onClick={s.closeOverlay} style={ghostBtn} hover={{ background: 'var(--line)' }}>Hủy</Hover>
+            <Hover as="button" onClick={s.closeOverlay} style={ghostBtn} hover={{ background: 'var(--line)' }}>{t('Hủy')}</Hover>
             <Hover as="button" onClick={s.closeOverlay}
               style={{ fontSize: 13.5, fontWeight: 700, color: '#fff', background: 'var(--jade)', border: 'none', borderRadius: 99, padding: '11px 24px', cursor: 'pointer', fontFamily: 'inherit' }}
-              hover={{ background: 'var(--jade-deep)' }}>Tải lên</Hover>
+              hover={{ background: 'var(--jade-deep)' }}>{t('Tải lên')}</Hover>
           </div>
         </Modal>
       )}
@@ -354,9 +356,9 @@ export function Knowledge() {
       {s.overlay === 'knowDelete' && (
         <ConfirmModal
           icon="🗑"
-          title={`Xóa "${s.knowDeleteTarget}"?`}
-          body={<>Entry sẽ chuyển vào thùng rác và giữ 30 ngày trước khi xóa vĩnh viễn.</>}
-          confirmLabel="Xóa entry"
+          title={`${t('Xóa')} "${s.knowDeleteTarget}"?`}
+          body={<>{t('Entry sẽ chuyển vào thùng rác và giữ 30 ngày trước khi xóa vĩnh viễn.')}</>}
+          confirmLabel={t('Xóa entry')}
           onConfirm={s.knowDoDelete}
           onClose={s.closeOverlay}
         />
@@ -370,7 +372,7 @@ export function Knowledge() {
               <span style={{ fontSize: 20 }}>📄</span>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontSize: 15.5, fontWeight: 800, letterSpacing: '-.2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.knowContent.title}</div>
-                <div style={{ fontSize: 11.5, color: 'var(--placeholder)' }}>Báo cáo phân tích · TradingAgents</div>
+                <div style={{ fontSize: 11.5, color: 'var(--placeholder)' }}>{t('Báo cáo phân tích')} · TradingAgents</div>
               </div>
             </div>
             <CloseBtn onClick={s.closeOverlay} />

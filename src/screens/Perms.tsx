@@ -1,4 +1,5 @@
 import { useStore } from '@/store'
+import { useT } from '@/i18n'
 import { Hover } from '@/components/ui/Hover'
 import { PERMS } from '@/data/seed'
 import type { RoleDef } from '@/types'
@@ -8,6 +9,7 @@ const GROUPS_ORDER = ['Kênh & Phòng', 'Kiến thức', 'Agents & Workflow', 'C
 // ---- Create role modal ----
 function CreateRoleModal() {
   const s = useStore()
+  const t = useT()
   const iconBtns = ['🛡', '🧭', '🤖', '👁', '✏️', '📊', '🔧', '⭐'].map((ic) => ({
     icon: ic,
     bg: ic === s.roleForm.icon ? 'var(--jade-soft)' : 'var(--bg)',
@@ -21,19 +23,19 @@ function CreateRoleModal() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 13 }}>
             <div style={{ width: 46, height: 46, borderRadius: 14, background: 'var(--jade-soft)', color: 'var(--jade-deep)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flex: 'none' }}>🛡</div>
             <div>
-              <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.3px' }}>Tạo vai trò mới</div>
-              <div style={{ fontSize: 12, color: 'var(--ink-2)', marginTop: 2 }}>Đặt tên, icon và mô tả cho vai trò tùy chỉnh.</div>
+              <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.3px' }}>{t('Tạo vai trò mới')}</div>
+              <div style={{ fontSize: 12, color: 'var(--ink-2)', marginTop: 2 }}>{t('Đặt tên, icon và mô tả cho vai trò tùy chỉnh.')}</div>
             </div>
           </div>
           <Hover as="button" onClick={s.closeCreateRole} style={{ width: 32, height: 32, borderRadius: 99, border: 'none', background: 'var(--bg)', fontSize: 16, cursor: 'pointer', color: 'var(--ink-2)' }} hover={{ background: 'var(--line)' }}>✕</Hover>
         </div>
         <div style={{ padding: '18px 24px 4px', display: 'flex', flexDirection: 'column', gap: 18 }}>
           <div>
-            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 7 }}>Tên vai trò</label>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 7 }}>{t('Tên vai trò')}</label>
             <input
               value={s.roleForm.name}
               onChange={(e) => s.onRoleField('name', e.target.value)}
-              placeholder="vd. Marketing, Moderator…"
+              placeholder={t('vd. Marketing, Moderator…')}
               autoFocus
               style={{ width: '100%', border: '1.5px solid var(--line)', borderRadius: 12, fontFamily: 'inherit', fontSize: 14, padding: '12px 14px', color: 'var(--ink)', background: 'var(--bg)', outline: 'none', boxSizing: 'border-box' }}
               onFocus={(e) => (e.target.style.borderColor = 'var(--jade)')}
@@ -52,11 +54,11 @@ function CreateRoleModal() {
             </div>
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 7 }}>Mô tả (tùy chọn)</label>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 7 }}>{t('Mô tả (tùy chọn)')}</label>
             <input
               value={s.roleForm.desc}
               onChange={(e) => s.onRoleField('desc', e.target.value)}
-              placeholder="Mô tả ngắn về vai trò này…"
+              placeholder={t('Mô tả ngắn về vai trò này…')}
               style={{ width: '100%', border: '1.5px solid var(--line)', borderRadius: 12, fontFamily: 'inherit', fontSize: 14, padding: '12px 14px', color: 'var(--ink)', background: 'var(--bg)', outline: 'none', boxSizing: 'border-box' }}
               onFocus={(e) => (e.target.style.borderColor = 'var(--jade)')}
               onBlur={(e) => (e.target.style.borderColor = 'var(--line)')}
@@ -64,8 +66,8 @@ function CreateRoleModal() {
           </div>
         </div>
         <div style={{ padding: '18px 24px 22px', display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-          <Hover as="button" onClick={s.closeCreateRole} style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink-2)', background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 99, padding: '11px 22px', cursor: 'pointer', fontFamily: 'inherit' }} hover={{ borderColor: 'var(--jade)', color: 'var(--jade-deep)' }}>Hủy</Hover>
-          <Hover as="button" onClick={s.createRole} style={{ fontSize: 13.5, fontWeight: 700, color: '#fff', background: hasName ? 'var(--jade)' : '#C9D4CF', border: 'none', borderRadius: 99, padding: '11px 24px', cursor: hasName ? 'pointer' : 'not-allowed', fontFamily: 'inherit' }} hover={hasName ? { background: 'var(--jade-deep)' } : {}}>Tạo vai trò</Hover>
+          <Hover as="button" onClick={s.closeCreateRole} style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink-2)', background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 99, padding: '11px 22px', cursor: 'pointer', fontFamily: 'inherit' }} hover={{ borderColor: 'var(--jade)', color: 'var(--jade-deep)' }}>{t('Hủy')}</Hover>
+          <Hover as="button" onClick={s.createRole} style={{ fontSize: 13.5, fontWeight: 700, color: '#fff', background: hasName ? 'var(--jade)' : '#C9D4CF', border: 'none', borderRadius: 99, padding: '11px 24px', cursor: hasName ? 'pointer' : 'not-allowed', fontFamily: 'inherit' }} hover={hasName ? { background: 'var(--jade-deep)' } : {}}>{t('Tạo vai trò')}</Hover>
         </div>
       </div>
     </div>
@@ -75,6 +77,7 @@ function CreateRoleModal() {
 // ---- Assign member modal ----
 function AssignMemberModal() {
   const s = useStore()
+  const t = useT()
   const ar = s.rolesData.find((r: RoleDef) => r.id === s.activeRole) || s.rolesData[0]
   const q = (s.assignForm.name || '').trim().toLowerCase()
   const have = (ar?.members || []).map((m) => m.name.toLowerCase())
@@ -91,18 +94,18 @@ function AssignMemberModal() {
       <div onClick={(e) => e.stopPropagation()} style={{ width: 440, maxWidth: '100%', background: 'var(--surface)', borderRadius: 22, boxShadow: '0 24px 60px rgba(0,0,0,.28)', overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '22px 24px 4px' }}>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.3px' }}>Gán thành viên</div>
-            <div style={{ fontSize: 12, color: 'var(--ink-2)', marginTop: 2 }}>Thêm user hoặc agent vào vai trò <b>{ar?.name}</b>.</div>
+            <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.3px' }}>{t('Gán thành viên')}</div>
+            <div style={{ fontSize: 12, color: 'var(--ink-2)', marginTop: 2 }}>{t('Thêm user hoặc agent vào vai trò')} <b>{ar?.name}</b>.</div>
           </div>
           <Hover as="button" onClick={s.closeAssignMember} style={{ width: 32, height: 32, borderRadius: 99, border: 'none', background: 'var(--bg)', fontSize: 16, cursor: 'pointer', color: 'var(--ink-2)' }} hover={{ background: 'var(--line)' }}>✕</Hover>
         </div>
         <div style={{ padding: '18px 24px 4px', display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={{ position: 'relative' }}>
-            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 7 }}>Tên thành viên</label>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 7 }}>{t('Tên thành viên')}</label>
             <input
               value={s.assignForm.name}
               onChange={(e) => s.onAssignField('name', e.target.value)}
-              placeholder="Tìm user hoặc agent…"
+              placeholder={t('Tìm user hoặc agent…')}
               autoFocus
               style={{ width: '100%', border: '1.5px solid var(--line)', borderRadius: 12, fontFamily: 'inherit', fontSize: 14, padding: '12px 14px', color: 'var(--ink)', background: 'var(--bg)', outline: 'none', boxSizing: 'border-box' }}
               onFocus={(e) => (e.target.style.borderColor = 'var(--jade)')}
@@ -125,11 +128,11 @@ function AssignMemberModal() {
             )}
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 7 }}>Ghi chú (tùy chọn)</label>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 7 }}>{t('Ghi chú (tùy chọn)')}</label>
             <input
               value={s.assignForm.sub}
               onChange={(e) => s.onAssignField('sub', e.target.value)}
-              placeholder="vd. user #89, agent #5…"
+              placeholder={t('vd. user #89, agent #5…')}
               style={{ width: '100%', border: '1.5px solid var(--line)', borderRadius: 12, fontFamily: 'inherit', fontSize: 14, padding: '12px 14px', color: 'var(--ink)', background: 'var(--bg)', outline: 'none', boxSizing: 'border-box' }}
               onFocus={(e) => (e.target.style.borderColor = 'var(--jade)')}
               onBlur={(e) => (e.target.style.borderColor = 'var(--line)')}
@@ -137,8 +140,8 @@ function AssignMemberModal() {
           </div>
         </div>
         <div style={{ padding: '18px 24px 22px', display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-          <Hover as="button" onClick={s.closeAssignMember} style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink-2)', background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 99, padding: '11px 22px', cursor: 'pointer', fontFamily: 'inherit' }} hover={{ borderColor: 'var(--jade)', color: 'var(--jade-deep)' }}>Hủy</Hover>
-          <Hover as="button" onClick={s.assignMember} style={{ fontSize: 13.5, fontWeight: 700, color: '#fff', background: hasName ? 'var(--jade)' : '#C9D4CF', border: 'none', borderRadius: 99, padding: '11px 24px', cursor: hasName ? 'pointer' : 'not-allowed', fontFamily: 'inherit' }} hover={hasName ? { background: 'var(--jade-deep)' } : {}}>Gán thành viên</Hover>
+          <Hover as="button" onClick={s.closeAssignMember} style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink-2)', background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 99, padding: '11px 22px', cursor: 'pointer', fontFamily: 'inherit' }} hover={{ borderColor: 'var(--jade)', color: 'var(--jade-deep)' }}>{t('Hủy')}</Hover>
+          <Hover as="button" onClick={s.assignMember} style={{ fontSize: 13.5, fontWeight: 700, color: '#fff', background: hasName ? 'var(--jade)' : '#C9D4CF', border: 'none', borderRadius: 99, padding: '11px 24px', cursor: hasName ? 'pointer' : 'not-allowed', fontFamily: 'inherit' }} hover={hasName ? { background: 'var(--jade-deep)' } : {}}>{t('Gán thành viên')}</Hover>
         </div>
       </div>
     </div>
@@ -148,16 +151,17 @@ function AssignMemberModal() {
 // ---- Main screen ----
 export function Perms() {
   const s = useStore()
+  const t = useT()
 
   const R = s.rolesData
   const totalMembers = R.reduce((acc: number, r: RoleDef) => acc + r.members.length, 0)
 
   // stat cards
   const permStats = [
-    { icon: '🛡', label: 'Vai trò',        value: String(R.length),     sub: '1 vai trò hệ thống' },
-    { icon: '👥', label: 'Thành viên',      value: String(totalMembers), sub: 'user & agent' },
-    { icon: '🔑', label: 'Quyền hệ thống', value: String(PERMS.length), sub: 'theo nhóm chức năng' },
-    { icon: '✉️', label: 'Lời mời chờ',    value: '2',                  sub: 'chưa phản hồi' },
+    { icon: '🛡', label: t('Vai trò'),        value: String(R.length),     sub: t('1 vai trò hệ thống') },
+    { icon: '👥', label: t('Thành viên'),      value: String(totalMembers), sub: t('user & agent') },
+    { icon: '🔑', label: t('Quyền hệ thống'), value: String(PERMS.length), sub: t('theo nhóm chức năng') },
+    { icon: '✉️', label: t('Lời mời chờ'),    value: '2',                  sub: t('chưa phản hồi') },
   ]
 
   // role list
@@ -170,8 +174,8 @@ export function Perms() {
       border: sel ? 'var(--jade)' : 'var(--line)',
       nameColor: sel ? 'var(--jade-deep)' : 'var(--ink)',
       accent: r.color,
-      memberCount: r.members.length + ' thành viên',
-      permCount: on + '/' + PERMS.length + ' quyền',
+      memberCount: r.members.length + ' ' + t('thành viên'),
+      permCount: on + '/' + PERMS.length + ' ' + t('quyền'),
     }
   })
 
@@ -212,13 +216,13 @@ export function Perms() {
       {/* header */}
       <header style={{ flex: 'none', background: 'var(--surface)', borderBottom: '1px solid var(--line)', padding: '16px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <div style={{ fontSize: 11.5, color: 'var(--placeholder)', marginBottom: 3 }}>Workspace › Phân quyền</div>
+          <div style={{ fontSize: 11.5, color: 'var(--placeholder)', marginBottom: 3 }}>Workspace › {t('Phân quyền')}</div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
-            <span style={{ fontSize: 21, fontWeight: 800, letterSpacing: '-.4px' }}>Phân quyền</span>
-            <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>Vai trò &amp; quyền truy cập của user và agent</span>
+            <span style={{ fontSize: 21, fontWeight: 800, letterSpacing: '-.4px' }}>{t('Phân quyền')}</span>
+            <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>{t('Vai trò & quyền truy cập của user và agent')}</span>
           </div>
         </div>
-        <Hover as="button" onClick={s.openCreateRole} style={{ display: 'flex', alignItems: 'center', gap: 7, border: 'none', background: 'var(--jade)', color: '#fff', borderRadius: 99, padding: '10px 18px', font: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 6px 16px rgba(10,92,72,.2)' }} hover={{ background: 'var(--jade-deep)' }}>＋ Tạo vai trò</Hover>
+        <Hover as="button" onClick={s.openCreateRole} style={{ display: 'flex', alignItems: 'center', gap: 7, border: 'none', background: 'var(--jade)', color: '#fff', borderRadius: 99, padding: '10px 18px', font: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 6px 16px rgba(10,92,72,.2)' }} hover={{ background: 'var(--jade-deep)' }}>＋ {t('Tạo vai trò')}</Hover>
       </header>
 
       <div style={{ flex: 1, overflow: 'auto', padding: '22px 28px 32px' }}>
@@ -251,7 +255,7 @@ export function Perms() {
                     <div style={{ fontSize: 11, color: 'var(--placeholder)' }}>{r.memberCount}</div>
                   </div>
                   {r.system && (
-                    <span style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--jade-deep)', background: 'var(--jade-soft)', padding: '2px 8px', borderRadius: 99, flex: 'none' }}>Hệ thống</span>
+                    <span style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--jade-deep)', background: 'var(--jade-soft)', padding: '2px 8px', borderRadius: 99, flex: 'none' }}>{t('Hệ thống')}</span>
                   )}
                 </div>
                 <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--jade-deep)', paddingLeft: 6 }}>{r.permCount}</div>
@@ -271,13 +275,13 @@ export function Perms() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
                         <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.3px' }}>{roleDetail.name}</span>
                         {roleDetail.isSystem && (
-                          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--jade-deep)', background: 'var(--jade-soft)', padding: '2px 9px', borderRadius: 99 }}>🔒 Khóa</span>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--jade-deep)', background: 'var(--jade-soft)', padding: '2px 9px', borderRadius: 99 }}>🔒 {t('Khóa')}</span>
                         )}
                       </div>
                       <div style={{ fontSize: 12.5, color: 'var(--ink-2)', marginTop: 3 }}>{roleDetail.desc}</div>
                     </div>
                   </div>
-                  <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--jade-deep)', background: 'var(--jade-soft)', padding: '5px 13px', borderRadius: 99, whiteSpace: 'nowrap', flex: 'none' }}>{roleDetail.grantedCount} quyền</span>
+                  <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--jade-deep)', background: 'var(--jade-soft)', padding: '5px 13px', borderRadius: 99, whiteSpace: 'nowrap', flex: 'none' }}>{roleDetail.grantedCount} {t('quyền')}</span>
                 </div>
               </div>
 
@@ -303,8 +307,8 @@ export function Perms() {
               {/* members with role */}
               <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, padding: '20px 22px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-                  <span style={{ fontSize: 15, fontWeight: 800, letterSpacing: '-.2px' }}>Thành viên · {roleDetail.memberCount}</span>
-                  <Hover as="button" onClick={s.openAssignMember} style={{ fontSize: 12, fontWeight: 600, color: 'var(--jade-deep)', background: 'var(--jade-soft)', border: 'none', borderRadius: 99, padding: '6px 14px', cursor: 'pointer', fontFamily: 'inherit' }} hover={{ background: 'var(--jade)', color: '#fff' }}>＋ Gán thành viên</Hover>
+                  <span style={{ fontSize: 15, fontWeight: 800, letterSpacing: '-.2px' }}>{t('Thành viên')} · {roleDetail.memberCount}</span>
+                  <Hover as="button" onClick={s.openAssignMember} style={{ fontSize: 12, fontWeight: 600, color: 'var(--jade-deep)', background: 'var(--jade-soft)', border: 'none', borderRadius: 99, padding: '6px 14px', cursor: 'pointer', fontFamily: 'inherit' }} hover={{ background: 'var(--jade)', color: '#fff' }}>＋ {t('Gán thành viên')}</Hover>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
                   {roleDetail.members.map((mm) => (
@@ -314,11 +318,11 @@ export function Perms() {
                         <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{mm.name}</div>
                         <div style={{ fontSize: 11, color: 'var(--placeholder)' }}>{mm.sub}</div>
                       </div>
-                      <Hover as="button" onClick={mm.onRemove} style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-2)', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }} hover={{ color: 'var(--danger)' }}>Gỡ</Hover>
+                      <Hover as="button" onClick={mm.onRemove} style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-2)', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }} hover={{ color: 'var(--danger)' }}>{t('Gỡ')}</Hover>
                     </div>
                   ))}
                   {roleDetail.members.length === 0 && (
-                    <div style={{ padding: '20px 0', textAlign: 'center', color: 'var(--placeholder)', fontSize: 13 }}>Chưa có thành viên nào trong vai trò này.</div>
+                    <div style={{ padding: '20px 0', textAlign: 'center', color: 'var(--placeholder)', fontSize: 13 }}>{t('Chưa có thành viên nào trong vai trò này.')}</div>
                   )}
                 </div>
               </div>

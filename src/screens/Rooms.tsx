@@ -1,4 +1,5 @@
 import { useStore } from '@/store'
+import { useT } from '@/i18n'
 import { Hover } from '@/components/ui/Hover'
 import { Modal, ModalHead } from '@/components/ui/Modal'
 import { addPeoplePool } from '@/data/channelsExtra'
@@ -18,6 +19,7 @@ const label: React.CSSProperties = {
 
 export function Rooms() {
   const s = useStore()
+  const t = useT()
 
   // ---- view-model (replicated verbatim from renderVals ~4991–5034) ----
   const activeRoom = s.rooms.find((r) => r.id === s.activeRoom) || s.rooms[0]
@@ -54,10 +56,10 @@ export function Rooms() {
   const userTotal = memberTotal - agentTotal
 
   const roomTabs = [
-    { key: 'overview', label: 'Tổng quan', count: 0 },
-    { key: 'members', label: 'Thành viên', count: memberTotal },
+    { key: 'overview', label: t('Tổng quan'), count: 0 },
+    { key: 'members', label: t('Thành viên'), count: memberTotal },
     { key: 'log', label: 'Log', count: 0 },
-    { key: 'settings', label: 'Cài đặt', count: 0 },
+    { key: 'settings', label: t('Cài đặt'), count: 0 },
   ].map((t) => {
     const sel = t.key === s.roomTab
     return {
@@ -70,24 +72,24 @@ export function Rooms() {
   })
 
   const roomStats = [
-    { label: 'Thành viên', value: memberTotal, sub: userTotal + ' user · ' + agentTotal + ' agent' },
+    { label: t('Thành viên'), value: memberTotal, sub: userTotal + ' user · ' + agentTotal + ' agent' },
     { label: 'Channel', value: 1, sub: activeRoom ? activeRoom.slug.split(' ')[0].toLowerCase() : '' },
-    { label: 'Trạng thái', value: 'Active', sub: 'Đang hoạt động' },
+    { label: t('Trạng thái'), value: 'Active', sub: t('Đang hoạt động') },
   ]
 
   const roomLogs = [
-    { actor: 'Dragon - CEO', action: 'đã tạo knowledge mới "Chuẩn bị nội dung facebook".', time: 'Hôm nay · 15:55', dot: 'var(--jade)' },
-    { actor: 'Nami - Quản lý Fanpage', action: 'cập nhật lịch đăng 6 fanpage vệ tinh.', time: 'Hôm nay · 11:20', dot: 'var(--jade)' },
-    { actor: 'Nguyễn Thiện Giang', action: 'thêm Brook - Báo Cáo Zy Novel vào phòng.', time: 'Hôm qua · 17:42', dot: 'var(--amber)' },
-    { actor: 'Sabo - Facebook Research', action: 'hoàn tất research 12 bài viral.', time: 'Hôm qua · 09:10', dot: 'var(--jade)' },
-    { actor: 'Hệ thống', action: 'tạo phòng ' + (activeRoom?.name || '') + '.', time: '12/06/2026', dot: 'var(--placeholder)' },
+    { actor: 'Dragon - CEO', action: t('đã tạo knowledge mới "Chuẩn bị nội dung facebook".'), time: t('Hôm nay') + ' · 15:55', dot: 'var(--jade)' },
+    { actor: 'Nami - Quản lý Fanpage', action: t('cập nhật lịch đăng 6 fanpage vệ tinh.'), time: t('Hôm nay') + ' · 11:20', dot: 'var(--jade)' },
+    { actor: 'Nguyễn Thiện Giang', action: t('thêm Brook - Báo Cáo Zy Novel vào phòng.'), time: t('Hôm qua') + ' · 17:42', dot: 'var(--amber)' },
+    { actor: 'Sabo - Facebook Research', action: t('hoàn tất research 12 bài viral.'), time: t('Hôm qua') + ' · 09:10', dot: 'var(--jade)' },
+    { actor: t('Hệ thống'), action: t('tạo phòng') + ' ' + (activeRoom?.name || '') + '.', time: '12/06/2026', dot: 'var(--placeholder)' },
   ]
 
   const roomSettings = [
-    { label: 'Tên phòng', desc: 'Hiển thị trong danh sách phòng', value: activeRoom?.name || '' },
-    { label: 'Channel chính', desc: 'Channel mặc định khi mở phòng', value: activeRoom ? activeRoom.slug.split(' ')[0].toLowerCase() : '' },
-    { label: 'Quyền truy cập', desc: 'Ai có thể tham gia phòng', value: 'Chỉ được mời' },
-    { label: 'Tự động giao việc', desc: 'Agent tự nhận task mới trong phòng', value: 'Bật' },
+    { label: t('Tên phòng'), desc: t('Hiển thị trong danh sách phòng'), value: activeRoom?.name || '' },
+    { label: t('Channel chính'), desc: t('Channel mặc định khi mở phòng'), value: activeRoom ? activeRoom.slug.split(' ')[0].toLowerCase() : '' },
+    { label: t('Quyền truy cập'), desc: t('Ai có thể tham gia phòng'), value: t('Chỉ được mời') },
+    { label: t('Tự động giao việc'), desc: t('Agent tự nhận task mới trong phòng'), value: t('Bật') },
   ]
 
   // addPeople: people not already in this room
@@ -121,10 +123,10 @@ export function Rooms() {
       <aside style={{ width: 266, flex: 'none', background: 'var(--surface)', borderRight: '1px solid var(--line)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <div style={{ padding: '18px 18px 12px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
           <div>
-            <div style={{ fontSize: 19, fontWeight: 800, letterSpacing: '-.3px' }}>Phòng</div>
-            <div style={{ fontSize: 11.5, color: 'var(--ink-2)', marginTop: 2 }}>{s.rooms.length} phòng làm việc</div>
+            <div style={{ fontSize: 19, fontWeight: 800, letterSpacing: '-.3px' }}>{t('Phòng')}</div>
+            <div style={{ fontSize: 11.5, color: 'var(--ink-2)', marginTop: 2 }}>{s.rooms.length} {t('phòng làm việc')}</div>
           </div>
-          <Hover as="button" onClick={s.openNewRoom} title="Tạo phòng mới"
+          <Hover as="button" onClick={s.openNewRoom} title={t('Tạo phòng mới')}
             style={{ width: 30, height: 30, borderRadius: 9, border: '1px solid var(--line)', background: 'var(--jade-soft)', color: 'var(--jade-deep)', fontSize: 17, lineHeight: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             hover={{ background: 'var(--jade)', color: '#fff' }}>＋</Hover>
         </div>
@@ -139,7 +141,7 @@ export function Rooms() {
                 <div style={{ fontSize: 14, fontWeight: 700, color: r.nameColor, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.name}</div>
                 <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.5px', color: 'var(--placeholder)', marginTop: 2 }}>{r.slug}</div>
               </div>
-              <Hover as="button" className="delbtn" title="Xóa phòng"
+              <Hover as="button" className="delbtn" title={t('Xóa phòng')}
                 onClick={(e: React.MouseEvent) => { e.stopPropagation(); r.onDelete() }}
                 style={{ flex: 'none', width: 26, height: 26, borderRadius: 7, border: 'none', background: 'transparent', color: 'var(--placeholder)', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                 hover={{ background: '#FBEAE7', color: 'var(--danger)' }}>🗑</Hover>
@@ -153,11 +155,11 @@ export function Rooms() {
         {!activeRoom ? (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 13, padding: 40 }}>
             <div style={{ fontSize: 44 }}>🗂</div>
-            <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--ink-2)' }}>Chưa có phòng nào</div>
-            <div style={{ fontSize: 13, color: 'var(--placeholder)', textAlign: 'center', maxWidth: 340, lineHeight: 1.55 }}>Bạn đã xóa hết phòng. Tạo phòng làm việc mới để gom channel, thành viên và agent theo dự án.</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--ink-2)' }}>{t('Chưa có phòng nào')}</div>
+            <div style={{ fontSize: 13, color: 'var(--placeholder)', textAlign: 'center', maxWidth: 340, lineHeight: 1.55 }}>{t('Bạn đã xóa hết phòng. Tạo phòng làm việc mới để gom channel, thành viên và agent theo dự án.')}</div>
             <Hover as="button" onClick={s.openNewRoom}
               style={{ display: 'flex', alignItems: 'center', gap: 7, border: 'none', background: 'var(--jade)', color: '#fff', borderRadius: 99, padding: '11px 22px', font: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer', marginTop: 4, boxShadow: '0 6px 16px rgba(40,64,158,.2)' }}
-              hover={{ background: 'var(--jade-deep)' }}>＋ Tạo phòng mới</Hover>
+              hover={{ background: 'var(--jade-deep)' }}>＋ {t('Tạo phòng mới')}</Hover>
           </div>
         ) : (<>
         <header style={{ flex: 'none', background: 'var(--surface)', borderBottom: '1px solid var(--line)', padding: '16px 26px 0' }}>
@@ -173,10 +175,10 @@ export function Rooms() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <Hover as="button" onClick={s.openRoomEdit}
                 style={{ display: 'flex', alignItems: 'center', gap: 7, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink-2)', borderRadius: 99, padding: '8px 16px', font: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}
-                hover={{ borderColor: 'var(--jade)', color: 'var(--jade-deep)' }}>✎ Sửa</Hover>
+                hover={{ borderColor: 'var(--jade)', color: 'var(--jade-deep)' }}>✎ {t('Sửa')}</Hover>
               <Hover as="button" onClick={s.roomAskDelete}
                 style={{ display: 'flex', alignItems: 'center', gap: 7, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--danger)', borderRadius: 99, padding: '8px 16px', font: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}
-                hover={{ borderColor: 'var(--danger)', background: 'var(--danger)', color: '#fff' }}>🗑 Xóa</Hover>
+                hover={{ borderColor: 'var(--danger)', background: 'var(--danger)', color: '#fff' }}>🗑 {t('Xóa')}</Hover>
             </div>
           </div>
 
@@ -201,17 +203,17 @@ export function Rooms() {
             <>
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 18 }}>
                 <div>
-                  <div style={{ fontSize: 16, fontWeight: 800, letterSpacing: '-.2px' }}>Thành viên phòng</div>
-                  <div style={{ fontSize: 12.5, color: 'var(--ink-2)', marginTop: 3 }}>User và agent được phép làm việc trong phòng.</div>
+                  <div style={{ fontSize: 16, fontWeight: 800, letterSpacing: '-.2px' }}>{t('Thành viên phòng')}</div>
+                  <div style={{ fontSize: 12.5, color: 'var(--ink-2)', marginTop: 3 }}>{t('User và agent được phép làm việc trong phòng.')}</div>
                 </div>
                 <Hover as="button" onClick={s.openRoomAddMember}
                   style={{ display: 'flex', alignItems: 'center', gap: 7, border: 'none', background: 'var(--jade)', color: '#fff', borderRadius: 99, padding: '10px 18px', font: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 6px 16px rgba(40,64,158,.2)' }}
-                  hover={{ background: 'var(--jade-deep)' }}>＋ Thêm thành viên</Hover>
+                  hover={{ background: 'var(--jade-deep)' }}>＋ {t('Thêm thành viên')}</Hover>
               </div>
 
               <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, overflow: 'hidden' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 150px 150px 90px', padding: '12px 20px', borderBottom: '1px solid var(--line)', fontSize: 10, fontWeight: 700, letterSpacing: '.7px', textTransform: 'uppercase', color: 'var(--placeholder)' }}>
-                  <div>Thành viên</div><div>Loại</div><div>Vai trò</div><div></div>
+                  <div>{t('Thành viên')}</div><div>{t('Loại')}</div><div>{t('Vai trò')}</div><div></div>
                 </div>
                 {roomMembers.map((m, i) => (
                   <Hover key={i}
@@ -240,7 +242,7 @@ export function Rooms() {
           {/* OVERVIEW TAB */}
           {s.roomTab === 'overview' && (
             <>
-              <div style={{ fontSize: 16, fontWeight: 800, letterSpacing: '-.2px', marginBottom: 16 }}>Tổng quan phòng</div>
+              <div style={{ fontSize: 16, fontWeight: 800, letterSpacing: '-.2px', marginBottom: 16 }}>{t('Tổng quan phòng')}</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14, marginBottom: 22 }}>
                 {roomStats.map((st, i) => (
                   <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 16, padding: 18 }}>
@@ -251,9 +253,9 @@ export function Rooms() {
                 ))}
               </div>
               <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 16, padding: 20 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.7px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 10 }}>Mô tả phòng</div>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.7px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 10 }}>{t('Mô tả phòng')}</div>
                 <div style={{ fontSize: 14, lineHeight: 1.6, color: 'var(--ink)' }}>
-                  Phòng <b>{activeRoomName}</b> là không gian làm việc cho team nội dung — nơi các agent phối hợp nghiên cứu, soạn và đăng bài cho hệ thống fanpage vệ tinh. Channel chính: <code style={{ fontFamily: 'var(--mono)', fontSize: 12.5, color: 'var(--jade-deep)', background: 'var(--jade-soft)', padding: '1px 8px', borderRadius: 6 }}>{activeRoomSlug}</code>.
+                  {t('Phòng')} <b>{activeRoomName}</b> {t('là không gian làm việc cho team nội dung — nơi các agent phối hợp nghiên cứu, soạn và đăng bài cho hệ thống fanpage vệ tinh. Channel chính:')} <code style={{ fontFamily: 'var(--mono)', fontSize: 12.5, color: 'var(--jade-deep)', background: 'var(--jade-soft)', padding: '1px 8px', borderRadius: 6 }}>{activeRoomSlug}</code>.
                 </div>
               </div>
             </>
@@ -262,7 +264,7 @@ export function Rooms() {
           {/* LOG TAB */}
           {s.roomTab === 'log' && (
             <>
-              <div style={{ fontSize: 16, fontWeight: 800, letterSpacing: '-.2px', marginBottom: 16 }}>Nhật ký hoạt động</div>
+              <div style={{ fontSize: 16, fontWeight: 800, letterSpacing: '-.2px', marginBottom: 16 }}>{t('Nhật ký hoạt động')}</div>
               <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 16, overflow: 'hidden' }}>
                 {roomLogs.map((lg, i) => (
                   <div key={i} style={{ display: 'flex', gap: 13, padding: '14px 18px', borderBottom: '1px solid var(--line)' }}>
@@ -280,7 +282,7 @@ export function Rooms() {
           {/* SETTINGS TAB */}
           {s.roomTab === 'settings' && (
             <>
-              <div style={{ fontSize: 16, fontWeight: 800, letterSpacing: '-.2px', marginBottom: 16 }}>Cài đặt phòng</div>
+              <div style={{ fontSize: 16, fontWeight: 800, letterSpacing: '-.2px', marginBottom: 16 }}>{t('Cài đặt phòng')}</div>
               <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 16, overflow: 'hidden', marginBottom: 18 }}>
                 {roomSettings.map((se, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '16px 20px', borderBottom: '1px solid var(--line)' }}>
@@ -294,7 +296,7 @@ export function Rooms() {
               </div>
               <Hover as="button" onClick={s.roomAskDelete}
                 style={{ border: '1px solid var(--danger)', background: 'transparent', color: 'var(--danger)', borderRadius: 99, padding: '11px 22px', font: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
-                hover={{ background: 'var(--danger)', color: '#fff' }}>Xóa phòng</Hover>
+                hover={{ background: 'var(--danger)', color: '#fff' }}>{t('Xóa phòng')}</Hover>
             </>
           )}
 
@@ -307,20 +309,20 @@ export function Rooms() {
       {/* room edit */}
       {ov === 'roomEdit' && (
         <Modal onClose={s.closeOverlay} width={420}>
-          <ModalHead title="Sửa phòng" onClose={s.closeOverlay} />
-          <label style={label}>Tên phòng</label>
+          <ModalHead title={t('Sửa phòng')} onClose={s.closeOverlay} />
+          <label style={label}>{t('Tên phòng')}</label>
           <input
             value={s.roomForm.name}
             onChange={(e) => s.onRoomField('name', e.target.value)}
-            placeholder="Tên phòng"
+            placeholder={t('Tên phòng')}
             autoFocus
             style={{ width: '100%', border: '1.5px solid var(--jade)', borderRadius: 14, fontFamily: 'inherit', fontSize: 14.5, padding: '13px 14px', background: 'transparent', color: 'var(--ink)', outline: 'none', marginBottom: 24, boxSizing: 'border-box' }}
           />
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-            <Hover as="button" onClick={s.closeOverlay} style={ghostBtn} hover={{ background: 'var(--line)' }}>Hủy</Hover>
+            <Hover as="button" onClick={s.closeOverlay} style={ghostBtn} hover={{ background: 'var(--line)' }}>{t('Hủy')}</Hover>
             <Hover as="button" onClick={s.saveRoomEdit}
               style={{ fontSize: 13.5, fontWeight: 700, color: '#fff', background: createRoomBg, border: 'none', borderRadius: 99, padding: '11px 26px', cursor: createRoomCursor, fontFamily: 'inherit' }}
-              hover={{ background: 'var(--jade-deep)' }}>Lưu</Hover>
+              hover={{ background: 'var(--jade-deep)' }}>{t('Lưu')}</Hover>
           </div>
         </Modal>
       )}
@@ -331,8 +333,8 @@ export function Rooms() {
           <div onClick={(e) => e.stopPropagation()} style={{ width: 460, maxWidth: '92vw', maxHeight: '80vh', background: 'var(--surface)', borderRadius: 22, boxShadow: '0 24px 60px rgba(22,32,28,.22)', animation: 'pop .2s ease both', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 22px 14px' }}>
               <div>
-                <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.3px' }}>Thêm thành viên</div>
-                <div style={{ fontSize: 12, color: 'var(--ink-2)', marginTop: 2 }}>Thêm user hoặc agent vào {activeRoomName}</div>
+                <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.3px' }}>{t('Thêm thành viên')}</div>
+                <div style={{ fontSize: 12, color: 'var(--ink-2)', marginTop: 2 }}>{t('Thêm user hoặc agent vào')} {activeRoomName}</div>
               </div>
               <Hover as="button" onClick={s.closeOverlay}
                 style={{ width: 34, height: 34, borderRadius: 99, border: 'none', background: 'var(--bg)', fontSize: 16, cursor: 'pointer', color: 'var(--ink-2)' }}
@@ -350,17 +352,17 @@ export function Rooms() {
                   </div>
                   <Hover as="button" onClick={() => s.roomAddMember(p)}
                     style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--jade-deep)', background: 'var(--jade-soft)', border: 'none', borderRadius: 99, padding: '7px 16px', cursor: 'pointer', fontFamily: 'inherit' }}
-                    hover={{ background: 'var(--jade)', color: '#fff' }}>Thêm</Hover>
+                    hover={{ background: 'var(--jade)', color: '#fff' }}>{t('Thêm')}</Hover>
                 </Hover>
               ))}
               {roomAddPeople.length === 0 && (
-                <div style={{ padding: '24px 12px', textAlign: 'center', fontSize: 13, color: 'var(--placeholder)' }}>Tất cả thành viên đã có trong phòng.</div>
+                <div style={{ padding: '24px 12px', textAlign: 'center', fontSize: 13, color: 'var(--placeholder)' }}>{t('Tất cả thành viên đã có trong phòng.')}</div>
               )}
             </div>
             <div style={{ padding: '14px 22px', borderTop: '1px solid var(--line)', display: 'flex', justifyContent: 'flex-end' }}>
               <Hover as="button" onClick={s.closeOverlay}
                 style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: 'var(--jade)', border: 'none', borderRadius: 99, padding: '10px 22px', cursor: 'pointer', fontFamily: 'inherit' }}
-                hover={{ background: 'var(--jade-deep)' }}>Xong</Hover>
+                hover={{ background: 'var(--jade-deep)' }}>{t('Xong')}</Hover>
             </div>
           </div>
         </div>
@@ -371,13 +373,13 @@ export function Rooms() {
         <div onClick={s.closeOverlay} style={{ position: 'fixed', inset: 0, background: 'rgba(22,32,28,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 55, animation: 'fadeIn .15s ease' }}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: 410, maxWidth: '92vw', background: 'var(--surface)', borderRadius: 22, padding: 26, boxShadow: '0 24px 60px rgba(22,32,28,.28)', animation: 'pop .2s ease both' }}>
             <div style={{ width: 52, height: 52, borderRadius: 15, background: '#FBEAE7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, marginBottom: 16 }}>🗑</div>
-            <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.3px', marginBottom: 8, lineHeight: 1.35 }}>Xóa phòng "{activeRoomName}"?</div>
-            <div style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.55, marginBottom: 24 }}>Toàn bộ thành viên và liên kết channel của phòng sẽ bị gỡ. Không thể hoàn tác.</div>
+            <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.3px', marginBottom: 8, lineHeight: 1.35 }}>{t('Xóa phòng')} "{activeRoomName}"?</div>
+            <div style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.55, marginBottom: 24 }}>{t('Toàn bộ thành viên và liên kết channel của phòng sẽ bị gỡ. Không thể hoàn tác.')}</div>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <Hover as="button" onClick={s.closeOverlay} style={ghostBtn} hover={{ background: 'var(--line)' }}>Hủy</Hover>
+              <Hover as="button" onClick={s.closeOverlay} style={ghostBtn} hover={{ background: 'var(--line)' }}>{t('Hủy')}</Hover>
               <Hover as="button" onClick={s.roomDoDelete}
                 style={{ fontSize: 13.5, fontWeight: 700, color: '#fff', background: 'var(--danger)', border: 'none', borderRadius: 99, padding: '11px 26px', cursor: 'pointer', fontFamily: 'inherit' }}
-                hover={{ opacity: .9 }}>Xóa phòng</Hover>
+                hover={{ opacity: .9 }}>{t('Xóa phòng')}</Hover>
             </div>
           </div>
         </div>
@@ -388,55 +390,55 @@ export function Rooms() {
         <div onClick={s.closeOverlay} style={{ position: 'fixed', inset: 0, background: 'rgba(22,32,28,.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, animation: 'fadeIn .15s ease' }}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: 460, maxWidth: '92vw', background: 'var(--surface)', borderRadius: 24, padding: 26, boxShadow: '0 24px 60px rgba(22,32,28,.22)', animation: 'pop .2s ease both' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-              <div style={{ fontSize: 19, fontWeight: 800, letterSpacing: '-.3px' }}>Tạo phòng mới</div>
+              <div style={{ fontSize: 19, fontWeight: 800, letterSpacing: '-.3px' }}>{t('Tạo phòng mới')}</div>
               <Hover as="button" onClick={s.closeOverlay}
                 style={{ width: 32, height: 32, borderRadius: 99, border: 'none', background: 'var(--bg)', fontSize: 16, cursor: 'pointer', color: 'var(--ink-2)' }}
                 hover={{ background: 'var(--jade-soft)' }}>✕</Hover>
             </div>
-            <div style={{ fontSize: 12.5, color: 'var(--ink-2)', marginBottom: 20, lineHeight: 1.5 }}>Phòng là không gian làm việc gom channel, thành viên và agent theo một mảng dự án.</div>
+            <div style={{ fontSize: 12.5, color: 'var(--ink-2)', marginBottom: 20, lineHeight: 1.5 }}>{t('Phòng là không gian làm việc gom channel, thành viên và agent theo một mảng dự án.')}</div>
 
-            <label style={label}>Tên phòng</label>
+            <label style={label}>{t('Tên phòng')}</label>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, border: '1.5px solid var(--line)', borderRadius: 14, padding: '0 14px', marginBottom: 18 }}>
               <span style={{ color: 'var(--placeholder)', fontSize: 15 }}>🗂</span>
               <input
                 value={s.roomForm.name}
                 onChange={(e) => s.onRoomField('name', e.target.value)}
-                placeholder="vd. Zy Marketing"
+                placeholder={t('vd. Zy Marketing')}
                 autoFocus
                 style={{ flex: 1, border: 'none', outline: 'none', fontFamily: 'inherit', fontSize: 14.5, padding: '13px 0', background: 'transparent', color: 'var(--ink)' }}
               />
             </div>
 
-            <label style={label}>Channel chính <span style={{ textTransform: 'none', fontWeight: 500 }}>(tùy chọn)</span></label>
+            <label style={label}>{t('Channel chính')} <span style={{ textTransform: 'none', fontWeight: 500 }}>{t('(tùy chọn)')}</span></label>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, border: '1.5px solid var(--line)', borderRadius: 14, padding: '0 14px', marginBottom: 18 }}>
               <span style={{ color: 'var(--placeholder)', fontSize: 15 }}>#</span>
               <input
                 value={s.roomForm.channel}
                 onChange={(e) => s.onRoomField('channel', e.target.value)}
-                placeholder="vd. zy-marketing (tự tạo nếu để trống)"
+                placeholder={t('vd. zy-marketing (tự tạo nếu để trống)')}
                 style={{ flex: 1, border: 'none', outline: 'none', fontFamily: 'var(--mono)', fontSize: 13.5, padding: '13px 0', background: 'transparent', color: 'var(--ink)' }}
               />
             </div>
 
-            <label style={label}>Quyền riêng tư</label>
+            <label style={label}>{t('Quyền riêng tư')}</label>
             <div style={{ display: 'flex', gap: 10, marginBottom: 24 }}>
               <div onClick={() => s.onRoomField('visibility', 'public')}
                 style={{ flex: 1, border: `1.5px solid ${s.roomForm.visibility === 'public' ? 'var(--jade)' : 'var(--line)'}`, background: s.roomForm.visibility === 'public' ? 'var(--jade-soft)' : 'transparent', borderRadius: 14, padding: 13, cursor: 'pointer' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5, fontWeight: 700, marginBottom: 3 }}># Public</div>
-                <div style={{ fontSize: 11.5, color: 'var(--ink-2)', lineHeight: 1.4 }}>Mọi thành viên workspace đều thấy.</div>
+                <div style={{ fontSize: 11.5, color: 'var(--ink-2)', lineHeight: 1.4 }}>{t('Mọi thành viên workspace đều thấy.')}</div>
               </div>
               <div onClick={() => s.onRoomField('visibility', 'private')}
                 style={{ flex: 1, border: `1.5px solid ${s.roomForm.visibility === 'private' ? 'var(--jade)' : 'var(--line)'}`, background: s.roomForm.visibility === 'private' ? 'var(--jade-soft)' : 'transparent', borderRadius: 14, padding: 13, cursor: 'pointer' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5, fontWeight: 700, marginBottom: 3 }}>🔒 Private</div>
-                <div style={{ fontSize: 11.5, color: 'var(--ink-2)', lineHeight: 1.4 }}>Chỉ người được mời mới vào.</div>
+                <div style={{ fontSize: 11.5, color: 'var(--ink-2)', lineHeight: 1.4 }}>{t('Chỉ người được mời mới vào.')}</div>
               </div>
             </div>
 
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <Hover as="button" onClick={s.closeOverlay} style={ghostBtn} hover={{ background: 'var(--line)' }}>Hủy</Hover>
+              <Hover as="button" onClick={s.closeOverlay} style={ghostBtn} hover={{ background: 'var(--line)' }}>{t('Hủy')}</Hover>
               <Hover as="button" onClick={s.createRoom}
                 style={{ fontSize: 13.5, fontWeight: 700, color: '#fff', background: createRoomBg, border: 'none', borderRadius: 99, padding: '11px 26px', cursor: createRoomCursor, fontFamily: 'inherit' }}
-                hover={{ background: 'var(--jade-deep)' }}>Tạo phòng</Hover>
+                hover={{ background: 'var(--jade-deep)' }}>{t('Tạo phòng')}</Hover>
             </div>
           </div>
         </div>

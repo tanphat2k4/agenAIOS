@@ -1,4 +1,5 @@
 import { useStore } from '@/store'
+import { useT } from '@/i18n'
 import { Hover } from '@/components/ui/Hover'
 import { AgentDrawer, AgentModals } from './agents/AgentModals'
 import type { Agent } from '@/types'
@@ -24,22 +25,23 @@ function statusStyle(status: string) {
 
 export function Agents() {
   const s = useStore()
+  const t = useT()
   const A = s.agentsData
 
   // ---- agStats (verbatim from renderVals) ----
   const agStats = [
-    { icon: '🤖', label: 'Tổng agents',       value: String(A.length),                                                                                                                                  sub: 'trong workspace' },
-    { icon: '🟢', label: 'Đang online',        value: String(A.filter((a: Agent) => a.status === 'online').length),                                                                                     sub: 'sẵn sàng nhận việc' },
-    { icon: '⚡', label: 'Đang chạy',          value: String(A.filter((a: Agent) => a.status === 'busy').length),                                                                                       sub: 'pipeline hoạt động' },
-    { icon: '🏠', label: 'Máy nhà · Đám mây',  value: A.filter((a: Agent) => a.modelType === 'local').length + ' · ' + A.filter((a: Agent) => a.modelType === 'cloud').length, sub: 'phân bổ model' },
+    { icon: '🤖', label: t('Tổng agents'),       value: String(A.length),                                                                                                                                  sub: t('trong workspace') },
+    { icon: '🟢', label: t('Đang online'),        value: String(A.filter((a: Agent) => a.status === 'online').length),                                                                                     sub: t('sẵn sàng nhận việc') },
+    { icon: '⚡', label: t('Đang chạy'),          value: String(A.filter((a: Agent) => a.status === 'busy').length),                                                                                       sub: t('pipeline hoạt động') },
+    { icon: '🏠', label: t('Máy nhà · Đám mây'),  value: A.filter((a: Agent) => a.modelType === 'local').length + ' · ' + A.filter((a: Agent) => a.modelType === 'cloud').length, sub: t('phân bổ model') },
   ]
 
   // ---- agFilters (verbatim from renderVals) ----
   const agFilterDefs = [
-    { key: 'all',     label: 'Tất cả',    count: A.length },
+    { key: 'all',     label: t('Tất cả'),    count: A.length },
     { key: 'online',  label: 'Online',    count: A.filter((a: Agent) => a.status === 'online').length },
-    { key: 'busy',    label: 'Đang chạy', count: A.filter((a: Agent) => a.status === 'busy').length },
-    { key: 'idle',    label: 'Nghỉ',      count: A.filter((a: Agent) => a.status === 'idle').length },
+    { key: 'busy',    label: t('Đang chạy'), count: A.filter((a: Agent) => a.status === 'busy').length },
+    { key: 'idle',    label: t('Nghỉ'),      count: A.filter((a: Agent) => a.status === 'idle').length },
     { key: 'offline', label: 'Offline',   count: A.filter((a: Agent) => a.status === 'offline').length },
   ]
 
@@ -59,7 +61,7 @@ export function Agents() {
           <div style={{ fontSize: 11.5, color: 'var(--placeholder)', marginBottom: 3 }}>Workspace › Agents</div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
             <span style={{ fontSize: 21, fontWeight: 800, letterSpacing: '-.4px' }}>Agents</span>
-            <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>{agCount} agent trong workspace</span>
+            <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>{agCount} {t('agent trong workspace')}</span>
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
@@ -109,7 +111,7 @@ export function Agents() {
             <input
               value={s.agentsQuery}
               onChange={(e) => s.set({ agentsQuery: e.target.value })}
-              placeholder="Tìm agent theo tên, @handle, vai trò…"
+              placeholder={t('Tìm agent theo tên, @handle, vai trò…')}
               style={{ flex: 1, border: 'none', outline: 'none', fontFamily: 'inherit', fontSize: 12.5, background: 'transparent', color: 'var(--ink)' }}
             />
           </div>

@@ -1,4 +1,5 @@
 import { useStore } from '@/store'
+import { useT } from '@/i18n'
 import { Hover } from '@/components/ui/Hover'
 import type { SessionLog } from '@/types'
 
@@ -17,18 +18,19 @@ const lvlStyle: Record<'info' | 'debug' | 'warn' | 'error', { fg: string; bg: st
 
 export function Logs() {
   const s = useStore()
+  const t = useT()
 
   const SS = s.sessionsData
   const logStats = [
-    { icon: '🗂', label: 'Phiên hôm nay', value: SS.length + '', sub: 'agent session' },
-    { icon: '⚡', label: 'Đang chạy', value: SS.filter((x) => x.status === 'running').length + '', sub: 'session live' },
-    { icon: '🔢', label: 'Tokens 24h', value: '61.3k', sub: 'tổng input + output' },
-    { icon: '⚠️', label: 'Phiên lỗi', value: SS.filter((x) => x.status === 'failed').length + '', sub: 'cần xem lại' },
+    { icon: '🗂', label: t('Phiên hôm nay'), value: SS.length + '', sub: 'agent session' },
+    { icon: '⚡', label: t('Đang chạy'), value: SS.filter((x) => x.status === 'running').length + '', sub: 'session live' },
+    { icon: '🔢', label: 'Tokens 24h', value: '61.3k', sub: t('tổng input + output') },
+    { icon: '⚠️', label: t('Phiên lỗi'), value: SS.filter((x) => x.status === 'failed').length + '', sub: t('cần xem lại') },
   ]
 
   const logTabs = [
-    { key: 'sessions', label: 'Phiên agent' },
-    { key: 'audit', label: 'Nhật ký hệ thống' },
+    { key: 'sessions', label: t('Phiên agent') },
+    { key: 'audit', label: t('Nhật ký hệ thống') },
   ].map((t) => {
     const sel = t.key === s.logsTab
     return {
@@ -115,10 +117,10 @@ export function Logs() {
       <header style={{ flex: 'none', background: 'var(--surface)', borderBottom: '1px solid var(--line)', padding: '16px 28px' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
           <div>
-            <div style={{ fontSize: 11.5, color: 'var(--placeholder)', marginBottom: 3 }}>Workspace › Phiên &amp; nhật ký</div>
+            <div style={{ fontSize: 11.5, color: 'var(--placeholder)', marginBottom: 3 }}>Workspace › {t('Phiên & nhật ký')}</div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
-              <span style={{ fontSize: 21, fontWeight: 800, letterSpacing: '-.4px' }}>Phiên &amp; nhật ký</span>
-              <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>Theo dõi phiên chạy của agent và audit hệ thống</span>
+              <span style={{ fontSize: 21, fontWeight: 800, letterSpacing: '-.4px' }}>{t('Phiên & nhật ký')}</span>
+              <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>{t('Theo dõi phiên chạy của agent và audit hệ thống')}</span>
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
@@ -126,13 +128,13 @@ export function Logs() {
               <Hover as="button" onClick={s.askClearLogs}
                 style={{ display: 'flex', alignItems: 'center', gap: 7, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--danger)', borderRadius: 99, padding: '9px 16px', font: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}
                 hover={{ borderColor: 'var(--danger)', background: 'var(--danger)', color: '#fff' }}>
-                🗑 Xóa tất cả
+                🗑 {t('Xóa tất cả')}
               </Hover>
             )}
             <Hover as="button"
               style={{ display: 'flex', alignItems: 'center', gap: 7, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink-2)', borderRadius: 99, padding: '9px 16px', font: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}
               hover={{ borderColor: 'var(--jade)', color: 'var(--jade-deep)' }}>
-              ↓ Tải log
+              ↓ {t('Tải log')}
             </Hover>
           </div>
         </div>
@@ -166,8 +168,8 @@ export function Logs() {
         {logTabSessions && (SS.length === 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 13, padding: '60px 40px', textAlign: 'center' }}>
             <div style={{ fontSize: 44 }}>📜</div>
-            <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--ink-2)' }}>Chưa có phiên log nào</div>
-            <div style={{ fontSize: 13, color: 'var(--placeholder)', maxWidth: 360, lineHeight: 1.55 }}>Tất cả phiên log đã được xóa. Phiên mới sẽ xuất hiện khi agent chạy.</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--ink-2)' }}>{t('Chưa có phiên log nào')}</div>
+            <div style={{ fontSize: 13, color: 'var(--placeholder)', maxWidth: 360, lineHeight: 1.55 }}>{t('Tất cả phiên log đã được xóa. Phiên mới sẽ xuất hiện khi agent chạy.')}</div>
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: 18, alignItems: 'start' }}>
@@ -184,7 +186,7 @@ export function Logs() {
                       <div style={{ fontFamily: 'var(--mono)', fontSize: 10.5, color: 'var(--placeholder)' }}>{x.id}</div>
                     </div>
                     <span style={{ width: 9, height: 9, borderRadius: 99, background: x.dot, flex: 'none', animation: x.dotPulse }}></span>
-                    <Hover as="button" className="delbtn" title="Xóa phiên log"
+                    <Hover as="button" className="delbtn" title={t('Xóa phiên log')}
                       onClick={(e: React.MouseEvent) => { e.stopPropagation(); x.onDelete() }}
                       style={{ flex: 'none', width: 22, height: 22, borderRadius: 6, border: 'none', background: 'transparent', color: 'var(--placeholder)', cursor: 'pointer', fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                       hover={{ background: '#FBEAE7', color: 'var(--danger)' }}>🗑</Hover>
@@ -212,7 +214,7 @@ export function Logs() {
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 7, flex: 'none' }}>
                     <span style={{ fontSize: 10.5, fontWeight: 700, color: sessActive.statusFg, background: sessActive.statusBg, padding: '3px 10px', borderRadius: 99 }}>{sessActive.statusLabel}</span>
-                    <Hover as="button" title="Sao chép"
+                    <Hover as="button" title={t('Sao chép')}
                       style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink-2)', fontSize: 12, cursor: 'pointer' }}
                       hover={{ background: 'var(--jade-soft)', color: 'var(--jade-deep)' }}>
                       ⧉
@@ -222,7 +224,7 @@ export function Logs() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--jade-deep)', background: 'var(--jade-soft)', padding: '3px 10px', borderRadius: 99 }}>{sessActive.modelIcon} {sessActive.model}</span>
                   <span style={{ fontSize: 11, color: 'var(--ink-2)' }}>#{sessActive.room}</span>
-                  <span style={{ fontSize: 11, color: 'var(--placeholder)' }}>Bắt đầu {sessActive.started} · {sessActive.duration} · {sessActive.tokens} tokens</span>
+                  <span style={{ fontSize: 11, color: 'var(--placeholder)' }}>{t('Bắt đầu')} {sessActive.started} · {sessActive.duration} · {sessActive.tokens} tokens</span>
                 </div>
               </div>
               <div style={{ flex: 1, overflowY: 'auto', padding: '14px 18px', background: 'var(--bg)', minHeight: 300 }}>
@@ -266,11 +268,11 @@ export function Logs() {
         <div onClick={s.closeOverlay} style={{ position: 'fixed', inset: 0, background: 'rgba(22,32,28,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 55, animation: 'fadeIn .15s ease' }}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: 410, maxWidth: '92vw', background: 'var(--surface)', borderRadius: 22, padding: 26, boxShadow: '0 24px 60px rgba(22,32,28,.28)', animation: 'pop .2s ease both' }}>
             <div style={{ width: 52, height: 52, borderRadius: 15, background: '#FBEAE7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, marginBottom: 16 }}>🗑</div>
-            <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.3px', marginBottom: 8, lineHeight: 1.35 }}>Xóa tất cả phiên log?</div>
-            <div style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.55, marginBottom: 24 }}>Toàn bộ {SS.length} phiên log sẽ bị xóa vĩnh viễn khỏi hệ thống. Không thể hoàn tác.</div>
+            <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.3px', marginBottom: 8, lineHeight: 1.35 }}>{t('Xóa tất cả phiên log?')}</div>
+            <div style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.55, marginBottom: 24 }}>{t('Toàn bộ')} {SS.length} {t('phiên log sẽ bị xóa vĩnh viễn khỏi hệ thống. Không thể hoàn tác.')}</div>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <Hover as="button" onClick={s.closeOverlay} style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink-2)', background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 99, padding: '11px 22px', cursor: 'pointer', fontFamily: 'inherit' }} hover={{ background: 'var(--line)' }}>Hủy</Hover>
-              <Hover as="button" onClick={s.clearSessions} style={{ fontSize: 13.5, fontWeight: 700, color: '#fff', background: 'var(--danger)', border: 'none', borderRadius: 99, padding: '11px 26px', cursor: 'pointer', fontFamily: 'inherit' }} hover={{ opacity: .9 }}>Xóa tất cả</Hover>
+              <Hover as="button" onClick={s.closeOverlay} style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink-2)', background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 99, padding: '11px 22px', cursor: 'pointer', fontFamily: 'inherit' }} hover={{ background: 'var(--line)' }}>{t('Hủy')}</Hover>
+              <Hover as="button" onClick={s.clearSessions} style={{ fontSize: 13.5, fontWeight: 700, color: '#fff', background: 'var(--danger)', border: 'none', borderRadius: 99, padding: '11px 26px', cursor: 'pointer', fontFamily: 'inherit' }} hover={{ opacity: .9 }}>{t('Xóa tất cả')}</Hover>
             </div>
           </div>
         </div>

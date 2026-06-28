@@ -3,6 +3,7 @@ import { api } from '@/api/client'
 import { Hover } from '@/components/ui/Hover'
 import { useStore } from '@/store'
 import { MarkdownLite } from '@/components/MarkdownLite'
+import { useT } from '@/i18n'
 
 const SUGGEST = ['FPT', 'VCB', 'HPG', 'VNM', 'MWG', 'SSI', 'VHM', 'VIB']
 
@@ -17,6 +18,7 @@ const ACTIONS: Action[] = [
 ]
 
 export function Trading() {
+  const t = useT()
   const refreshOps = useStore((s) => s.refreshTradingOps)
   const [ticker, setTicker] = useState('FPT')
   const [busy, setBusy] = useState(false)
@@ -128,10 +130,10 @@ export function Trading() {
   return (
     <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
       <header style={{ flex: 'none', background: 'var(--surface)', borderBottom: '1px solid var(--line)', padding: '16px 28px' }}>
-        <div style={{ fontSize: 11.5, color: 'var(--placeholder)', marginBottom: 3 }}>Workspace › Chứng khoán</div>
+        <div style={{ fontSize: 11.5, color: 'var(--placeholder)', marginBottom: 3 }}>Workspace › {t('Chứng khoán')}</div>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
-          <span style={{ fontSize: 21, fontWeight: 800, letterSpacing: '-.4px' }}>Chứng khoán VN 📈</span>
-          <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>Phân tích đa-agent qua TradingAgents · dữ liệu vnstock/FireAnt</span>
+          <span style={{ fontSize: 21, fontWeight: 800, letterSpacing: '-.4px' }}>{t('Chứng khoán VN')} 📈</span>
+          <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>{t('Phân tích đa-agent qua TradingAgents · dữ liệu vnstock/FireAnt')}</span>
         </div>
       </header>
 
@@ -145,7 +147,7 @@ export function Trading() {
                 value={ticker}
                 onChange={(e) => setTicker(e.target.value.toUpperCase())}
                 onKeyDown={(e) => { if (e.key === 'Enter' && !busy) runFast('snapshot', 'Giá + chỉ báo') }}
-                placeholder="Mã CK (vd FPT)"
+                placeholder={t('Mã CK (vd FPT)')}
                 style={{ flex: 1, minWidth: 0, border: 'none', outline: 'none', fontFamily: 'inherit', fontSize: 14, fontWeight: 700, letterSpacing: '.5px', background: 'transparent', color: 'var(--ink)' }}
               />
             </div>
@@ -162,7 +164,7 @@ export function Trading() {
             ))}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 13, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 11, color: 'var(--placeholder)', fontWeight: 600 }}>Gợi ý:</span>
+            <span style={{ fontSize: 11, color: 'var(--placeholder)', fontWeight: 600 }}>{t('Gợi ý:')}</span>
             {SUGGEST.map((t) => (
               <Hover as="button" key={t} onClick={() => setTicker(t)}
                 style={{ border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink-2)', borderRadius: 99, padding: '4px 11px', font: 'inherit', fontSize: 11.5, fontWeight: 700, cursor: 'pointer' }}
@@ -174,7 +176,7 @@ export function Trading() {
         {/* portfolio card */}
         <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, padding: '16px 20px', marginBottom: 18 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
-            <span style={{ fontSize: 14, fontWeight: 800, letterSpacing: '-.2px' }}>💼 Danh mục của tôi</span>
+            <span style={{ fontSize: 14, fontWeight: 800, letterSpacing: '-.2px' }}>💼 {t('Danh mục của tôi')}</span>
             {portfolio && portfolio.holdings.length > 0 && (
               <span style={{ fontSize: 13, fontWeight: 700, color: portfolio.totalPnlM >= 0 ? 'var(--jade-deep)' : '#C94F3D' }}>
                 {portfolio.totalValueM}tr · P/L {portfolio.totalPnlM >= 0 ? '+' : ''}{portfolio.totalPnlM}tr ({portfolio.totalPnlPct >= 0 ? '+' : ''}{portfolio.totalPnlPct}%)
@@ -188,7 +190,7 @@ export function Trading() {
                 return (
                   <div key={h.ticker} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12.5, padding: '7px 10px', background: 'var(--bg)', borderRadius: 10 }}>
                     <span style={{ fontWeight: 800, width: 44 }}>{h.ticker}</span>
-                    <span style={{ color: 'var(--ink-2)', flex: 1, minWidth: 0 }}>{Number(h.qty).toLocaleString()}cp · vốn {h.avg} → {h.price ?? '—'}</span>
+                    <span style={{ color: 'var(--ink-2)', flex: 1, minWidth: 0 }}>{Number(h.qty).toLocaleString()}cp · {t('vốn')} {h.avg} → {h.price ?? '—'}</span>
                     <span style={{ fontWeight: 700, color: up ? 'var(--jade-deep)' : '#C94F3D' }}>{up ? '+' : ''}{h.pnlM}tr ({up ? '+' : ''}{h.pnlPct}%)</span>
                     <Hover as="button" onClick={() => removeHolding(h.ticker)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--placeholder)', fontSize: 15, lineHeight: 1, padding: 2 }} hover={{ color: '#C94F3D' }}>✕</Hover>
                   </div>
@@ -196,13 +198,13 @@ export function Trading() {
               })}
             </div>
           ) : (
-            <div style={{ fontSize: 12.5, color: 'var(--placeholder)', marginBottom: 12 }}>Chưa có mã nào — thêm cổ phiếu anh đang giữ để theo dõi lãi/lỗ real-time (giá vốn nhập theo nghìn đồng, vd 15.5).</div>
+            <div style={{ fontSize: 12.5, color: 'var(--placeholder)', marginBottom: 12 }}>{t('Chưa có mã nào — thêm cổ phiếu anh đang giữ để theo dõi lãi/lỗ real-time (giá vốn nhập theo nghìn đồng, vd 15.5).')}</div>
           )}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-            <input value={pfForm.ticker} onChange={(e) => setPfForm({ ...pfForm, ticker: e.target.value.toUpperCase() })} placeholder="Mã" style={{ ...pfInput, width: 70, fontWeight: 700, letterSpacing: '.5px' }} />
-            <input value={pfForm.qty} onChange={(e) => setPfForm({ ...pfForm, qty: e.target.value.replace(/[^\d]/g, '') })} placeholder="Số CP" inputMode="numeric" style={{ ...pfInput, width: 90 }} />
-            <input value={pfForm.avg} onChange={(e) => setPfForm({ ...pfForm, avg: e.target.value.replace(/[^\d.]/g, '') })} onKeyDown={(e) => { if (e.key === 'Enter') addHolding() }} placeholder="Giá vốn (nghìn)" inputMode="decimal" style={{ ...pfInput, width: 120 }} />
-            <Hover as="button" onClick={addHolding} disabled={pfBusy} style={{ border: 'none', borderRadius: 10, padding: '9px 18px', font: 'inherit', fontSize: 12.5, fontWeight: 700, cursor: pfBusy ? 'default' : 'pointer', background: 'var(--jade)', color: '#fff', opacity: pfBusy ? 0.6 : 1 }} hover={pfBusy ? {} : { background: 'var(--jade-deep)' }}>＋ Thêm</Hover>
+            <input value={pfForm.ticker} onChange={(e) => setPfForm({ ...pfForm, ticker: e.target.value.toUpperCase() })} placeholder={t('Mã')} style={{ ...pfInput, width: 70, fontWeight: 700, letterSpacing: '.5px' }} />
+            <input value={pfForm.qty} onChange={(e) => setPfForm({ ...pfForm, qty: e.target.value.replace(/[^\d]/g, '') })} placeholder={t('Số CP')} inputMode="numeric" style={{ ...pfInput, width: 90 }} />
+            <input value={pfForm.avg} onChange={(e) => setPfForm({ ...pfForm, avg: e.target.value.replace(/[^\d.]/g, '') })} onKeyDown={(e) => { if (e.key === 'Enter') addHolding() }} placeholder={t('Giá vốn (nghìn)')} inputMode="decimal" style={{ ...pfInput, width: 120 }} />
+            <Hover as="button" onClick={addHolding} disabled={pfBusy} style={{ border: 'none', borderRadius: 10, padding: '9px 18px', font: 'inherit', fontSize: 12.5, fontWeight: 700, cursor: pfBusy ? 'default' : 'pointer', background: 'var(--jade)', color: '#fff', opacity: pfBusy ? 0.6 : 1 }} hover={pfBusy ? {} : { background: 'var(--jade-deep)' }}>＋ {t('Thêm')}</Hover>
           </div>
         </div>
 
@@ -219,8 +221,8 @@ export function Trading() {
           ) : (
             <div style={{ height: 240, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, color: 'var(--placeholder)', textAlign: 'center' }}>
               <div style={{ fontSize: 44 }}>📈</div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink-2)' }}>Nhập mã cổ phiếu và chọn một hành động</div>
-              <div style={{ fontSize: 13, maxWidth: 420, lineHeight: 1.55 }}>⚡ nhanh (giá/tin/khối ngoại/vĩ mô, không tốn LLM) · 🧠 phân tích đầy đủ chạy pipeline đa-agent (vài phút). Công cụ nghiên cứu — không phải lời khuyên đầu tư.</div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink-2)' }}>{t('Nhập mã cổ phiếu và chọn một hành động')}</div>
+              <div style={{ fontSize: 13, maxWidth: 420, lineHeight: 1.55 }}>⚡ {t('nhanh (giá/tin/khối ngoại/vĩ mô, không tốn LLM) · 🧠 phân tích đầy đủ chạy pipeline đa-agent (vài phút). Công cụ nghiên cứu — không phải lời khuyên đầu tư.')}</div>
             </div>
           )}
         </div>

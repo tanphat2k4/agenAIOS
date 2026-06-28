@@ -1,29 +1,31 @@
 import { useStore } from '@/store'
+import { useT } from '@/i18n'
 import { Hover } from '@/components/ui/Hover'
 import type { Notif, ViewName } from '@/types'
 
 export function Notifs() {
   const s = useStore()
+  const t = useT()
 
   // ---- notif type style map ----
   const notifTypeStyle: Record<string, { icon: string; label: string; fg: string; bg: string; route: ViewName }> = {
     mention:   { icon: '💬', label: 'Mention',    fg: '#28409E', bg: '#E8ECFB', route: 'channels' },
-    task:      { icon: '🗂', label: 'Tác vụ',     fg: '#0A7B52', bg: '#E2F3EC', route: 'tasks' },
+    task:      { icon: '🗂', label: t('Tác vụ'),     fg: '#0A7B52', bg: '#E2F3EC', route: 'tasks' },
     workflow:  { icon: '⚡', label: 'Workflow',   fg: '#C94F3D', bg: '#FBEAE7', route: 'workflow' },
-    system:    { icon: '🖥', label: 'Hệ thống',   fg: '#9A6A1B', bg: '#FBF1DE', route: 'devices' },
+    system:    { icon: '🖥', label: t('Hệ thống'),   fg: '#9A6A1B', bg: '#FBF1DE', route: 'devices' },
     knowledge: { icon: '📚', label: 'Knowledge',  fg: '#0E7490', bg: '#E0F2F4', route: 'knowledge' },
     cron:      { icon: '⏱', label: 'Cron',        fg: '#28409E', bg: '#E8ECFB', route: 'cron' },
-    billing:   { icon: '💳', label: 'Hóa đơn',    fg: '#9A6A1B', bg: '#FBF1DE', route: 'overview' },
+    billing:   { icon: '💳', label: t('Hóa đơn'),    fg: '#9A6A1B', bg: '#FBF1DE', route: 'overview' },
   }
 
   const routeLabel: Record<string, string> = {
-    channels: 'Mở kênh',
-    tasks: 'Xem tác vụ',
-    workflow: 'Xem workflow',
-    devices: 'Xem thiết bị',
-    knowledge: 'Mở knowledge',
-    cron: 'Xem cron',
-    billing: 'Xem hóa đơn',
+    channels: t('Mở kênh'),
+    tasks: t('Xem tác vụ'),
+    workflow: t('Xem workflow'),
+    devices: t('Xem thiết bị'),
+    knowledge: t('Mở knowledge'),
+    cron: t('Xem cron'),
+    billing: t('Xem hóa đơn'),
   }
 
   const N = s.notifsData
@@ -31,11 +33,11 @@ export function Notifs() {
 
   // ---- filter chips ----
   const notifFilterDefs = [
-    { key: 'all',    label: 'Tất cả',   count: N.length },
-    { key: 'unread', label: 'Chưa đọc', count: unreadCount },
+    { key: 'all',    label: t('Tất cả'),   count: N.length },
+    { key: 'unread', label: t('Chưa đọc'), count: unreadCount },
     { key: 'mention',label: 'Mention',  count: N.filter((n: Notif) => n.type === 'mention').length },
-    { key: 'task',   label: 'Tác vụ',   count: N.filter((n: Notif) => n.type === 'task').length },
-    { key: 'system', label: 'Hệ thống', count: N.filter((n: Notif) => ['system', 'workflow', 'cron', 'billing'].indexOf(n.type) >= 0).length },
+    { key: 'task',   label: t('Tác vụ'),   count: N.filter((n: Notif) => n.type === 'task').length },
+    { key: 'system', label: t('Hệ thống'), count: N.filter((n: Notif) => ['system', 'workflow', 'cron', 'billing'].indexOf(n.type) >= 0).length },
   ]
   const notifFilters = notifFilterDefs.map((f) => {
     const sel = f.key === s.notifFilter
@@ -56,7 +58,7 @@ export function Notifs() {
     return n.type === f
   }
   const filtered = N.filter(matchFilter)
-  const groupOrder = ['Hôm nay', 'Hôm qua', 'Trước đó']
+  const groupOrder = [t('Hôm nay'), t('Hôm qua'), t('Trước đó')]
   const notifGroups = groupOrder.map((g) => ({
     label: g,
     items: filtered.filter((n: Notif) => n.group === g).map((n: Notif) => {
@@ -69,7 +71,7 @@ export function Notifs() {
         onDelete: (e: React.MouseEvent) => { e.stopPropagation(); s.deleteNotif(n.id) },
         typeIcon: ts.icon, typeLabel: ts.label, typeFg: ts.fg, typeBg: ts.bg,
         rowBg: n.unread ? 'var(--jade-soft)' : 'var(--surface)',
-        actionLabel: routeLabel[ts.route] ?? 'Xem',
+        actionLabel: routeLabel[ts.route] ?? t('Xem'),
         onAction: (e: React.MouseEvent) => {
           e.stopPropagation()
           s.markRead(n.id)
@@ -92,23 +94,23 @@ export function Notifs() {
       {/* header */}
       <header style={{ flex: 'none', background: 'var(--surface)', borderBottom: '1px solid var(--line)', padding: '16px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <div style={{ fontSize: 11.5, color: 'var(--placeholder)', marginBottom: 3 }}>Workspace › Thông báo</div>
+          <div style={{ fontSize: 11.5, color: 'var(--placeholder)', marginBottom: 3 }}>Workspace › {t('Thông báo')}</div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
-            <span style={{ fontSize: 21, fontWeight: 800, letterSpacing: '-.4px' }}>Thông báo</span>
-            <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>{unreadCount} chưa đọc</span>
+            <span style={{ fontSize: 21, fontWeight: 800, letterSpacing: '-.4px' }}>{t('Thông báo')}</span>
+            <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>{unreadCount} {t('chưa đọc')}</span>
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
           <Hover as="button" onClick={s.markAllRead}
             style={{ display: 'flex', alignItems: 'center', gap: 7, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink-2)', borderRadius: 99, padding: '9px 16px', font: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}
             hover={{ borderColor: 'var(--jade)', color: 'var(--jade-deep)' }}>
-            ✓ Đánh dấu tất cả đã đọc
+            ✓ {t('Đánh dấu tất cả đã đọc')}
           </Hover>
           {N.length > 0 && (
             <Hover as="button" onClick={s.clearNotifs}
               style={{ display: 'flex', alignItems: 'center', gap: 7, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--danger)', borderRadius: 99, padding: '9px 16px', font: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}
               hover={{ borderColor: 'var(--danger)', background: 'var(--danger)', color: '#fff' }}>
-              🗑 Xóa tất cả
+              🗑 {t('Xóa tất cả')}
             </Hover>
           )}
         </div>
@@ -159,7 +161,7 @@ export function Notifs() {
                       <span style={{ width: 9, height: 9, borderRadius: 99, background: 'var(--jade)', flex: 'none', marginTop: 4 }}></span>
                     )}
                     {/* delete */}
-                    <Hover as="button" className="delbtn" title="Xóa thông báo" onClick={n.onDelete}
+                    <Hover as="button" className="delbtn" title={t('Xóa thông báo')} onClick={n.onDelete}
                       style={{ flex: 'none', width: 26, height: 26, borderRadius: 7, border: 'none', background: 'transparent', color: 'var(--placeholder)', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 2 }}
                       hover={{ background: '#FBEAE7', color: 'var(--danger)' }}>🗑</Hover>
                   </Hover>
@@ -171,8 +173,8 @@ export function Notifs() {
           {notifsEmpty && (
             <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, padding: 60, textAlign: 'center', color: 'var(--ink-2)' }}>
               <div style={{ fontSize: 36, marginBottom: 14 }}>🔔</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--ink)', marginBottom: 6 }}>Không có thông báo</div>
-              <div style={{ fontSize: 13 }}>Bạn đã xem hết thông báo ở bộ lọc này.</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--ink)', marginBottom: 6 }}>{t('Không có thông báo')}</div>
+              <div style={{ fontSize: 13 }}>{t('Bạn đã xem hết thông báo ở bộ lọc này.')}</div>
             </div>
           )}
         </div>

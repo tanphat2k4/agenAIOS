@@ -1,5 +1,6 @@
 import { useRef, useState, type CSSProperties } from 'react'
 import { useStore } from '@/store'
+import { useT } from '@/i18n'
 import { Hover } from '@/components/ui/Hover'
 
 const perks = [
@@ -25,6 +26,7 @@ const fieldIcon: CSSProperties = { position: 'absolute', left: 13, top: '50%', t
 export function Auth() {
   const login = useStore((s) => s.login)
   const register = useStore((s) => s.register)
+  const t = useT()
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [busy, setBusy] = useState(false)
   const [showPw, setShowPw] = useState(false)
@@ -49,17 +51,17 @@ export function Auth() {
     if (busy) return
     if (!emailValid(form.email)) { setEmailTouched(true); return }
     if (mode === 'register') {
-      if (!form.name.trim()) { fireToast('Vui lòng nhập họ và tên'); return }
-      if (!terms) { fireToast('Vui lòng đồng ý với điều khoản'); return }
+      if (!form.name.trim()) { fireToast(t('Vui lòng nhập họ và tên')); return }
+      if (!terms) { fireToast(t('Vui lòng đồng ý với điều khoản')); return }
     }
-    if (!form.password) { fireToast('Vui lòng nhập mật khẩu'); return }
+    if (!form.password) { fireToast(t('Vui lòng nhập mật khẩu')); return }
     setBusy(true)
     try {
       if (mode === 'register') await register(form.name.trim(), form.email, form.password)
       else await login(form.email, form.password, remember)
       // success: `authed` flips and App swaps to the workspace
     } catch (err) {
-      fireToast(err instanceof Error ? err.message : 'Có lỗi xảy ra, thử lại')
+      fireToast(err instanceof Error ? err.message : t('Có lỗi xảy ra, thử lại'))
       setBusy(false)
     }
   }
@@ -68,7 +70,7 @@ export function Auth() {
   const sFill = ['#C94F3D', '#E8A33D', '#E8A33D', '#0A7B52']
   const sColors = ['#E4EAE6', '#E4EAE6', '#E4EAE6', '#E4EAE6']
   for (let i = 0; i < score; i++) sColors[i] = sFill[Math.min(score - 1, 3)]
-  const strengthLabel = form.password ? 'Độ mạnh: ' + sLabels[score] : 'Dùng 8+ ký tự, gồm chữ hoa, số và ký tự đặc biệt'
+  const strengthLabel = form.password ? t('Độ mạnh:') + ' ' + sLabels[score] : t('Dùng 8+ ký tự, gồm chữ hoa, số và ký tự đặc biệt')
   const emailBad = emailTouched && !!form.email && !emailValid(form.email)
 
   const tabOn = { bg: '#fff', fg: '#16201C', shadow: '0 1px 4px rgba(22,32,28,.1)' }
@@ -92,9 +94,9 @@ export function Auth() {
           <div style={{ fontWeight: 800, fontSize: 22, letterSpacing: '-.4px' }}>AgentAIOS</div>
         </div>
         <div style={{ position: 'relative', marginTop: 'auto', marginBottom: 'auto', maxWidth: 420 }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: 'rgba(255,255,255,.14)', border: '1px solid rgba(255,255,255,.2)', padding: '6px 13px', borderRadius: 99, fontSize: 12, fontWeight: 600, marginBottom: 22 }}>✨ Nền tảng điều phối Agent AI</div>
-          <h1 style={{ fontSize: 38, lineHeight: 1.18, fontWeight: 800, letterSpacing: '-.8px', margin: '0 0 18px' }}>Vận hành đội ngũ<br />agent AI của bạn<br />tại một nơi.</h1>
-          <p style={{ fontSize: 15, lineHeight: 1.6, color: 'rgba(255,255,255,.82)', margin: '0 0 30px' }}>Channel, knowledge, workflow và thiết bị — tất cả trong một workspace duy nhất cho doanh nghiệp của bạn.</p>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: 'rgba(255,255,255,.14)', border: '1px solid rgba(255,255,255,.2)', padding: '6px 13px', borderRadius: 99, fontSize: 12, fontWeight: 600, marginBottom: 22 }}>✨ {t('Nền tảng điều phối Agent AI')}</div>
+          <h1 style={{ fontSize: 38, lineHeight: 1.18, fontWeight: 800, letterSpacing: '-.8px', margin: '0 0 18px' }}>{t('Vận hành đội ngũ')}<br />{t('agent AI của bạn')}<br />{t('tại một nơi.')}</h1>
+          <p style={{ fontSize: 15, lineHeight: 1.6, color: 'rgba(255,255,255,.82)', margin: '0 0 30px' }}>{t('Channel, knowledge, workflow và thiết bị — tất cả trong một workspace duy nhất cho doanh nghiệp của bạn.')}</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
             {perks.map((p) => (
               <div key={p.title} style={{ display: 'flex', alignItems: 'center', gap: 13 }}>
@@ -113,49 +115,49 @@ export function Auth() {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 24px', minWidth: 0 }}>
         <div style={{ width: '100%', maxWidth: 404 }}>
           <div style={{ display: 'flex', background: '#EEF1F6', borderRadius: 14, padding: 5, marginBottom: 28 }}>
-            <button onClick={() => setMode('login')} style={{ flex: 1, border: 'none', cursor: 'pointer', font: 'inherit', fontSize: 13.5, fontWeight: 700, padding: 10, borderRadius: 10, transition: 'all .18s', background: L.bg, color: L.fg, boxShadow: L.shadow }}>Đăng nhập</button>
-            <button onClick={() => setMode('register')} style={{ flex: 1, border: 'none', cursor: 'pointer', font: 'inherit', fontSize: 13.5, fontWeight: 700, padding: 10, borderRadius: 10, transition: 'all .18s', background: R.bg, color: R.fg, boxShadow: R.shadow }}>Đăng ký</button>
+            <button onClick={() => setMode('login')} style={{ flex: 1, border: 'none', cursor: 'pointer', font: 'inherit', fontSize: 13.5, fontWeight: 700, padding: 10, borderRadius: 10, transition: 'all .18s', background: L.bg, color: L.fg, boxShadow: L.shadow }}>{t('Đăng nhập')}</button>
+            <button onClick={() => setMode('register')} style={{ flex: 1, border: 'none', cursor: 'pointer', font: 'inherit', fontSize: 13.5, fontWeight: 700, padding: 10, borderRadius: 10, transition: 'all .18s', background: R.bg, color: R.fg, boxShadow: R.shadow }}>{t('Đăng ký')}</button>
           </div>
 
           <div key={mode} style={{ animation: 'authFade .3s ease forwards' }}>
-            <h2 style={{ fontSize: 25, fontWeight: 800, letterSpacing: '-.5px', margin: '0 0 7px' }}>{isLogin ? 'Chào mừng trở lại' : 'Tạo tài khoản mới'}</h2>
-            <p style={{ fontSize: 13.5, color: '#5A6B64', margin: '0 0 26px', lineHeight: 1.5 }}>{isLogin ? 'Đăng nhập để tiếp tục vào workspace của bạn.' : 'Bắt đầu miễn phí — không cần thẻ tín dụng.'}</p>
+            <h2 style={{ fontSize: 25, fontWeight: 800, letterSpacing: '-.5px', margin: '0 0 7px' }}>{isLogin ? t('Chào mừng trở lại') : t('Tạo tài khoản mới')}</h2>
+            <p style={{ fontSize: 13.5, color: '#5A6B64', margin: '0 0 26px', lineHeight: 1.5 }}>{isLogin ? t('Đăng nhập để tiếp tục vào workspace của bạn.') : t('Bắt đầu miễn phí — không cần thẻ tín dụng.')}</p>
 
             <div style={{ display: 'flex', gap: 11, marginBottom: 22 }}>
-              <Hover as="button" onClick={() => fireToast('Đang chuyển hướng đăng nhập…')} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9, background: '#fff', border: '1px solid #E4EAE6', borderRadius: 11, padding: 11, font: 'inherit', fontSize: 13, fontWeight: 600, color: '#16201C', cursor: 'pointer' }} hover={{ background: '#F7F9F7', borderColor: '#CFDAD4' }}><span style={{ fontSize: 15, fontWeight: 800, color: '#4285F4' }}>G</span> Google</Hover>
-              <Hover as="button" onClick={() => fireToast('Đang chuyển hướng đăng nhập…')} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9, background: '#fff', border: '1px solid #E4EAE6', borderRadius: 11, padding: 11, font: 'inherit', fontSize: 13, fontWeight: 600, color: '#16201C', cursor: 'pointer' }} hover={{ background: '#F7F9F7', borderColor: '#CFDAD4' }}><span style={{ fontSize: 15 }}>🪪</span> SSO</Hover>
+              <Hover as="button" onClick={() => fireToast(t('Đang chuyển hướng đăng nhập…'))} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9, background: '#fff', border: '1px solid #E4EAE6', borderRadius: 11, padding: 11, font: 'inherit', fontSize: 13, fontWeight: 600, color: '#16201C', cursor: 'pointer' }} hover={{ background: '#F7F9F7', borderColor: '#CFDAD4' }}><span style={{ fontSize: 15, fontWeight: 800, color: '#4285F4' }}>G</span> Google</Hover>
+              <Hover as="button" onClick={() => fireToast(t('Đang chuyển hướng đăng nhập…'))} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9, background: '#fff', border: '1px solid #E4EAE6', borderRadius: 11, padding: 11, font: 'inherit', fontSize: 13, fontWeight: 600, color: '#16201C', cursor: 'pointer' }} hover={{ background: '#F7F9F7', borderColor: '#CFDAD4' }}><span style={{ fontSize: 15 }}>🪪</span> SSO</Hover>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 22 }}>
               <div style={{ flex: 1, height: 1, background: '#E4EAE6' }} />
-              <span style={{ fontSize: 11.5, color: '#9AA8A1', fontWeight: 500 }}>hoặc dùng email</span>
+              <span style={{ fontSize: 11.5, color: '#9AA8A1', fontWeight: 500 }}>{t('hoặc dùng email')}</span>
               <div style={{ flex: 1, height: 1, background: '#E4EAE6' }} />
             </div>
 
             <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {isRegister && (
                 <label style={{ display: 'block' }}>
-                  <span style={labelText}>Họ và tên</span>
+                  <span style={labelText}>{t('Họ và tên')}</span>
                   <div style={{ position: 'relative' }}>
                     <span className="material-symbols-rounded" style={fieldIcon}>person</span>
-                    <input className="auth-field" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} type="text" placeholder="Nguyễn Văn A" style={inputBase} />
+                    <input className="auth-field" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} type="text" placeholder={t('Nguyễn Văn A')} style={inputBase} />
                   </div>
                 </label>
               )}
 
               <label style={{ display: 'block' }}>
-                <span style={labelText}>Email công ty</span>
+                <span style={labelText}>{t('Email công ty')}</span>
                 <div style={{ position: 'relative' }}>
                   <span className="material-symbols-rounded" style={fieldIcon}>mail</span>
-                  <input className="auth-field" value={form.email} onChange={(e) => { setForm((f) => ({ ...f, email: e.target.value })); setEmailTouched(true) }} type="email" placeholder="ban@congty.vn" style={{ ...inputBase, borderColor: emailBad ? '#C94F3D' : '#E4EAE6' }} />
+                  <input className="auth-field" value={form.email} onChange={(e) => { setForm((f) => ({ ...f, email: e.target.value })); setEmailTouched(true) }} type="email" placeholder={t('ban@congty.vn')} style={{ ...inputBase, borderColor: emailBad ? '#C94F3D' : '#E4EAE6' }} />
                 </div>
-                {emailBad && <span style={{ display: 'block', fontSize: 11.5, color: '#C94F3D', marginTop: 6 }}>Email không hợp lệ</span>}
+                {emailBad && <span style={{ display: 'block', fontSize: 11.5, color: '#C94F3D', marginTop: 6 }}>{t('Email không hợp lệ')}</span>}
               </label>
 
               <label style={{ display: 'block' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 7 }}>
-                  <span style={{ fontSize: 12.5, fontWeight: 600, color: '#16201C' }}>Mật khẩu</span>
-                  {isLogin && <a onClick={() => fireToast('Đã gửi liên kết đặt lại mật khẩu tới email của bạn')} style={{ fontSize: 11.5, color: '#3B5BDB', fontWeight: 600, cursor: 'pointer', textDecoration: 'none' }}>Quên mật khẩu?</a>}
+                  <span style={{ fontSize: 12.5, fontWeight: 600, color: '#16201C' }}>{t('Mật khẩu')}</span>
+                  {isLogin && <a onClick={() => fireToast(t('Đã gửi liên kết đặt lại mật khẩu tới email của bạn'))} style={{ fontSize: 11.5, color: '#3B5BDB', fontWeight: 600, cursor: 'pointer', textDecoration: 'none' }}>{t('Quên mật khẩu?')}</a>}
                 </div>
                 <div style={{ position: 'relative' }}>
                   <span className="material-symbols-rounded" style={fieldIcon}>lock</span>
@@ -173,29 +175,29 @@ export function Auth() {
               {isLogin && (
                 <label style={{ display: 'flex', alignItems: 'center', gap: 9, cursor: 'pointer', userSelect: 'none', fontSize: 12.5, color: '#5A6B64', marginTop: -2 }}>
                   <span onClick={() => setRemember((v) => !v)} style={{ width: 19, height: 19, borderRadius: 6, border: `1.5px solid ${remember ? '#3B5BDB' : '#CFDAD4'}`, background: remember ? '#3B5BDB' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none', transition: 'all .15s' }}><span className="material-symbols-rounded" style={{ fontSize: 15, color: '#fff', opacity: remember ? 1 : 0 }}>check</span></span>
-                  Ghi nhớ đăng nhập trong 30 ngày
+                  {t('Ghi nhớ đăng nhập trong 30 ngày')}
                 </label>
               )}
               {isRegister && (
                 <label style={{ display: 'flex', alignItems: 'flex-start', gap: 9, cursor: 'pointer', userSelect: 'none', fontSize: 12, color: '#5A6B64', lineHeight: 1.5, marginTop: -2 }}>
                   <span onClick={() => setTerms((v) => !v)} style={{ width: 19, height: 19, marginTop: 1, borderRadius: 6, border: `1.5px solid ${terms ? '#3B5BDB' : '#CFDAD4'}`, background: terms ? '#3B5BDB' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none', transition: 'all .15s' }}><span className="material-symbols-rounded" style={{ fontSize: 15, color: '#fff', opacity: terms ? 1 : 0 }}>check</span></span>
-                  <span>Tôi đồng ý với <a style={{ color: '#3B5BDB', fontWeight: 600, textDecoration: 'none' }}>Điều khoản dịch vụ</a> và <a style={{ color: '#3B5BDB', fontWeight: 600, textDecoration: 'none' }}>Chính sách bảo mật</a> của AgentAIOS.</span>
+                  <span>{t('Tôi đồng ý với')} <a style={{ color: '#3B5BDB', fontWeight: 600, textDecoration: 'none' }}>{t('Điều khoản dịch vụ')}</a> {t('và')} <a style={{ color: '#3B5BDB', fontWeight: 600, textDecoration: 'none' }}>{t('Chính sách bảo mật')}</a> {t('của AgentAIOS.')}</span>
                 </label>
               )}
 
               <Hover as="button" type="submit" style={{ width: '100%', border: 'none', cursor: 'pointer', font: 'inherit', fontSize: 14.5, fontWeight: 700, color: '#fff', background: '#3B5BDB', borderRadius: 12, padding: 13, marginTop: 4, boxShadow: '0 6px 18px rgba(59,91,219,.28)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'background .15s' }} hover={{ background: '#28409E' }}>
-                {busy ? 'Đang xử lý…' : isLogin ? 'Đăng nhập' : 'Tạo tài khoản'}<span className="material-symbols-rounded" style={{ fontSize: 19 }}>arrow_forward</span>
+                {busy ? t('Đang xử lý…') : isLogin ? t('Đăng nhập') : t('Tạo tài khoản')}<span className="material-symbols-rounded" style={{ fontSize: 19 }}>arrow_forward</span>
               </Hover>
             </form>
 
             <p style={{ textAlign: 'center', fontSize: 13, color: '#5A6B64', margin: '24px 0 0' }}>
-              {isLogin ? 'Chưa có tài khoản?' : 'Đã có tài khoản?'} <a onClick={() => setMode(isLogin ? 'register' : 'login')} style={{ color: '#3B5BDB', fontWeight: 700, cursor: 'pointer', textDecoration: 'none' }}>{isLogin ? 'Đăng ký ngay' : 'Đăng nhập'}</a>
+              {isLogin ? t('Chưa có tài khoản?') : t('Đã có tài khoản?')} <a onClick={() => setMode(isLogin ? 'register' : 'login')} style={{ color: '#3B5BDB', fontWeight: 700, cursor: 'pointer', textDecoration: 'none' }}>{isLogin ? t('Đăng ký ngay') : t('Đăng nhập')}</a>
             </p>
           </div>
         </div>
 
         <div style={{ marginTop: 38, fontSize: 11.5, color: '#9AA8A1', display: 'flex', alignItems: 'center', gap: 16 }}>
-          <span>© 2026 AgentAIOS</span><span>·</span><a style={{ color: '#9AA8A1', textDecoration: 'none' }}>Bảo mật</a><span>·</span><a style={{ color: '#9AA8A1', textDecoration: 'none' }}>Hỗ trợ</a>
+          <span>© 2026 AgentAIOS</span><span>·</span><a style={{ color: '#9AA8A1', textDecoration: 'none' }}>{t('Bảo mật')}</a><span>·</span><a style={{ color: '#9AA8A1', textDecoration: 'none' }}>{t('Hỗ trợ')}</a>
         </div>
       </div>
 

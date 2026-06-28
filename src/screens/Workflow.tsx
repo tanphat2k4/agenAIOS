@@ -1,5 +1,6 @@
 import { type MouseEvent } from 'react'
 import { useStore } from '@/store'
+import { useT } from '@/i18n'
 import { Hover } from '@/components/ui/Hover'
 import type { Workflow, WorkflowStep } from '@/types'
 
@@ -48,6 +49,7 @@ function runLabelFg(status: string): string {
 
 export function WorkflowView() {
   const s = useStore()
+  const t = useT()
 
   // ── derived view-model (mirrors renderVals) ───────────────────────────────
   const wfRunning = s.workflows.filter((w) => w.steps.some((st) => st.status === 'running')).length
@@ -57,10 +59,10 @@ export function WorkflowView() {
     : 0
 
   const wfStats = [
-    { icon: '🧩', label: 'Tổng workflow', value: s.workflows.length, sub: s.workflows.filter((w) => w.enabled).length + ' đang bật' },
-    { icon: '⚡', label: 'Đang chạy', value: wfRunning, sub: 'pipeline hoạt động' },
-    { icon: '📈', label: 'Runs 24h', value: wfRuns24, sub: 'lượt thực thi' },
-    { icon: '✓', label: 'Tỉ lệ thành công', value: wfSuccessAvg + '%', sub: 'trung bình 7 ngày' },
+    { icon: '🧩', label: t('Tổng workflow'), value: s.workflows.length, sub: s.workflows.filter((w) => w.enabled).length + ' ' + t('đang bật') },
+    { icon: '⚡', label: t('Đang chạy'), value: wfRunning, sub: t('pipeline hoạt động') },
+    { icon: '📈', label: t('Runs 24h'), value: wfRuns24, sub: t('lượt thực thi') },
+    { icon: '✓', label: t('Tỉ lệ thành công'), value: wfSuccessAvg + '%', sub: t('trung bình 7 ngày') },
   ]
 
   const wfList = s.workflows.map((w) => {
@@ -75,7 +77,7 @@ export function WorkflowView() {
       border: sel ? 'var(--jade)' : 'var(--line)',
       nameColor: sel ? 'var(--jade-deep)' : 'var(--ink)',
       trigIcon: tg.icon, trigLabel: tg.label, trigFg: tg.fg, trigBg: tg.bg,
-      stepCount: w.steps.length + ' bước',
+      stepCount: w.steps.length + ' ' + t('bước'),
       lastRun: w.lastRun,
       dotColor: running ? 'var(--jade)' : (w.enabled ? '#0A7B52' : '#9AA8A1'),
       dotPulse: running ? 'wfpulse 1.6s infinite' : 'none',
@@ -89,7 +91,7 @@ export function WorkflowView() {
 
   const awIsRunning = aw?.runState === 'running' || aw?.runState === 'paused'
   const awNotRunning = !(aw?.runState === 'running' || aw?.runState === 'paused')
-  const pauseLabel = aw?.runState === 'paused' ? '▶ Tiếp tục' : '❚❚ Tạm dừng'
+  const pauseLabel = aw?.runState === 'paused' ? '▶ ' + t('Tiếp tục') : '❚❚ ' + t('Tạm dừng')
 
   const awSteps = (aw?.steps || []).map((st, ix) => {
     const isLast = ix === (aw?.steps || []).length - 1
@@ -114,7 +116,7 @@ export function WorkflowView() {
   }))
 
   const awProgressPct = totalSteps ? Math.round((doneCount / totalSteps) * 100) + '%' : '0%'
-  const awProgressLabel = doneCount + '/' + totalSteps + ' bước hoàn tất'
+  const awProgressLabel = doneCount + '/' + totalSteps + ' ' + t('bước hoàn tất')
 
   // ── step detail (stepDetail is the step index) ────────────────────────────
   const sdIdx = s.stepDetail
@@ -157,7 +159,7 @@ export function WorkflowView() {
           <div style={{ fontSize: 11.5, color: 'var(--placeholder)', marginBottom: 3 }}>Workspace › Agent Workflow</div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
             <span style={{ fontSize: 21, fontWeight: 800, letterSpacing: '-.4px' }}>Agent Workflow</span>
-            <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>tự động hóa nhiều bước cho agent</span>
+            <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>{t('tự động hóa nhiều bước cho agent')}</span>
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
@@ -197,7 +199,7 @@ export function WorkflowView() {
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 8 }}>
                   <span style={{ fontSize: 14, fontWeight: 700, color: w.nameColor, lineHeight: 1.35 }}>{w.name}</span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 'none', marginTop: 1 }}>
-                    <Hover as="button" onClick={(e: MouseEvent) => { e.stopPropagation(); s.reloadWorkflows() }} title="Tải lại dữ liệu workflow"
+                    <Hover as="button" onClick={(e: MouseEvent) => { e.stopPropagation(); s.reloadWorkflows() }} title={t('Tải lại dữ liệu workflow')}
                       style={{ width: 24, height: 24, borderRadius: 99, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink-2)', fontSize: 13, lineHeight: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
                       hover={{ borderColor: 'var(--jade)', color: 'var(--jade-deep)' }}>⟳</Hover>
                     <span style={{ width: 9, height: 9, borderRadius: 99, background: w.dotColor, flex: 'none', animation: w.dotPulse }}></span>
@@ -224,11 +226,11 @@ export function WorkflowView() {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 11, flex: 'none' }}>
                   {/* delete */}
-                  <Hover as="button" onClick={s.wfAskDelete} title="Xóa workflow"
+                  <Hover as="button" onClick={s.wfAskDelete} title={t('Xóa workflow')}
                     style={{ width: 36, height: 36, borderRadius: 99, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink-2)', fontSize: 14, cursor: 'pointer', flex: 'none' }}
                     hover={{ borderColor: 'var(--danger)', color: 'var(--danger)', background: '#FBEAE7' }}>🗑</Hover>
                   {/* enable toggle */}
-                  <div onClick={() => s.toggleWorkflow(aw.id)} title="Bật/tắt"
+                  <div onClick={() => s.toggleWorkflow(aw.id)} title={t('Bật/tắt')}
                     style={{ width: 38, height: 21, borderRadius: 99, background: aw.enabled ? 'var(--jade)' : '#CBD5D0', position: 'relative', cursor: 'pointer', transition: 'background .15s' }}>
                     <div style={{ position: 'absolute', top: 2, left: aw.enabled ? 19 : 2, width: 17, height: 17, borderRadius: 99, background: '#fff', boxShadow: '0 1px 2px rgba(0,0,0,.2)', transition: 'left .15s' }}></div>
                   </div>
@@ -240,14 +242,14 @@ export function WorkflowView() {
                         hover={{ background: 'var(--warn-bg)' }}>{pauseLabel}</Hover>
                       <Hover as="button" onClick={s.stopWorkflow}
                         style={{ display: 'flex', alignItems: 'center', gap: 6, border: '1px solid var(--danger)', background: 'var(--surface)', color: 'var(--danger)', borderRadius: 99, padding: '9px 15px', font: 'inherit', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}
-                        hover={{ background: '#FBEAE7' }}>■ Dừng</Hover>
+                        hover={{ background: '#FBEAE7' }}>■ {t('Dừng')}</Hover>
                     </>
                   )}
                   {/* not running: run now */}
                   {awNotRunning && (
                     <Hover as="button" onClick={s.runWorkflow}
                       style={{ display: 'flex', alignItems: 'center', gap: 7, border: 'none', background: 'var(--jade)', color: '#fff', borderRadius: 99, padding: '9px 18px', font: 'inherit', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', boxShadow: '0 6px 16px rgba(10,92,72,.2)' }}
-                      hover={{ background: 'var(--jade-deep)' }}>▶ Chạy ngay</Hover>
+                      hover={{ background: 'var(--jade-deep)' }}>▶ {t('Chạy ngay')}</Hover>
                   )}
                 </div>
               </div>
@@ -256,7 +258,7 @@ export function WorkflowView() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: awTg.fg, background: awTg.bg, padding: '5px 12px', borderRadius: 99 }}>{awTg.icon} {awTg.label}</span>
                 <span style={{ fontFamily: 'var(--mono)', fontSize: 12, fontWeight: 600, color: 'var(--ink)', background: 'var(--bg)', border: '1px solid var(--line)', padding: '4px 11px', borderRadius: 8 }}>{aw.triggerLabel}</span>
-                <span style={{ fontSize: 12, color: 'var(--ink-2)', marginLeft: 'auto' }}>Thành công <b style={{ color: 'var(--jade-deep)' }}>{aw.success}%</b> · {aw.runs24} runs/24h</span>
+                <span style={{ fontSize: 12, color: 'var(--ink-2)', marginLeft: 'auto' }}>{t('Thành công')} <b style={{ color: 'var(--jade-deep)' }}>{aw.success}%</b> · {aw.runs24} runs/24h</span>
               </div>
 
               {/* progress bar */}
@@ -306,7 +308,7 @@ export function WorkflowView() {
 
             {/* ── RECENT RUNS ──────────────────────────────────────────── */}
             <div style={{ padding: '0 24px 22px' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.7px', textTransform: 'uppercase', color: 'var(--placeholder)', padding: '8px 0 8px' }}>Lần chạy gần đây</div>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.7px', textTransform: 'uppercase', color: 'var(--placeholder)', padding: '8px 0 8px' }}>{t('Lần chạy gần đây')}</div>
               <div style={{ border: '1px solid var(--line)', borderRadius: 14, overflow: 'hidden' }}>
                 {awRuns.map((r, i) => (
                   <Hover key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 15px', borderBottom: i < awRuns.length - 1 ? '1px solid var(--line)' : 'none' }} hover={{ background: 'var(--bg)' }}>
@@ -317,7 +319,7 @@ export function WorkflowView() {
                   </Hover>
                 ))}
                 {awRuns.length === 0 && (
-                  <div style={{ padding: 16, fontSize: 12.5, color: 'var(--placeholder)', textAlign: 'center' }}>Chưa có lần chạy nào</div>
+                  <div style={{ padding: 16, fontSize: 12.5, color: 'var(--placeholder)', textAlign: 'center' }}>{t('Chưa có lần chạy nào')}</div>
                 )}
               </div>
             </div>
@@ -331,7 +333,7 @@ export function WorkflowView() {
           <div onClick={(e) => e.stopPropagation()} style={{ width: 460, maxWidth: '92vw', background: 'var(--surface)', borderRadius: 22, boxShadow: '0 24px 60px rgba(22,32,28,.22)', animation: 'pop .2s ease both', overflow: 'hidden' }}>
             <div style={{ padding: '20px 22px', borderBottom: '1px solid var(--line)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 12 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)' }}>Bước {sd.num} · Pipeline</span>
+                <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)' }}>{t('Bước')} {sd.num} · Pipeline</span>
                 <Hover as="button" onClick={s.closeStepDetail}
                   style={{ width: 32, height: 32, borderRadius: 99, border: 'none', background: 'var(--bg)', fontSize: 15, cursor: 'pointer', color: 'var(--ink-2)' }}
                   hover={{ background: 'var(--jade-soft)' }}>✕</Hover>
@@ -343,7 +345,7 @@ export function WorkflowView() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, border: '1px solid var(--line)', borderRadius: 13, padding: '12px 14px', marginBottom: 14 }}>
                 <div style={{ width: 36, height: 36, borderRadius: 99, background: sd.color, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, flex: 'none' }}>{sd.initial}</div>
                 <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)' }}>Agent phụ trách</div>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)' }}>{t('Agent phụ trách')}</div>
                   <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink)', marginTop: 2 }}>{sd.agent}</div>
                 </div>
                 <span style={{ fontSize: 11, fontWeight: 700, color: sd.statusFg, background: sd.statusBg, padding: '4px 11px', borderRadius: 99, flex: 'none' }}>{sd.statusLabel}</span>
@@ -354,17 +356,17 @@ export function WorkflowView() {
               {/* dur + status */}
               <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
                 <div style={{ flex: 1, border: '1px solid var(--line)', borderRadius: 13, padding: 12 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 4 }}>Thời lượng</div>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 4 }}>{t('Thời lượng')}</div>
                   <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>⏱ {sd.dur}</div>
                 </div>
                 <div style={{ flex: 1, border: '1px solid var(--line)', borderRadius: 13, padding: 12 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 4 }}>Trạng thái</div>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 4 }}>{t('Trạng thái')}</div>
                   <div style={{ fontSize: 14, fontWeight: 700, color: sd.statusFg }}>{sd.statusLabel}</div>
                 </div>
               </div>
               {/* description */}
               <div style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--ink-2)', background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 12, padding: '13px 15px' }}>
-                Bước này do <b style={{ color: 'var(--ink)' }}>{sd.agent}</b> thực hiện: <b style={{ color: 'var(--ink)' }}>{sd.title}</b>. Agent đọc/ghi dữ liệu qua <span style={{ fontFamily: 'var(--mono)', color: 'var(--jade-deep)' }}>{sd.io}</span> rồi chuyển sang bước kế tiếp trong pipeline.
+                {t('Bước này do')} <b style={{ color: 'var(--ink)' }}>{sd.agent}</b> {t('thực hiện:')} <b style={{ color: 'var(--ink)' }}>{sd.title}</b>. {t('Agent đọc/ghi dữ liệu qua')} <span style={{ fontFamily: 'var(--mono)', color: 'var(--jade-deep)' }}>{sd.io}</span> {t('rồi chuyển sang bước kế tiếp trong pipeline.')}
               </div>
             </div>
           </div>
@@ -376,15 +378,15 @@ export function WorkflowView() {
         <div onClick={s.closeOverlay} style={{ position: 'fixed', inset: 0, background: 'rgba(22,32,28,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 55, animation: 'fadeIn .15s ease' }}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: 410, maxWidth: '92vw', background: 'var(--surface)', borderRadius: 22, padding: 26, boxShadow: '0 24px 60px rgba(22,32,28,.28)', animation: 'pop .2s ease both' }}>
             <div style={{ width: 52, height: 52, borderRadius: 15, background: '#FBEAE7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, marginBottom: 16 }}>🗑</div>
-            <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.3px', marginBottom: 8, lineHeight: 1.35 }}>Xóa workflow "{aw.name}"?</div>
-            <div style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.55, marginBottom: 24 }}>Toàn bộ pipeline, bước và lịch sử chạy sẽ bị xóa. Không thể hoàn tác.</div>
+            <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.3px', marginBottom: 8, lineHeight: 1.35 }}>{t('Xóa workflow')} "{aw.name}"?</div>
+            <div style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.55, marginBottom: 24 }}>{t('Toàn bộ pipeline, bước và lịch sử chạy sẽ bị xóa. Không thể hoàn tác.')}</div>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <Hover as="button" onClick={s.closeOverlay}
                 style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink-2)', background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 99, padding: '11px 22px', cursor: 'pointer', fontFamily: 'inherit' }}
-                hover={{ background: 'var(--line)' }}>Hủy</Hover>
+                hover={{ background: 'var(--line)' }}>{t('Hủy')}</Hover>
               <Hover as="button" onClick={s.wfDoDelete}
                 style={{ fontSize: 13.5, fontWeight: 700, color: '#fff', background: 'var(--danger)', border: 'none', borderRadius: 99, padding: '11px 26px', cursor: 'pointer', fontFamily: 'inherit' }}
-                hover={{ opacity: .9 }}>Xóa workflow</Hover>
+                hover={{ opacity: .9 }}>{t('Xóa workflow')}</Hover>
             </div>
           </div>
         </div>
@@ -395,24 +397,24 @@ export function WorkflowView() {
         <div onClick={s.closeOverlay} style={{ position: 'fixed', inset: 0, background: 'rgba(22,32,28,.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, animation: 'fadeIn .15s ease' }}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: 520, maxWidth: '94vw', maxHeight: '88vh', overflowY: 'auto', background: 'var(--surface)', borderRadius: 24, padding: 26, boxShadow: '0 24px 60px rgba(22,32,28,.22)', animation: 'pop .2s ease both' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-              <div style={{ fontSize: 19, fontWeight: 800, letterSpacing: '-.3px' }}>Tạo workflow mới</div>
+              <div style={{ fontSize: 19, fontWeight: 800, letterSpacing: '-.3px' }}>{t('Tạo workflow mới')}</div>
               <Hover as="button" onClick={s.closeOverlay}
                 style={{ width: 32, height: 32, borderRadius: 99, border: 'none', background: 'var(--bg)', fontSize: 16, cursor: 'pointer', color: 'var(--ink-2)' }}
                 hover={{ background: 'var(--jade-soft)' }}>✕</Hover>
             </div>
-            <div style={{ fontSize: 12.5, color: 'var(--ink-2)', marginBottom: 20, lineHeight: 1.5 }}>Tạo pipeline tự động nhiều bước. Bạn có thể thêm các bước sau khi tạo.</div>
+            <div style={{ fontSize: 12.5, color: 'var(--ink-2)', marginBottom: 20, lineHeight: 1.5 }}>{t('Tạo pipeline tự động nhiều bước. Bạn có thể thêm các bước sau khi tạo.')}</div>
 
             {/* name */}
-            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 7 }}>Tên workflow</label>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 7 }}>{t('Tên workflow')}</label>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, border: '1.5px solid var(--line)', borderRadius: 14, padding: '0 14px', marginBottom: 18 }}>
               <span style={{ color: 'var(--placeholder)', fontSize: 15 }}>🧩</span>
-              <input value={s.wfForm.name} onChange={(e) => s.onWfField('name', e.target.value)} placeholder="vd. Chuẩn bị nội dung tuần"
+              <input value={s.wfForm.name} onChange={(e) => s.onWfField('name', e.target.value)} placeholder={t('vd. Chuẩn bị nội dung tuần')}
                 style={{ flex: 1, border: 'none', outline: 'none', fontFamily: 'inherit', fontSize: 14.5, padding: '13px 0', background: 'transparent', color: 'var(--ink)' }} />
             </div>
 
             {/* desc */}
-            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 7 }}>Mô tả</label>
-            <input value={s.wfForm.desc} onChange={(e) => s.onWfField('desc', e.target.value)} placeholder="Pipeline làm gì…"
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 7 }}>{t('Mô tả')}</label>
+            <input value={s.wfForm.desc} onChange={(e) => s.onWfField('desc', e.target.value)} placeholder={t('Pipeline làm gì…')}
               style={{ width: '100%', border: '1.5px solid var(--line)', borderRadius: 14, fontFamily: 'inherit', fontSize: 14, padding: '13px 14px', background: 'transparent', color: 'var(--ink)', outline: 'none', marginBottom: 18, boxSizing: 'border-box' }} />
 
             {/* trigger */}
@@ -427,10 +429,10 @@ export function WorkflowView() {
 
             {/* steps */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-              <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)' }}>Các bước pipeline · {s.wfForm.steps.length}</label>
+              <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)' }}>{t('Các bước pipeline')} · {s.wfForm.steps.length}</label>
               <Hover as="button" onClick={s.addWfStep}
                 style={{ fontSize: 12, fontWeight: 600, color: 'var(--jade-deep)', background: 'var(--jade-soft)', border: 'none', borderRadius: 99, padding: '6px 13px', cursor: 'pointer', fontFamily: 'inherit' }}
-                hover={{ background: 'var(--jade)', color: '#fff' }}>＋ Thêm bước</Hover>
+                hover={{ background: 'var(--jade)', color: '#fff' }}>＋ {t('Thêm bước')}</Hover>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
               {s.wfForm.steps.map((st, i) => (
@@ -441,13 +443,13 @@ export function WorkflowView() {
                       style={{ width: '100%', border: '1px solid var(--line)', borderRadius: 10, fontFamily: 'inherit', fontSize: 13, fontWeight: 600, padding: '9px 11px', background: 'var(--surface)', color: 'var(--ink)', outline: 'none', cursor: 'pointer' }}>
                       {wfAgentOptions.map((ag) => <option key={ag} value={ag}>{ag}</option>)}
                     </select>
-                    <input value={st.title} onChange={(e) => s.onWfStep(i, 'title', e.target.value)} placeholder="Việc cần làm (vd. Thu thập 12 bài viral)"
+                    <input value={st.title} onChange={(e) => s.onWfStep(i, 'title', e.target.value)} placeholder={t('Việc cần làm (vd. Thu thập 12 bài viral)')}
                       style={{ width: '100%', border: '1px solid var(--line)', borderRadius: 10, fontFamily: 'inherit', fontSize: 13, padding: '9px 11px', background: 'transparent', color: 'var(--ink)', outline: 'none', boxSizing: 'border-box' }} />
-                    <input value={st.io} onChange={(e) => s.onWfStep(i, 'io', e.target.value)} placeholder="Dataset in/out (vd. → research)"
+                    <input value={st.io} onChange={(e) => s.onWfStep(i, 'io', e.target.value)} placeholder={t('Dataset in/out (vd. → research)')}
                       style={{ width: '100%', border: '1px solid var(--line)', borderRadius: 10, fontFamily: 'var(--mono)', fontSize: 12, padding: '9px 11px', background: 'transparent', color: 'var(--ink)', outline: 'none', boxSizing: 'border-box' }} />
                   </div>
                   {s.wfForm.steps.length > 1 && (
-                    <Hover as="button" onClick={() => s.removeWfStep(i)} title="Xóa bước"
+                    <Hover as="button" onClick={() => s.removeWfStep(i)} title={t('Xóa bước')}
                       style={{ width: 28, height: 28, borderRadius: 8, border: 'none', background: 'transparent', color: 'var(--placeholder)', fontSize: 13, cursor: 'pointer', flex: 'none' }}
                       hover={{ background: '#FBEAE7', color: 'var(--danger)' }}>🗑</Hover>
                   )}
@@ -458,10 +460,10 @@ export function WorkflowView() {
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <Hover as="button" onClick={s.closeOverlay}
                 style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink-2)', background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 99, padding: '11px 22px', cursor: 'pointer', fontFamily: 'inherit' }}
-                hover={{ background: 'var(--line)' }}>Hủy</Hover>
+                hover={{ background: 'var(--line)' }}>{t('Hủy')}</Hover>
               <Hover as="button" onClick={s.createWorkflow}
                 style={{ fontSize: 13.5, fontWeight: 700, color: '#fff', background: createWfBg, border: 'none', borderRadius: 99, padding: '11px 26px', cursor: createWfCursor, fontFamily: 'inherit' }}
-                hover={{ background: 'var(--jade-deep)' }}>Tạo workflow</Hover>
+                hover={{ background: 'var(--jade-deep)' }}>{t('Tạo workflow')}</Hover>
             </div>
           </div>
         </div>
@@ -477,19 +479,19 @@ export function WorkflowView() {
                 style={{ width: 32, height: 32, borderRadius: 99, border: 'none', background: 'var(--bg)', fontSize: 16, cursor: 'pointer', color: 'var(--ink-2)' }}
                 hover={{ background: 'var(--jade-soft)' }}>✕</Hover>
             </div>
-            <div style={{ fontSize: 12.5, color: 'var(--ink-2)', marginBottom: 18, lineHeight: 1.5 }}>Tải lên file JSON định nghĩa workflow (.flow.json) để thêm pipeline.</div>
+            <div style={{ fontSize: 12.5, color: 'var(--ink-2)', marginBottom: 18, lineHeight: 1.5 }}>{t('Tải lên file JSON định nghĩa workflow (.flow.json) để thêm pipeline.')}</div>
             <Hover style={{ border: '2px dashed var(--line)', borderRadius: 16, padding: 34, textAlign: 'center' as const, marginBottom: 22, cursor: 'pointer' }} hover={{ borderColor: 'var(--jade)', background: 'var(--jade-soft)' }}>
               <div style={{ fontSize: 34, marginBottom: 10 }}>📥</div>
-              <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ink)', marginBottom: 4 }}>Kéo thả file workflow</div>
-              <div style={{ fontSize: 12, color: 'var(--placeholder)' }}>hoặc bấm để chọn · .flow.json</div>
+              <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ink)', marginBottom: 4 }}>{t('Kéo thả file workflow')}</div>
+              <div style={{ fontSize: 12, color: 'var(--placeholder)' }}>{t('hoặc bấm để chọn')} · .flow.json</div>
             </Hover>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
               <Hover as="button" onClick={s.closeOverlay}
                 style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink-2)', background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 99, padding: '11px 22px', cursor: 'pointer', fontFamily: 'inherit' }}
-                hover={{ background: 'var(--line)' }}>Hủy</Hover>
+                hover={{ background: 'var(--line)' }}>{t('Hủy')}</Hover>
               <Hover as="button" onClick={s.closeOverlay}
                 style={{ fontSize: 13.5, fontWeight: 700, color: '#fff', background: 'var(--jade)', border: 'none', borderRadius: 99, padding: '11px 24px', cursor: 'pointer', fontFamily: 'inherit' }}
-                hover={{ background: 'var(--jade-deep)' }}>Tải lên</Hover>
+                hover={{ background: 'var(--jade-deep)' }}>{t('Tải lên')}</Hover>
             </div>
           </div>
         </div>

@@ -3,6 +3,7 @@ import { useStore, cronSummary } from '@/store'
 import type { CronForm } from '@/store'
 import type { CronJob } from '@/types'
 import { Hover } from '@/components/ui/Hover'
+import { useT } from '@/i18n'
 
 // --------------- local helper (mirrors store-private cronExprFrom) ---------------
 function exprFrom(f: CronForm): string {
@@ -40,6 +41,7 @@ const DOW_CHIPS = [
 
 export function Cron() {
   const s = useStore()
+  const t = useT()
 
   // ---- view-model (mirrors renderVals cron block) ----
   const enabledCount = s.cronJobsData.filter((j) => j.enabled).length
@@ -48,10 +50,10 @@ export function Cron() {
   const scheduled = enabledCount
 
   const cronStats = [
-    { icon: '⏰', label: 'Total cron jobs', value: s.cronJobsData.length, sub: s.cronJobsData.length + ' jobs cấu hình' },
+    { icon: '⏰', label: 'Total cron jobs', value: s.cronJobsData.length, sub: s.cronJobsData.length + ' ' + t('jobs cấu hình') },
     { icon: '▶', label: 'Active', value: enabledCount, sub: (s.cronJobsData.length - enabledCount) + ' disabled' },
     { icon: '📈', label: 'Last 24h runs', value: runs24, sub: runs24 + ' success · 0 failed' },
-    { icon: '🔔', label: 'Next 1h scheduled', value: scheduled, sub: 'jobs trong 1 giờ tới' },
+    { icon: '🔔', label: 'Next 1h scheduled', value: scheduled, sub: t('jobs trong 1 giờ tới') },
   ]
 
   const cronPills = [
@@ -64,7 +66,7 @@ export function Cron() {
     { key: 'all', label: 'All', count: s.cronJobsData.length, dot: 'var(--jade)' },
     { key: 'active', label: 'Active', count: enabledCount, dot: 'var(--jade)' },
     { key: 'disabled', label: 'Disabled', count: s.cronJobsData.length - enabledCount, dot: 'var(--placeholder)' },
-    { key: 'agent', label: 'Tạo bởi agent', count: 0, dot: '#E8A33D' },
+    { key: 'agent', label: t('Tạo bởi agent'), count: 0, dot: '#E8A33D' },
     { key: 'oneshot', label: 'One-shot', count: 0, dot: '#8B5CF6' },
   ]
 
@@ -87,8 +89,8 @@ export function Cron() {
   const showCronDelete = s.overlay === 'cronDelete'
   const cronDeleteName = (s.cronJobsData.find((j) => j.id === s.cronDeleteTarget) || {}).name || ''
 
-  const cronModalTitle = s.editingCronId ? 'Cài đặt cron job' : 'Tạo cron job mới'
-  const cronPrimaryLabel = s.editingCronId ? 'Lưu thay đổi' : 'Tạo cron job'
+  const cronModalTitle = s.editingCronId ? t('Cài đặt cron job') : t('Tạo cron job mới')
+  const cronPrimaryLabel = s.editingCronId ? t('Lưu thay đổi') : t('Tạo cron job')
   const cronPrimaryAction = s.editingCronId ? s.askApplyCron : s.createCron
   const createCronBg = f.name.trim() ? 'var(--jade)' : '#9FBDB1'
   const createCronCursor = f.name.trim() ? 'pointer' : 'default'
@@ -112,7 +114,7 @@ export function Cron() {
           <div style={{ fontSize: 11.5, color: 'var(--placeholder)', marginBottom: 3 }}>Workspace › Cron &amp; flows</div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
             <span style={{ fontSize: 21, fontWeight: 800, letterSpacing: '-.4px' }}>Cron &amp; flows</span>
-            <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>{s.devicesData.length} thiết bị · {s.devicesData.filter((d) => d.status === 'online').length} online</span>
+            <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>{s.devicesData.length} {t('thiết bị')} · {s.devicesData.filter((d) => d.status === 'online').length} online</span>
           </div>
         </div>
         <Hover as="button" onClick={s.openNewCron}
@@ -168,7 +170,7 @@ export function Cron() {
           <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ fontSize: 15 }}>🕓</span>
             <span style={{ fontSize: 14, fontWeight: 700 }}>Scheduled flows</span>
-            <span style={{ fontSize: 11.5, color: 'var(--placeholder)' }}>click dòng để sửa cấu hình</span>
+            <span style={{ fontSize: 11.5, color: 'var(--placeholder)' }}>{t('click dòng để sửa cấu hình')}</span>
           </div>
           <div style={{ overflowX: 'auto' }}>
             <div style={{ minWidth: 1180 }}>
@@ -244,15 +246,15 @@ export function Cron() {
 
                   {/* actions */}
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
-                    <Hover as="button" title="Chạy"
+                    <Hover as="button" title={t('Chạy')}
                       onClick={(e: MouseEvent) => s.cronRunNow(j.id, e)}
                       style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--jade-deep)', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                       hover={{ background: 'var(--jade-soft)' }}>▶</Hover>
-                    <Hover as="button" title="Sửa"
+                    <Hover as="button" title={t('Sửa')}
                       onClick={(e: MouseEvent) => { e.stopPropagation(); s.editCron(j) }}
                       style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink-2)', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                       hover={{ background: 'var(--jade-soft)', color: 'var(--jade-deep)' }}>✎</Hover>
-                    <Hover as="button" title="Xóa"
+                    <Hover as="button" title={t('Xóa')}
                       onClick={(e: MouseEvent) => s.cronAskDelete(j.id, e)}
                       style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink-2)', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                       hover={{ background: '#FBEAE7', color: 'var(--danger)', borderColor: 'var(--danger)' }}>🗑</Hover>
@@ -277,23 +279,23 @@ export function Cron() {
                 style={{ width: 32, height: 32, borderRadius: 99, border: 'none', background: 'var(--bg)', fontSize: 16, cursor: 'pointer', color: 'var(--ink-2)' }}
                 hover={{ background: 'var(--jade-soft)' }}>✕</Hover>
             </div>
-            <div style={{ fontSize: 12.5, color: 'var(--ink-2)', marginBottom: 20, lineHeight: 1.5 }}>Lên lịch để agent tự động chạy một tác vụ theo chu kỳ.</div>
+            <div style={{ fontSize: 12.5, color: 'var(--ink-2)', marginBottom: 20, lineHeight: 1.5 }}>{t('Lên lịch để agent tự động chạy một tác vụ theo chu kỳ.')}</div>
 
             {/* job name */}
-            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 7 }}>Tên job</label>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 7 }}>{t('Tên job')}</label>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, border: '1.5px solid var(--line)', borderRadius: 14, padding: '0 14px', marginBottom: 18 }}>
               <span style={{ color: 'var(--placeholder)', fontSize: 15 }}>⏱</span>
               <input
                 autoFocus={!s.editingCronId}
                 value={f.name}
                 onChange={(e) => s.onCronField('name', e.target.value)}
-                placeholder="vd. Quét bài mới từ fanpage"
+                placeholder={t('vd. Quét bài mới từ fanpage')}
                 style={{ flex: 1, border: 'none', outline: 'none', fontFamily: 'inherit', fontSize: 14.5, padding: '13px 0', background: 'transparent', color: 'var(--ink)' }}
               />
             </div>
 
             {/* target */}
-            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 7 }}>Agent đích</label>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 7 }}>{t('Agent đích')}</label>
             <select
               value={f.target}
               onChange={(e) => s.onCronField('target', e.target.value)}
@@ -302,7 +304,7 @@ export function Cron() {
             </select>
 
             {/* freq tabs */}
-            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 7 }}>Lịch chạy</label>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 7 }}>{t('Lịch chạy')}</label>
             <div style={{ display: 'flex', background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 99, padding: 3, marginBottom: 14 }}>
               {FREQ_BTNS.map((o) => {
                 const sel = f.freq === o.k
@@ -335,7 +337,7 @@ export function Cron() {
             {cronShowTime && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, border: '1.5px solid var(--line)', borderRadius: 14, padding: '11px 15px', marginBottom: 16 }}>
                 <span style={{ fontSize: 17 }}>🕐</span>
-                <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink)', flex: 1 }}>Vào lúc</span>
+                <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink)', flex: 1 }}>{t('Vào lúc')}</span>
                 <input type="time" value={f.time}
                   onChange={(e) => s.onCronField('time', e.target.value)}
                   style={{ border: '1px solid var(--line)', borderRadius: 10, fontFamily: 'inherit', fontSize: 14, fontWeight: 600, padding: '8px 11px', background: 'var(--surface)', color: 'var(--ink)', outline: 'none', cursor: 'pointer' }} />
@@ -346,7 +348,7 @@ export function Cron() {
             {cronShowMinute && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, border: '1.5px solid var(--line)', borderRadius: 14, padding: '11px 15px', marginBottom: 16 }}>
                 <span style={{ fontSize: 17 }}>🕐</span>
-                <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink)', flex: 1 }}>Vào phút thứ (mỗi giờ)</span>
+                <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink)', flex: 1 }}>{t('Vào phút thứ (mỗi giờ)')}</span>
                 <input type="time" value={f.time}
                   onChange={(e) => s.onCronField('time', e.target.value)}
                   style={{ border: '1px solid var(--line)', borderRadius: 10, fontFamily: 'inherit', fontSize: 14, fontWeight: 600, padding: '8px 11px', background: 'var(--surface)', color: 'var(--ink)', outline: 'none', cursor: 'pointer' }} />
@@ -357,11 +359,11 @@ export function Cron() {
             {cronShowInterval && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, border: '1.5px solid var(--line)', borderRadius: 14, padding: '11px 15px', marginBottom: 16 }}>
                 <span style={{ fontSize: 17 }}>⏱</span>
-                <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink)', flex: 1 }}>Chạy mỗi</span>
+                <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink)', flex: 1 }}>{t('Chạy mỗi')}</span>
                 <input type="number" min={1} max={1440} value={f.interval}
                   onChange={(e) => s.onCronField('interval', parseInt(e.target.value, 10) || 1)}
                   style={{ width: 80, border: '1px solid var(--line)', borderRadius: 10, fontFamily: 'inherit', fontSize: 14, fontWeight: 600, padding: '8px 11px', background: 'var(--surface)', color: 'var(--ink)', outline: 'none', textAlign: 'center' }} />
-                <span style={{ fontSize: 13, color: 'var(--ink-2)' }}>phút</span>
+                <span style={{ fontSize: 13, color: 'var(--ink-2)' }}>{t('phút')}</span>
               </div>
             )}
 
@@ -375,8 +377,8 @@ export function Cron() {
             {/* enabled toggle row */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '1px solid var(--line)', borderRadius: 14, padding: '13px 15px', marginBottom: 24 }}>
               <div>
-                <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink)' }}>Kích hoạt ngay</div>
-                <div style={{ fontSize: 11.5, color: 'var(--ink-2)', marginTop: 2 }}>Job sẽ bắt đầu chạy theo lịch sau khi tạo</div>
+                <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink)' }}>{t('Kích hoạt ngay')}</div>
+                <div style={{ fontSize: 11.5, color: 'var(--ink-2)', marginTop: 2 }}>{t('Job sẽ bắt đầu chạy theo lịch sau khi tạo')}</div>
               </div>
               <div onClick={s.toggleCronFormEnabled}
                 style={{ width: 38, height: 21, borderRadius: 99, background: cronFormToggleBg, position: 'relative', cursor: 'pointer', flex: 'none', transition: 'background .15s' }}>
@@ -388,7 +390,7 @@ export function Cron() {
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <Hover as="button" onClick={s.closeOverlay}
                 style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink-2)', background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 99, padding: '11px 22px', cursor: 'pointer', fontFamily: 'inherit' }}
-                hover={{ background: 'var(--line)' }}>Hủy</Hover>
+                hover={{ background: 'var(--line)' }}>{t('Hủy')}</Hover>
               <Hover as="button" onClick={cronPrimaryAction}
                 style={{ fontSize: 13.5, fontWeight: 700, color: '#fff', background: createCronBg, border: 'none', borderRadius: 99, padding: '11px 26px', cursor: createCronCursor, fontFamily: 'inherit' }}
                 hover={{ background: 'var(--jade-deep)' }}>{cronPrimaryLabel}</Hover>
@@ -402,15 +404,15 @@ export function Cron() {
         <div onClick={s.backToCronForm} style={{ position: 'fixed', inset: 0, background: 'rgba(22,32,28,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 55, animation: 'fadeIn .15s ease' }}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: 410, maxWidth: '92vw', background: 'var(--surface)', borderRadius: 22, padding: 26, boxShadow: '0 24px 60px rgba(22,32,28,.28)', animation: 'pop .2s ease both' }}>
             <div style={{ width: 52, height: 52, borderRadius: 15, background: 'var(--jade-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, marginBottom: 16 }}>⚙</div>
-            <div style={{ fontSize: 19, fontWeight: 800, letterSpacing: '-.3px', marginBottom: 8 }}>Áp dụng thay đổi?</div>
-            <div style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.55, marginBottom: 24 }}>Bạn có chắc muốn cập nhật cấu hình cron job này vào hệ thống? Lịch chạy sẽ áp dụng từ lần kế tiếp.</div>
+            <div style={{ fontSize: 19, fontWeight: 800, letterSpacing: '-.3px', marginBottom: 8 }}>{t('Áp dụng thay đổi?')}</div>
+            <div style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.55, marginBottom: 24 }}>{t('Bạn có chắc muốn cập nhật cấu hình cron job này vào hệ thống? Lịch chạy sẽ áp dụng từ lần kế tiếp.')}</div>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <Hover as="button" onClick={s.backToCronForm}
                 style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink-2)', background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 99, padding: '11px 22px', cursor: 'pointer', fontFamily: 'inherit' }}
-                hover={{ background: 'var(--line)' }}>Quay lại</Hover>
+                hover={{ background: 'var(--line)' }}>{t('Quay lại')}</Hover>
               <Hover as="button" onClick={s.applyCron}
                 style={{ fontSize: 13.5, fontWeight: 700, color: '#fff', background: 'var(--jade)', border: 'none', borderRadius: 99, padding: '11px 26px', cursor: 'pointer', fontFamily: 'inherit' }}
-                hover={{ background: 'var(--jade-deep)' }}>Xác nhận áp dụng</Hover>
+                hover={{ background: 'var(--jade-deep)' }}>{t('Xác nhận áp dụng')}</Hover>
             </div>
           </div>
         </div>
@@ -421,15 +423,15 @@ export function Cron() {
         <div onClick={s.closeOverlay} style={{ position: 'fixed', inset: 0, background: 'rgba(22,32,28,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 55, animation: 'fadeIn .15s ease' }}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: 410, maxWidth: '92vw', background: 'var(--surface)', borderRadius: 22, padding: 26, boxShadow: '0 24px 60px rgba(22,32,28,.28)', animation: 'pop .2s ease both' }}>
             <div style={{ width: 52, height: 52, borderRadius: 15, background: '#FBEAE7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, marginBottom: 16 }}>🗑</div>
-            <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.3px', marginBottom: 8, lineHeight: 1.35 }}>Xóa cron job "{cronDeleteName}"?</div>
-            <div style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.55, marginBottom: 24 }}>Lịch chạy sẽ dừng và job bị gỡ khỏi danh sách. Không thể hoàn tác.</div>
+            <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.3px', marginBottom: 8, lineHeight: 1.35 }}>{t('Xóa cron job')} "{cronDeleteName}"?</div>
+            <div style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.55, marginBottom: 24 }}>{t('Lịch chạy sẽ dừng và job bị gỡ khỏi danh sách. Không thể hoàn tác.')}</div>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <Hover as="button" onClick={s.closeOverlay}
                 style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink-2)', background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 99, padding: '11px 22px', cursor: 'pointer', fontFamily: 'inherit' }}
-                hover={{ background: 'var(--line)' }}>Hủy</Hover>
+                hover={{ background: 'var(--line)' }}>{t('Hủy')}</Hover>
               <Hover as="button" onClick={s.cronDoDelete}
                 style={{ fontSize: 13.5, fontWeight: 700, color: '#fff', background: 'var(--danger)', border: 'none', borderRadius: 99, padding: '11px 26px', cursor: 'pointer', fontFamily: 'inherit' }}
-                hover={{ opacity: 0.9 }}>Xóa job</Hover>
+                hover={{ opacity: 0.9 }}>{t('Xóa job')}</Hover>
             </div>
           </div>
         </div>

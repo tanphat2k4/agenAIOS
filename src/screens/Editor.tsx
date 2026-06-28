@@ -1,5 +1,6 @@
 import { useRef } from 'react'
 import { useStore } from '@/store'
+import { useT } from '@/i18n'
 import { Hover } from '@/components/ui/Hover'
 import { renderMarkdown } from '@/lib/markdown'
 
@@ -18,6 +19,7 @@ function RadioDot({ on }: { on: boolean }) {
 
 export function Editor() {
   const s = useStore()
+  const t = useT()
   const taRef = useRef<HTMLTextAreaElement>(null)
 
   // ---- toolbar helpers (ported from wrapSel / linePrefix) ----
@@ -106,7 +108,7 @@ export function Editor() {
       {/* ===== TOP BAR ===== */}
       <div style={{ flex: 'none', height: 58, background: 'var(--jade-deep)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 13 }}>
-          <Hover as="button" onClick={s.askCancelEditor} title="Quay lại"
+          <Hover as="button" onClick={s.askCancelEditor} title={t('Quay lại')}
             style={{ width: 34, height: 34, borderRadius: 9, border: 'none', background: 'rgba(255,255,255,.14)', color: '#fff', fontSize: 16, cursor: 'pointer' }}
             hover={{ background: 'rgba(255,255,255,.24)' }}>←</Hover>
           <span style={{ fontSize: 16, fontWeight: 700 }}>Knowledge editor</span>
@@ -140,7 +142,7 @@ export function Editor() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
             <div>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.7px', textTransform: 'uppercase', color: 'var(--placeholder)' }}>Entry settings</div>
-              <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: '-.2px', marginTop: 2 }}>Cấu hình entry</div>
+              <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: '-.2px', marginTop: 2 }}>{t('Cấu hình entry')}</div>
             </div>
             <span style={{ fontFamily: 'var(--mono)', fontSize: 11, fontWeight: 700, color: 'var(--jade-deep)', background: 'var(--jade-soft)', padding: '3px 9px', borderRadius: 7 }}>k-325</span>
           </div>
@@ -160,7 +162,7 @@ export function Editor() {
           <input
             value={s.editorTitle}
             onChange={(e) => s.onEditorTitle(e.target.value)}
-            placeholder="Tên entry"
+            placeholder={t('Tên entry')}
             style={{ width: '100%', border: '1.5px solid var(--line)', borderRadius: 11, fontFamily: 'inherit', fontSize: 13.5, padding: '11px 13px', background: 'transparent', color: 'var(--ink)', outline: 'none', marginBottom: 16, boxSizing: 'border-box' }}
             onFocus={(e) => (e.target.style.borderColor = 'var(--jade)')}
             onBlur={(e) => (e.target.style.borderColor = 'var(--line)')}
@@ -171,14 +173,14 @@ export function Editor() {
           <input
             value={s.editorCategory}
             onChange={(e) => s.onEditorCategory(e.target.value)}
-            placeholder="vd. zy-novel"
+            placeholder={t('vd. zy-novel')}
             style={{ width: '100%', border: '1.5px solid var(--line)', borderRadius: 11, fontFamily: 'inherit', fontSize: 13.5, padding: '11px 13px', background: 'transparent', color: 'var(--ink)', outline: 'none', marginBottom: 16, boxSizing: 'border-box' }}
             onFocus={(e) => (e.target.style.borderColor = 'var(--jade)')}
             onBlur={(e) => (e.target.style.borderColor = 'var(--line)')}
           />
 
           {/* Tags */}
-          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 7 }}>Tags <span style={{ textTransform: 'none', fontWeight: 500, color: 'var(--placeholder)' }}>phẩy ngăn cách</span></label>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 7 }}>Tags <span style={{ textTransform: 'none', fontWeight: 500, color: 'var(--placeholder)' }}>{t('phẩy ngăn cách')}</span></label>
           <input
             value={s.editorTags}
             onChange={(e) => s.onEditorTags(e.target.value)}
@@ -190,7 +192,7 @@ export function Editor() {
 
           {/* Load mode */}
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 3 }}>Menu load mode</div>
-          <div style={{ fontSize: 11, color: 'var(--ink-2)', marginBottom: 9 }}>cách agent load entry này</div>
+          <div style={{ fontSize: 11, color: 'var(--ink-2)', marginBottom: 9 }}>{t('cách agent load entry này')}</div>
           <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
             <div onClick={() => s.setEditorLoadMode('on_demand')}
               style={{ flex: 1, border: `1.5px solid ${loadOndemand ? 'var(--jade)' : 'var(--line)'}`, background: loadOndemand ? 'var(--jade-soft)' : 'var(--surface)', borderRadius: 11, padding: 11, cursor: 'pointer' }}>
@@ -198,7 +200,7 @@ export function Editor() {
                 <RadioDot on={loadOndemand} />
                 <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--ink)' }}>on_demand</span>
               </div>
-              <div style={{ fontSize: 10.5, color: 'var(--ink-2)', paddingLeft: 23 }}>load khi chạm scope</div>
+              <div style={{ fontSize: 10.5, color: 'var(--ink-2)', paddingLeft: 23 }}>{t('load khi chạm scope')}</div>
             </div>
             <div onClick={() => s.setEditorLoadMode('boot')}
               style={{ flex: 1, border: `1.5px solid ${loadBoot ? 'var(--jade)' : 'var(--line)'}`, background: loadBoot ? 'var(--jade-soft)' : 'var(--surface)', borderRadius: 11, padding: 11, cursor: 'pointer' }}>
@@ -206,13 +208,13 @@ export function Editor() {
                 <RadioDot on={loadBoot} />
                 <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--ink)' }}>boot</span>
               </div>
-              <div style={{ fontSize: 10.5, color: 'var(--ink-2)', paddingLeft: 23 }}>auto load đầu phiên</div>
+              <div style={{ fontSize: 10.5, color: 'var(--ink-2)', paddingLeft: 23 }}>{t('auto load đầu phiên')}</div>
             </div>
           </div>
 
           {/* Visibility */}
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 3 }}>Visibility</div>
-          <div style={{ fontSize: 11, color: 'var(--ink-2)', marginBottom: 9 }}>ai thấy entry này</div>
+          <div style={{ fontSize: 11, color: 'var(--ink-2)', marginBottom: 9 }}>{t('ai thấy entry này')}</div>
           <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
             <div onClick={() => s.setEditorVisibility('public')}
               style={{ flex: 1, border: `1.5px solid ${visPublic ? 'var(--jade)' : 'var(--line)'}`, background: visPublic ? 'var(--jade-soft)' : 'var(--surface)', borderRadius: 11, padding: 11, cursor: 'pointer' }}>
@@ -220,7 +222,7 @@ export function Editor() {
                 <RadioDot on={visPublic} />
                 <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--ink)' }}>Public</span>
               </div>
-              <div style={{ fontSize: 10.5, color: 'var(--ink-2)', paddingLeft: 23 }}>mọi member tenant thấy</div>
+              <div style={{ fontSize: 10.5, color: 'var(--ink-2)', paddingLeft: 23 }}>{t('mọi member tenant thấy')}</div>
             </div>
             <div onClick={() => s.setEditorVisibility('private')}
               style={{ flex: 1, border: `1.5px solid ${visPrivate ? 'var(--jade)' : 'var(--line)'}`, background: visPrivate ? 'var(--jade-soft)' : 'var(--surface)', borderRadius: 11, padding: 11, cursor: 'pointer' }}>
@@ -228,7 +230,7 @@ export function Editor() {
                 <RadioDot on={visPrivate} />
                 <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--ink)' }}>Private</span>
               </div>
-              <div style={{ fontSize: 10.5, color: 'var(--ink-2)', paddingLeft: 23 }}>chỉ bạn + Owner</div>
+              <div style={{ fontSize: 10.5, color: 'var(--ink-2)', paddingLeft: 23 }}>{t('chỉ bạn + Owner')}</div>
             </div>
           </div>
 
@@ -239,7 +241,7 @@ export function Editor() {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, border: '1px solid var(--line)', borderRadius: 10, padding: '8px 11px', marginBottom: 10 }}>
             <span style={{ color: 'var(--placeholder)', fontSize: 13 }}>🔍</span>
-            <input placeholder="Tìm agent theo tên, slug…" style={{ flex: 1, border: 'none', outline: 'none', fontFamily: 'inherit', fontSize: 12, background: 'transparent', color: 'var(--ink)' }} />
+            <input placeholder={t('Tìm agent theo tên, slug…')} style={{ flex: 1, border: 'none', outline: 'none', fontFamily: 'inherit', fontSize: 12, background: 'transparent', color: 'var(--ink)' }} />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {editorAgentRows.map((ag) => (
@@ -276,7 +278,7 @@ export function Editor() {
               {tbBtn('link', () => wrapSel('[', '](url)'))}
               <Hover as="button"
                 style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, border: 'none', background: 'var(--jade-soft)', color: 'var(--jade-deep)', borderRadius: 99, padding: '7px 14px', font: 'inherit', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
-                hover={{ background: 'var(--jade)', color: '#fff' }}>✦ AI Tối Ưu</Hover>
+                hover={{ background: 'var(--jade)', color: '#fff' }}>✦ {t('AI Tối Ưu')}</Hover>
             </div>
             {/* textarea */}
             <textarea
@@ -311,18 +313,18 @@ export function Editor() {
         <div onClick={s.dismissEditorConfirm} style={{ position: 'fixed', inset: 0, background: 'rgba(22,32,28,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, animation: 'fadeIn .15s ease' }}>
           <div onClick={stop} style={{ width: 420, maxWidth: '92vw', background: 'var(--surface)', borderRadius: 22, padding: 26, boxShadow: '0 24px 60px rgba(22,32,28,.28)', animation: 'pop .2s ease both' }}>
             <div style={{ width: 52, height: 52, borderRadius: 15, background: 'var(--warn-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, marginBottom: 16 }}>💾</div>
-            <div style={{ fontSize: 19, fontWeight: 800, letterSpacing: '-.3px', marginBottom: 8 }}>Lưu thay đổi trước khi thoát?</div>
-            <div style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.55, marginBottom: 24 }}>Bạn có thay đổi chưa lưu. Lưu lại hay thoát mà không lưu?</div>
+            <div style={{ fontSize: 19, fontWeight: 800, letterSpacing: '-.3px', marginBottom: 8 }}>{t('Lưu thay đổi trước khi thoát?')}</div>
+            <div style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.55, marginBottom: 24 }}>{t('Bạn có thay đổi chưa lưu. Lưu lại hay thoát mà không lưu?')}</div>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
               <Hover as="button" onClick={s.dismissEditorConfirm}
                 style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink-2)', background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 99, padding: '11px 18px', cursor: 'pointer', fontFamily: 'inherit' }}
-                hover={{ background: 'var(--line)' }}>Tiếp tục sửa</Hover>
+                hover={{ background: 'var(--line)' }}>{t('Tiếp tục sửa')}</Hover>
               <Hover as="button" onClick={s.closeEditor}
                 style={{ fontSize: 13, fontWeight: 600, color: 'var(--danger)', background: 'transparent', border: '1px solid var(--danger)', borderRadius: 99, padding: '11px 18px', cursor: 'pointer', fontFamily: 'inherit' }}
-                hover={{ background: '#FBEAE7' }}>Thoát không lưu</Hover>
+                hover={{ background: '#FBEAE7' }}>{t('Thoát không lưu')}</Hover>
               <Hover as="button" onClick={s.closeEditor}
                 style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: 'var(--jade)', border: 'none', borderRadius: 99, padding: '11px 22px', cursor: 'pointer', fontFamily: 'inherit' }}
-                hover={{ background: 'var(--jade-deep)' }}>Lưu &amp; thoát</Hover>
+                hover={{ background: 'var(--jade-deep)' }}>{t('Lưu')} &amp; {t('thoát')}</Hover>
             </div>
           </div>
         </div>
@@ -333,15 +335,15 @@ export function Editor() {
         <div onClick={s.dismissEditorConfirm} style={{ position: 'fixed', inset: 0, background: 'rgba(22,32,28,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, animation: 'fadeIn .15s ease' }}>
           <div onClick={stop} style={{ width: 420, maxWidth: '92vw', background: 'var(--surface)', borderRadius: 22, padding: 26, boxShadow: '0 24px 60px rgba(22,32,28,.28)', animation: 'pop .2s ease both' }}>
             <div style={{ width: 52, height: 52, borderRadius: 15, background: 'var(--jade-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, marginBottom: 16 }}>✓</div>
-            <div style={{ fontSize: 19, fontWeight: 800, letterSpacing: '-.3px', marginBottom: 8 }}>Gửi thay đổi để duyệt?</div>
-            <div style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.55, marginBottom: 24 }}>Bạn có chắc muốn submit entry này? Thay đổi sẽ được gửi vào Hub chờ duyệt.</div>
+            <div style={{ fontSize: 19, fontWeight: 800, letterSpacing: '-.3px', marginBottom: 8 }}>{t('Gửi thay đổi để duyệt?')}</div>
+            <div style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.55, marginBottom: 24 }}>{t('Bạn có chắc muốn submit entry này? Thay đổi sẽ được gửi vào Hub chờ duyệt.')}</div>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <Hover as="button" onClick={s.dismissEditorConfirm}
                 style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink-2)', background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 99, padding: '11px 22px', cursor: 'pointer', fontFamily: 'inherit' }}
-                hover={{ background: 'var(--line)' }}>Hủy</Hover>
+                hover={{ background: 'var(--line)' }}>{t('Hủy')}</Hover>
               <Hover as="button" onClick={s.closeEditor}
                 style={{ fontSize: 13.5, fontWeight: 700, color: '#fff', background: 'var(--jade)', border: 'none', borderRadius: 99, padding: '11px 26px', cursor: 'pointer', fontFamily: 'inherit' }}
-                hover={{ background: 'var(--jade-deep)' }}>Xác nhận submit</Hover>
+                hover={{ background: 'var(--jade-deep)' }}>{t('Xác nhận submit')}</Hover>
             </div>
           </div>
         </div>

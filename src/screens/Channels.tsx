@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useStore, AUTO_DELETE_OPTIONS, autoDeleteLabel } from '@/store'
+import { useT } from '@/i18n'
 import { assetUrl } from '@/api/client'
 import { Hover } from '@/components/ui/Hover'
 import { buildBlocks } from '@/lib/richtext'
@@ -7,6 +8,7 @@ import type { Channel } from '@/types'
 import { ChannelModals } from './channels/ChannelModals'
 
 function ChannelRow({ c, kind }: { c: Channel; kind: 'public' | 'private' | 'direct' }) {
+  const t = useT()
   const activeId = useStore((s) => s.activeId)
   const unread = useStore((s) => s.unread[c.id] || 0)
   const selectChannel = useStore((s) => s.selectChannel)
@@ -34,8 +36,8 @@ function ChannelRow({ c, kind }: { c: Channel; kind: 'public' | 'private' | 'dir
       {kind === 'private' && unread > 0 && (
         <span style={{ fontSize: 10.5, fontWeight: 700, background: 'var(--jade)', color: '#fff', minWidth: 19, height: 19, padding: '0 5px', borderRadius: 99, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>{unread}</span>
       )}
-      {iconBtn('Đổi tên channel', '✎', (e) => { e.stopPropagation(); askRename(c.id) })}
-      {iconBtn('Xóa channel', '🗑', (e) => { e.stopPropagation(); askDeleteChannel(c.id) }, true)}
+      {iconBtn(t('Đổi tên channel'), '✎', (e) => { e.stopPropagation(); askRename(c.id) })}
+      {iconBtn(t('Xóa channel'), '🗑', (e) => { e.stopPropagation(); askDeleteChannel(c.id) }, true)}
     </Hover>
   )
 }
@@ -44,6 +46,7 @@ const sectionLabel: React.CSSProperties = { fontSize: 10, fontWeight: 700, lette
 
 export function Channels() {
   const s = useStore()
+  const t = useT()
   const composerRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const onPickAttach = (kind: string) => {
@@ -124,14 +127,14 @@ export function Channels() {
             <div style={{ fontSize: 19, fontWeight: 800, letterSpacing: '-.3px' }}>Channels</div>
             <div style={{ fontSize: 11.5, color: 'var(--ink-2)', marginTop: 2 }}>{s.publicData.length + s.privateData.length} channel</div>
           </div>
-          <Hover as="button" onClick={s.openCreate} title="Tạo channel mới"
+          <Hover as="button" onClick={s.openCreate} title={t('Tạo channel mới')}
             style={{ width: 30, height: 30, borderRadius: 9, border: '1px solid var(--line)', background: 'var(--jade-soft)', color: 'var(--jade-deep)', fontSize: 17, lineHeight: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             hover={{ background: 'var(--jade)', color: '#fff' }}>＋</Hover>
         </div>
         <div style={{ padding: '0 14px 12px' }}>
           <Hover as="button" onClick={s.openSwitch}
             style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 9, background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 99, padding: '9px 14px', cursor: 'pointer', color: 'var(--placeholder)', font: 'inherit', fontSize: 12.5, textAlign: 'left' }}
-            hover={{ borderColor: 'var(--jade)' }}>🔍 <span>Tìm channel hoặc DM</span></Hover>
+            hover={{ borderColor: 'var(--jade)' }}>🔍 <span>{t('Tìm channel hoặc DM')}</span></Hover>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '0 8px 14px' }}>
           <div style={{ ...sectionLabel, padding: '6px 10px 6px' }}>Public</div>
@@ -140,7 +143,7 @@ export function Channels() {
           {s.privateData.map((c) => <ChannelRow key={c.id} c={c} kind="private" />)}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 10px 6px' }}>
             <span style={sectionLabel}>Direct</span>
-            <Hover as="span" onClick={s.openSwitch} title="Tin nhắn mới" style={{ color: 'var(--placeholder)', fontSize: 15, cursor: 'pointer' }} hover={{ color: 'var(--jade-deep)' }}>＋</Hover>
+            <Hover as="span" onClick={s.openSwitch} title={t('Tin nhắn mới')} style={{ color: 'var(--placeholder)', fontSize: 15, cursor: 'pointer' }} hover={{ color: 'var(--jade-deep)' }}>＋</Hover>
           </div>
           {s.directData.map((c) => <ChannelRow key={c.id} c={c} kind="direct" />)}
         </div>
@@ -151,11 +154,11 @@ export function Channels() {
         {!active ? (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 13, padding: 40 }}>
             <div style={{ width: 72, height: 72, borderRadius: 20, background: 'var(--jade-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30 }}>#</div>
-            <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--ink-2)' }}>Chưa có channel nào</div>
-            <div style={{ fontSize: 13, color: 'var(--placeholder)', textAlign: 'center', maxWidth: 340, lineHeight: 1.55 }}>Tạo channel đầu tiên để bắt đầu trò chuyện với team và agent.</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--ink-2)' }}>{t('Chưa có channel nào')}</div>
+            <div style={{ fontSize: 13, color: 'var(--placeholder)', textAlign: 'center', maxWidth: 340, lineHeight: 1.55 }}>{t('Tạo channel đầu tiên để bắt đầu trò chuyện với team và agent.')}</div>
             <Hover as="button" onClick={s.openCreate}
               style={{ display: 'flex', alignItems: 'center', gap: 7, border: 'none', background: 'var(--jade)', color: '#fff', borderRadius: 99, padding: '11px 22px', font: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer', marginTop: 4, boxShadow: '0 6px 16px rgba(40,64,158,.2)' }}
-              hover={{ background: 'var(--jade-deep)' }}>＋ Tạo channel mới</Hover>
+              hover={{ background: 'var(--jade-deep)' }}>＋ {t('Tạo channel mới')}</Hover>
           </div>
         ) : (<>
         <header style={{ flex: 'none', background: 'var(--surface)', borderBottom: '1px solid var(--line)', padding: '13px 22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
@@ -163,26 +166,26 @@ export function Channels() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
               <span style={{ fontSize: 15, color: 'var(--ink-2)', flex: 'none' }}>{isDM ? '💬' : isPublic ? '#' : '🔒'}</span>
               <span style={{ fontSize: 17, fontWeight: 800, letterSpacing: '-.2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{active?.name}</span>
-              {(active?.autoDeleteSeconds || 0) > 0 && <span title="Tự động xóa tin nhắn" style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--jade-deep)', background: 'var(--jade-soft)', padding: '2px 9px', borderRadius: 99, flex: 'none' }}>⏱ {autoDeleteLabel(active?.autoDeleteSeconds)}</span>}
+              {(active?.autoDeleteSeconds || 0) > 0 && <span title={t('Tự động xóa tin nhắn')} style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--jade-deep)', background: 'var(--jade-soft)', padding: '2px 9px', borderRadius: 99, flex: 'none' }}>⏱ {autoDeleteLabel(active?.autoDeleteSeconds)}</span>}
             </div>
             <div style={{ fontSize: 12, color: 'var(--ink-2)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{active?.desc}</div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, border: '1.5px solid var(--jade)', background: 'var(--surface)', borderRadius: 99, padding: '7px 13px', width: 163, height: 31 }}>
             <span style={{ color: 'var(--jade-deep)', fontSize: 13 }}>🔍</span>
-            <input value={s.chatSearch} onChange={(e) => s.onChatSearch(e.target.value)} placeholder="Tìm trong hội thoại…" style={{ flex: 1, border: 'none', outline: 'none', fontFamily: 'inherit', fontSize: 12.5, background: 'transparent', color: 'var(--ink)', minWidth: 0 }} />
+            <input value={s.chatSearch} onChange={(e) => s.onChatSearch(e.target.value)} placeholder={t('Tìm trong hội thoại…')} style={{ flex: 1, border: 'none', outline: 'none', fontFamily: 'inherit', fontSize: 12.5, background: 'transparent', color: 'var(--ink)', minWidth: 0 }} />
             <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--placeholder)' }}>{msgs.length}</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 'none' }}>
             <Hover as="button" onClick={s.confirmLeave} style={{ display: 'flex', alignItems: 'center', gap: 7, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink-2)', borderRadius: 99, padding: '8px 15px', font: 'inherit', fontSize: 12.5, fontWeight: 500, cursor: 'pointer' }} hover={{ borderColor: 'var(--danger)', color: 'var(--danger)' }}>↩</Hover>
-            {headerBtn('Tìm trong hội thoại', '🔍', s.toggleChatSearch)}
-            {headerBtn('Thông báo', '🔔', s.openNotifs)}
+            {headerBtn(t('Tìm trong hội thoại'), '🔍', s.toggleChatSearch)}
+            {headerBtn(t('Thông báo'), '🔔', s.openNotifs)}
             <div style={{ position: 'relative' }}>
-              {headerBtn('Tùy chọn kênh', '⋯', () => setChanMenu((v) => !v))}
+              {headerBtn(t('Tùy chọn kênh'), '⋯', () => setChanMenu((v) => !v))}
               {chanMenu && active && (
                 <div style={{ position: 'absolute', top: 40, right: 0, width: 234, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, boxShadow: '0 12px 32px rgba(22,32,28,.18)', padding: 6, zIndex: 40, animation: 'pop .15s ease both' }}>
-                  <Hover onClick={() => { setChanMenu(false); if (window.confirm(`Xóa toàn bộ lịch sử trò chuyện kênh "${active.name}"? Không thể hoàn tác.`)) s.clearHistory(active.id) }} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 11px', borderRadius: 10, cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--danger)' }} hover={{ background: '#FBEAE7' }}>🗑 Xóa lịch sử trò chuyện</Hover>
+                  <Hover onClick={() => { setChanMenu(false); if (window.confirm(`${t('Xóa toàn bộ lịch sử trò chuyện kênh')} "${active.name}"? ${t('Không thể hoàn tác.')}`)) s.clearHistory(active.id) }} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 11px', borderRadius: 10, cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--danger)' }} hover={{ background: '#FBEAE7' }}>🗑 {t('Xóa lịch sử trò chuyện')}</Hover>
                   <div style={{ borderTop: '1px solid var(--line)', margin: '5px 4px' }} />
-                  <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.4px', textTransform: 'uppercase', color: 'var(--placeholder)', padding: '6px 11px 4px' }}>⏱ Tự động xóa sau</div>
+                  <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.4px', textTransform: 'uppercase', color: 'var(--placeholder)', padding: '6px 11px 4px' }}>⏱ {t('Tự động xóa sau')}</div>
                   {AUTO_DELETE_OPTIONS.map((o) => {
                     const sel = (active.autoDeleteSeconds || 0) === o.seconds
                     return (
@@ -201,8 +204,8 @@ export function Channels() {
           {msgs.length === 0 && (
             <div style={{ height: '100%', minHeight: 380, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', color: 'var(--ink-2)' }}>
               <div style={{ width: 72, height: 72, borderRadius: 20, background: 'var(--jade-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, marginBottom: 18 }}>🗂</div>
-              <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--ink)', marginBottom: 6 }}>Chưa có tin nhắn nào</div>
-              <div style={{ fontSize: 13, maxWidth: 340, lineHeight: 1.5 }}>Đây là khởi đầu của <b>{active?.name}</b>. Gửi tin nhắn đầu tiên hoặc nhắc một agent bằng <b>@</b> để bắt đầu.</div>
+              <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--ink)', marginBottom: 6 }}>{t('Chưa có tin nhắn nào')}</div>
+              <div style={{ fontSize: 13, maxWidth: 340, lineHeight: 1.5 }}>{t('Đây là khởi đầu của')} <b>{active?.name}</b>. {t('Gửi tin nhắn đầu tiên hoặc nhắc một agent bằng')} <b>@</b> {t('để bắt đầu.')}</div>
             </div>
           )}
           {msgs.map((mm, i) => {
@@ -210,13 +213,13 @@ export function Channels() {
             const openCard = () => s.openPersonCard({ name: mm.authorName, initial: mm.avatarInitial, color: mm.avatarColor, isAgent: !!mm.isAgent })
             return (
               <div key={i} style={{ display: 'flex', gap: 13, padding: '10px 0 14px', animation: 'msgIn .25s ease both' }}>
-                <div onClick={openCard} title="Xem hồ sơ" style={{ width: 38, height: 38, borderRadius: 11, background: mm.avatarColor, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 15, flex: 'none', cursor: 'pointer' }}>{mm.avatarInitial}</div>
+                <div onClick={openCard} title={t('Xem hồ sơ')} style={{ width: 38, height: 38, borderRadius: 11, background: mm.avatarColor, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 15, flex: 'none', cursor: 'pointer' }}>{mm.avatarInitial}</div>
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 5 }}>
-                    <Hover as="span" onClick={openCard} title="Xem hồ sơ" style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)', cursor: 'pointer' }} hover={{ textDecoration: 'underline' }}>{mm.authorName}</Hover>
+                    <Hover as="span" onClick={openCard} title={t('Xem hồ sơ')} style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)', cursor: 'pointer' }} hover={{ textDecoration: 'underline' }}>{mm.authorName}</Hover>
                     {mm.isAgent && <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.3px', color: 'var(--jade-deep)', background: 'var(--jade-soft)', padding: '2px 8px', borderRadius: 99 }}>Agent</span>}
                     <span style={{ fontSize: 11, color: 'var(--placeholder)' }}>{mm.time}</span>
-                    {mm.replyable && <Hover as="button" onClick={() => s.replyTo(mm.authorName)} style={{ marginLeft: 'auto', fontSize: 11.5, fontWeight: 600, color: 'var(--jade-deep)', background: 'var(--jade-soft)', border: 'none', borderRadius: 99, padding: '4px 12px', cursor: 'pointer', fontFamily: 'inherit' }} hover={{ background: 'var(--jade)', color: '#fff' }}>Trả lời</Hover>}
+                    {mm.replyable && <Hover as="button" onClick={() => s.replyTo(mm.authorName)} style={{ marginLeft: 'auto', fontSize: 11.5, fontWeight: 600, color: 'var(--jade-deep)', background: 'var(--jade-soft)', border: 'none', borderRadius: 99, padding: '4px 12px', cursor: 'pointer', fontFamily: 'inherit' }} hover={{ background: 'var(--jade)', color: '#fff' }}>{t('Trả lời')}</Hover>}
                   </div>
                   {blocks.map((block, bi) => {
                     if ('isPara' in block) return <div key={bi} style={{ fontSize: 14, lineHeight: 1.62, color: 'var(--ink)', margin: '0 0 8px' }}>{block.node}</div>
@@ -257,13 +260,13 @@ export function Channels() {
         <div style={{ flex: 'none', padding: '10px 22px 18px', position: 'relative' }}>
           {mention && mentionMatches.length > 0 && (
             <div style={{ position: 'absolute', bottom: 'calc(100% - 10px)', left: 22, right: 22, maxHeight: 224, overflowY: 'auto', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, boxShadow: '0 12px 32px rgba(22,32,28,.18)', padding: 6, zIndex: 30, animation: 'pop .15s ease both' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)', padding: '6px 10px 4px' }}>Thành viên · {mentionMatches.length}</div>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)', padding: '6px 10px 4px' }}>{t('Thành viên')} · {mentionMatches.length}</div>
               {mentionMatches.map((m, i) => (
                 <Hover key={i} onClick={() => pickMention(m.name)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 10, cursor: 'pointer' }} hover={{ background: 'var(--jade-soft)' }}>
                   <div style={{ width: 28, height: 28, borderRadius: 99, background: m.color, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flex: 'none' }}>{m.initial}</div>
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>{m.name}</div>
-                    <div style={{ fontSize: 10.5, color: 'var(--placeholder)' }}>{m.isAgent ? 'Agent' : (m.role || 'Thành viên')}</div>
+                    <div style={{ fontSize: 10.5, color: 'var(--placeholder)' }}>{m.isAgent ? 'Agent' : (m.role || t('Thành viên'))}</div>
                   </div>
                 </Hover>
               ))}
@@ -280,7 +283,7 @@ export function Channels() {
                   <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--ink)' }}>{s.pendingAttach.name}</div>
                   <div style={{ fontSize: 10.5, color: 'var(--placeholder)' }}>{s.pendingAttach.label}</div>
                 </div>
-                <button onClick={s.clearAttach} title="Bỏ đính kèm" style={{ width: 22, height: 22, borderRadius: 99, border: 'none', background: 'var(--line)', color: 'var(--ink-2)', fontSize: 11, cursor: 'pointer', marginLeft: 4 }}>✕</button>
+                <button onClick={s.clearAttach} title={t('Bỏ đính kèm')} style={{ width: 22, height: 22, borderRadius: 99, border: 'none', background: 'var(--line)', color: 'var(--ink-2)', fontSize: 11, cursor: 'pointer', marginLeft: 4 }}>✕</button>
               </div>
             )}
             <textarea
@@ -295,25 +298,25 @@ export function Channels() {
                 if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); s.sendMessage() }
               }}
               onFocus={s.onComposerFocus} onBlur={s.onComposerBlur}
-              placeholder={`Nhắn cho ${active?.name}…`} rows={1}
+              placeholder={`${t('Nhắn cho')} ${active?.name}…`} rows={1}
               style={{ width: '100%', border: 'none', outline: 'none', resize: 'none', fontFamily: 'inherit', fontSize: 15, lineHeight: 1.5, color: 'var(--ink)', background: 'transparent', maxHeight: 140, minHeight: 24, padding: '4px 6px' }}
             />
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <div style={{ position: 'relative' }}>
-                  <Hover as="button" onClick={s.toggleAttachMenu} title="Đính kèm" style={{ width: 36, height: 36, borderRadius: 99, border: 'none', background: 'transparent', color: 'var(--ink-2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} hover={{ background: 'var(--jade-soft)', color: 'var(--jade-deep)' }}><span className="material-symbols-rounded" style={{ fontSize: 21 }}>attach_file</span></Hover>
+                  <Hover as="button" onClick={s.toggleAttachMenu} title={t('Đính kèm')} style={{ width: 36, height: 36, borderRadius: 99, border: 'none', background: 'transparent', color: 'var(--ink-2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} hover={{ background: 'var(--jade-soft)', color: 'var(--jade-deep)' }}><span className="material-symbols-rounded" style={{ fontSize: 21 }}>attach_file</span></Hover>
                   {s.attachMenuOpen && (
                     <div style={{ position: 'absolute', bottom: 44, left: 0, width: 210, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, boxShadow: '0 12px 32px rgba(22,32,28,.16)', padding: 6, zIndex: 20, animation: 'pop .15s ease both' }}>
-                      {[['file', '📎', 'Tệp đính kèm'], ['image', '🖼', 'Hình ảnh'], ['record', '🗄', 'Bản ghi database']].map(([k, ic, lb]) => (
+                      {[['file', '📎', t('Tệp đính kèm')], ['image', '🖼', t('Hình ảnh')], ['record', '🗄', t('Bản ghi database')]].map(([k, ic, lb]) => (
                         <Hover key={k} onClick={() => onPickAttach(k)} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '9px 11px', borderRadius: 10, cursor: 'pointer', fontSize: 13, fontWeight: 500 }} hover={{ background: 'var(--jade-soft)' }}><span style={{ fontSize: 16 }}>{ic}</span>{lb}</Hover>
                       ))}
                     </div>
                   )}
                 </div>
-                <Hover as="button" title="Nhắc tên (@)" onClick={onMentionBtn} style={{ width: 36, height: 36, borderRadius: 99, border: 'none', background: 'transparent', color: 'var(--ink-2)', cursor: 'pointer', fontSize: 17, fontWeight: 700 }} hover={{ background: 'var(--jade-soft)', color: 'var(--jade-deep)' }}>@</Hover>
-                <span style={{ fontSize: 11, color: 'var(--placeholder)', marginLeft: 8 }}>Enter để gửi · Shift+Enter xuống dòng · @ để mention</span>
+                <Hover as="button" title={t('Nhắc tên (@)')} onClick={onMentionBtn} style={{ width: 36, height: 36, borderRadius: 99, border: 'none', background: 'transparent', color: 'var(--ink-2)', cursor: 'pointer', fontSize: 17, fontWeight: 700 }} hover={{ background: 'var(--jade-soft)', color: 'var(--jade-deep)' }}>@</Hover>
+                <span style={{ fontSize: 11, color: 'var(--placeholder)', marginLeft: 8 }}>{`Enter ${t('để gửi')} · Shift+Enter ${t('xuống dòng')} · @ ${t('để mention')}`}</span>
               </div>
-              <button onClick={s.sendMessage} title="Gửi" style={{ width: 42, height: 42, borderRadius: 99, border: 'none', background: draftHas || s.pendingAttach ? 'var(--jade)' : '#9FBDB1', color: '#fff', cursor: draftHas || s.pendingAttach ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 6px 16px rgba(40,64,158,.22)', transition: 'background .15s' }}><span className="material-symbols-rounded" style={{ fontSize: 21 }}>send</span></button>
+              <button onClick={s.sendMessage} title={t('Gửi')} style={{ width: 42, height: 42, borderRadius: 99, border: 'none', background: draftHas || s.pendingAttach ? 'var(--jade)' : '#9FBDB1', color: '#fff', cursor: draftHas || s.pendingAttach ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 6px 16px rgba(40,64,158,.22)', transition: 'background .15s' }}><span className="material-symbols-rounded" style={{ fontSize: 21 }}>send</span></button>
             </div>
           </div>
         </div>
@@ -337,7 +340,7 @@ export function Channels() {
             <Hover as="button" onClick={s.openAddMember} style={{ width: 24, height: 24, borderRadius: 7, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--jade-deep)', fontSize: 14, cursor: 'pointer', lineHeight: 1 }} hover={{ background: 'var(--jade-soft)' }}>＋</Hover>
           </div>
           <Hover onClick={s.openMembers} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 13px', border: '1px solid var(--line)', borderRadius: 14, marginBottom: 22, cursor: 'pointer' }} hover={{ borderColor: 'var(--jade)', background: 'var(--jade-soft)' }}>
-            <span style={{ fontSize: 13.5, fontWeight: 600 }}>Thành viên · {memberCount}</span>
+            <span style={{ fontSize: 13.5, fontWeight: 600 }}>{t('Thành viên')} · {memberCount}</span>
             <div style={{ display: 'flex', alignItems: 'center' }}>
               {memberAvatars.map((m, i) => <div key={i} style={{ width: 26, height: 26, borderRadius: 99, background: m.color, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, border: '2px solid var(--surface)', marginLeft: -8 }}>{m.initial}</div>)}
               <span style={{ color: 'var(--placeholder)', fontSize: 15, marginLeft: 8 }}>›</span>
@@ -347,14 +350,14 @@ export function Channels() {
           <div style={{ ...sectionLabel, marginBottom: 9 }}>Room files</div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 13px', border: '1px solid var(--line)', borderRadius: 14, marginBottom: 22 }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 13, fontWeight: 600 }}><span style={{ fontSize: 15 }}>📁</span>{active?.files || active?.id + '/'}</span>
-            <Hover as="button" onClick={s.openFiles} style={{ fontSize: 12, fontWeight: 600, color: 'var(--jade-deep)', background: 'var(--jade-soft)', border: 'none', borderRadius: 99, padding: '5px 12px', cursor: 'pointer', fontFamily: 'inherit' }} hover={{ background: 'var(--jade)', color: '#fff' }}>Xem file</Hover>
+            <Hover as="button" onClick={s.openFiles} style={{ fontSize: 12, fontWeight: 600, color: 'var(--jade-deep)', background: 'var(--jade-soft)', border: 'none', borderRadius: 99, padding: '5px 12px', cursor: 'pointer', fontFamily: 'inherit' }} hover={{ background: 'var(--jade)', color: '#fff' }}>{t('Xem file')}</Hover>
           </div>
 
           {active?.database && (<>
             <div style={{ ...sectionLabel, marginBottom: 9 }}>Database</div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 13px', border: '1px solid var(--line)', borderRadius: 14, marginBottom: 22 }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 13, fontWeight: 600 }}><span style={{ fontSize: 15 }}>🗄</span>{active.database}</span>
-              <Hover as="button" onClick={s.openDb} style={{ fontSize: 12, fontWeight: 600, color: '#fff', background: 'var(--jade)', border: 'none', borderRadius: 99, padding: '5px 13px', cursor: 'pointer', fontFamily: 'inherit' }} hover={{ background: 'var(--jade-deep)' }}>Mở Database</Hover>
+              <Hover as="button" onClick={s.openDb} style={{ fontSize: 12, fontWeight: 600, color: '#fff', background: 'var(--jade)', border: 'none', borderRadius: 99, padding: '5px 13px', cursor: 'pointer', fontFamily: 'inherit' }} hover={{ background: 'var(--jade-deep)' }}>{t('Mở Database')}</Hover>
             </div>
           </>)}
 
@@ -377,10 +380,10 @@ export function Channels() {
           <div style={{ ...sectionLabel, marginBottom: 9 }}>Agent workflow · 0/{wfTotal}</div>
           <div style={{ border: '1px solid var(--line)', borderRadius: 14, padding: 13, marginBottom: 6 }}>
             <div style={{ ...sectionLabel, marginBottom: 9 }}>Workflow list</div>
-            <div style={{ fontSize: 12.5, lineHeight: 1.5, color: 'var(--ink-2)', marginBottom: 12 }}>{active?.wfNote || 'Chưa cấu hình workflow.'}</div>
-            <Hover as="button" onClick={s.openWorkflow} style={{ width: '100%', fontSize: 12.5, fontWeight: 600, color: 'var(--jade-deep)', background: 'var(--jade-soft)', border: 'none', borderRadius: 99, padding: 9, cursor: 'pointer', fontFamily: 'inherit' }} hover={{ background: 'var(--jade)', color: '#fff' }}>Quản lý workflow →</Hover>
+            <div style={{ fontSize: 12.5, lineHeight: 1.5, color: 'var(--ink-2)', marginBottom: 12 }}>{active?.wfNote || t('Chưa cấu hình workflow.')}</div>
+            <Hover as="button" onClick={s.openWorkflow} style={{ width: '100%', fontSize: 12.5, fontWeight: 600, color: 'var(--jade-deep)', background: 'var(--jade-soft)', border: 'none', borderRadius: 99, padding: 9, cursor: 'pointer', fontFamily: 'inherit' }} hover={{ background: 'var(--jade)', color: '#fff' }}>{t('Quản lý workflow')} →</Hover>
           </div>
-          <div style={{ fontSize: 11, color: 'var(--placeholder)', textAlign: 'center', paddingTop: 6 }}>• {wfTotal ? wfTotal + ' workflow chưa đủ điều kiện' : 'Chưa có workflow nào'}</div>
+          <div style={{ fontSize: 11, color: 'var(--placeholder)', textAlign: 'center', paddingTop: 6 }}>• {wfTotal ? wfTotal + ' workflow ' + t('chưa đủ điều kiện') : t('Chưa có workflow nào')}</div>
         </div>
       </aside>
       )}

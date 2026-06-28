@@ -1,14 +1,16 @@
 import { useStore } from '@/store'
+import { useT } from '@/i18n'
 import { Hover } from '@/components/ui/Hover'
 
 export function Billing() {
   const s = useStore()
+  const t = useT()
 
   const billStats = [
-    { icon: '💳', label: 'Chi phí tháng này', value: '6,42M ₫', sub: 'kỳ 01/06 – 30/06' },
-    { icon: '🔢', label: 'Tokens 30 ngày', value: '4,8M', sub: 'máy nhà + đám mây' },
-    { icon: '📡', label: 'Tool calls 30 ngày', value: '128k', sub: 'qua MCP' },
-    { icon: '🪑', label: 'Seats đang dùng', value: '12 / 20', sub: 'user + agent' },
+    { icon: '💳', label: t('Chi phí tháng này'), value: '6,42M ₫', sub: t('kỳ 01/06 – 30/06') },
+    { icon: '🔢', label: t('Tokens 30 ngày'), value: '4,8M', sub: t('máy nhà + đám mây') },
+    { icon: '📡', label: t('Tool calls 30 ngày'), value: '128k', sub: t('qua MCP') },
+    { icon: '🪑', label: t('Seats đang dùng'), value: '12 / 20', sub: t('user + agent') },
   ]
 
   const allMonths = s.billMonths
@@ -16,7 +18,7 @@ export function Billing() {
   const maxV = Math.max(...shown.map((x) => x.v))
   const billBars = shown.map((x) => ({ m: x.m, h: Math.round((x.v / maxV) * 150) + 'px', val: x.v.toFixed(2) + 'M' }))
 
-  const rangeBtns = [{ k: '6m', label: '6 tháng' }, { k: '12m', label: '12 tháng' }].map((b) => {
+  const rangeBtns = [{ k: '6m', label: t('6 tháng') }, { k: '12m', label: t('12 tháng') }].map((b) => {
     const sel = b.k === s.billRange
     return {
       k: b.k,
@@ -29,10 +31,10 @@ export function Billing() {
   })
 
   const quotas = [
-    { label: 'Tokens đám mây', used: '1,3M', total: '10M', pct: 13 },
+    { label: t('Tokens đám mây'), used: '1,3M', total: '10M', pct: 13 },
     { label: 'Agents', used: '12', total: '20', pct: 60 },
-    { label: 'Lưu trữ dataset', used: '38 GB', total: '100 GB', pct: 38 },
-    { label: 'Tool calls / tháng', used: '128k', total: '500k', pct: 26 },
+    { label: t('Lưu trữ dataset'), used: '38 GB', total: '100 GB', pct: 38 },
+    { label: t('Tool calls / tháng'), used: '128k', total: '500k', pct: 26 },
   ].map((q) => ({
     ...q,
     w: q.pct + '%',
@@ -40,10 +42,10 @@ export function Billing() {
   }))
 
   const modelCost = [
-    { name: 'Qwen3 35B', icon: '🏠', tier: 'Máy nhà', tokens: '2,1M tokens', cost: 'Miễn phí', free: true },
-    { name: 'Qwen3 8B', icon: '🏠', tier: 'Máy nhà', tokens: '1,4M tokens', cost: 'Miễn phí', free: true },
-    { name: 'Claude Sonnet', icon: '☁️', tier: 'Đám mây', tokens: '980k tokens', cost: '3,82M ₫', free: false },
-    { name: 'DeepSeek V3', icon: '☁️', tier: 'Đám mây', tokens: '320k tokens', cost: '1,10M ₫', free: false },
+    { name: 'Qwen3 35B', icon: '🏠', tier: t('Máy nhà'), tokens: '2,1M tokens', cost: t('Miễn phí'), free: true },
+    { name: 'Qwen3 8B', icon: '🏠', tier: t('Máy nhà'), tokens: '1,4M tokens', cost: t('Miễn phí'), free: true },
+    { name: 'Claude Sonnet', icon: '☁️', tier: t('Đám mây'), tokens: '980k tokens', cost: '3,82M ₫', free: false },
+    { name: 'DeepSeek V3', icon: '☁️', tier: t('Đám mây'), tokens: '320k tokens', cost: '1,10M ₫', free: false },
   ].map((m) => ({
     ...m,
     costFg: m.free ? '#0A7B52' : 'var(--ink)',
@@ -53,10 +55,10 @@ export function Billing() {
   }))
 
   const invoices = [
-    { id: 'INV-2026-06', period: 'Tháng 06/2026', amount: '6,42M ₫', status: 'Đã thanh toán', ok: true },
-    { id: 'INV-2026-05', period: 'Tháng 05/2026', amount: '5,88M ₫', status: 'Đã thanh toán', ok: true },
-    { id: 'INV-2026-04', period: 'Tháng 04/2026', amount: '6,01M ₫', status: 'Đã thanh toán', ok: true },
-    { id: 'INV-2026-03', period: 'Tháng 03/2026', amount: '5,40M ₫', status: 'Đã thanh toán', ok: true },
+    { id: 'INV-2026-06', period: `${t('Tháng')} 06/2026`, amount: '6,42M ₫', status: t('Đã thanh toán'), ok: true },
+    { id: 'INV-2026-05', period: `${t('Tháng')} 05/2026`, amount: '5,88M ₫', status: t('Đã thanh toán'), ok: true },
+    { id: 'INV-2026-04', period: `${t('Tháng')} 04/2026`, amount: '6,01M ₫', status: t('Đã thanh toán'), ok: true },
+    { id: 'INV-2026-03', period: `${t('Tháng')} 03/2026`, amount: '5,40M ₫', status: t('Đã thanh toán'), ok: true },
   ].map((iv) => ({
     ...iv,
     sFg: iv.ok ? '#0A7B52' : '#9A6A1B',
@@ -67,16 +69,16 @@ export function Billing() {
     <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
       <header style={{ flex: 'none', background: 'var(--surface)', borderBottom: '1px solid var(--line)', padding: '16px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <div style={{ fontSize: 11.5, color: 'var(--placeholder)', marginBottom: 3 }}>Workspace › Thanh toán &amp; sử dụng</div>
+          <div style={{ fontSize: 11.5, color: 'var(--placeholder)', marginBottom: 3 }}>Workspace › {t('Thanh toán & sử dụng')}</div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
-            <span style={{ fontSize: 21, fontWeight: 800, letterSpacing: '-.4px' }}>Sử dụng</span>
-            <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>Gói, hạn mức và lịch sử hóa đơn</span>
+            <span style={{ fontSize: 21, fontWeight: 800, letterSpacing: '-.4px' }}>{t('Sử dụng')}</span>
+            <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>{t('Gói, hạn mức và lịch sử hóa đơn')}</span>
           </div>
         </div>
         <Hover as="button"
           style={{ display: 'flex', alignItems: 'center', gap: 7, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink-2)', borderRadius: 99, padding: '9px 16px', font: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}
           hover={{ borderColor: 'var(--jade)', color: 'var(--jade-deep)' }}>
-          ↓ Xuất hóa đơn
+          ↓ {t('Xuất hóa đơn')}
         </Hover>
       </header>
 
@@ -88,15 +90,15 @@ export function Billing() {
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 4 }}>
                 <span style={{ fontSize: 17, fontWeight: 800, color: '#fff', letterSpacing: '-.3px' }}>Enterprise</span>
-                <span style={{ fontSize: 10.5, fontWeight: 700, color: '#C4B5FD', background: 'rgba(255,255,255,.15)', padding: '2px 9px', borderRadius: 99 }}>Gói hiện tại</span>
+                <span style={{ fontSize: 10.5, fontWeight: 700, color: '#C4B5FD', background: 'rgba(255,255,255,.15)', padding: '2px 9px', borderRadius: 99 }}>{t('Gói hiện tại')}</span>
               </div>
-              <div style={{ fontSize: 12, color: '#C4B5FD' }}>4.990.000 ₫/tháng · Gia hạn 01/07/2026 · 20 seats</div>
+              <div style={{ fontSize: 12, color: '#C4B5FD' }}>4.990.000 ₫/{t('tháng')} · {t('Gia hạn')} 01/07/2026 · 20 seats</div>
             </div>
           </div>
           <Hover as="button"
             style={{ border: '1.5px solid rgba(255,255,255,.35)', background: 'transparent', color: '#fff', borderRadius: 99, padding: '9px 20px', font: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}
             hover={{ background: 'rgba(255,255,255,.15)' }}>
-            Quản lý gói
+            {t('Quản lý gói')}
           </Hover>
         </div>
 
@@ -121,8 +123,8 @@ export function Billing() {
             <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, padding: '20px 22px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
                 <div>
-                  <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: '-.2px' }}>Chi phí theo tháng</div>
-                  <div style={{ fontSize: 11.5, color: 'var(--ink-2)', marginTop: 2 }}>Tổng phí nền tảng + model đám mây (triệu ₫)</div>
+                  <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: '-.2px' }}>{t('Chi phí theo tháng')}</div>
+                  <div style={{ fontSize: 11.5, color: 'var(--ink-2)', marginTop: 2 }}>{t('Tổng phí nền tảng + model đám mây (triệu ₫)')}</div>
                 </div>
                 <div style={{ display: 'flex', gap: 7 }}>
                   {rangeBtns.map((b) => (
@@ -146,7 +148,7 @@ export function Billing() {
 
             {/* model cost */}
             <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, padding: '20px 22px' }}>
-              <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: '-.2px', marginBottom: 14 }}>Chi phí theo model</div>
+              <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: '-.2px', marginBottom: 14 }}>{t('Chi phí theo model')}</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {modelCost.map((m) => (
                   <div key={m.name} style={{ display: 'flex', alignItems: 'center', gap: 12, border: '1px solid var(--line)', borderRadius: 13, padding: '12px 14px' }}>
@@ -168,7 +170,7 @@ export function Billing() {
           {/* right: quotas */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, padding: '20px 22px' }}>
-              <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: '-.2px', marginBottom: 16 }}>Hạn mức sử dụng</div>
+              <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: '-.2px', marginBottom: 16 }}>{t('Hạn mức sử dụng')}</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {quotas.map((q) => (
                   <div key={q.label}>
@@ -189,8 +191,8 @@ export function Billing() {
         {/* invoices */}
         <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, overflow: 'hidden' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 22px', borderBottom: '1px solid var(--line)' }}>
-            <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: '-.2px' }}>Lịch sử hóa đơn</div>
-            <span style={{ fontSize: 11.5, color: 'var(--placeholder)' }}>Tự động xuất vào ngày 1 hàng tháng</span>
+            <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: '-.2px' }}>{t('Lịch sử hóa đơn')}</div>
+            <span style={{ fontSize: 11.5, color: 'var(--placeholder)' }}>{t('Tự động xuất vào ngày 1 hàng tháng')}</span>
           </div>
           {invoices.map((iv) => (
             <Hover key={iv.id}
@@ -206,7 +208,7 @@ export function Billing() {
               <Hover as="button"
                 style={{ fontSize: 12, fontWeight: 600, color: 'var(--jade-deep)', background: 'var(--jade-soft)', border: 'none', borderRadius: 99, padding: '6px 14px', cursor: 'pointer', fontFamily: 'inherit' }}
                 hover={{ background: 'var(--jade)', color: '#fff' }}>
-                Tải PDF
+                {t('Tải PDF')}
               </Hover>
             </Hover>
           ))}

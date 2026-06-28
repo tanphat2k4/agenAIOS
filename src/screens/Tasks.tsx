@@ -1,4 +1,5 @@
 import { useStore } from '@/store'
+import { useT } from '@/i18n'
 import { Hover } from '@/components/ui/Hover'
 import type { TaskItem } from '@/types'
 
@@ -26,6 +27,7 @@ const stop = (e: React.MouseEvent) => e.stopPropagation()
 
 function TaskDrawer() {
   const s = useStore()
+  const t = useT()
   const td = s.tasksData.find((t) => t.id === s.taskDrawer)
   if (!td) return null
 
@@ -52,7 +54,7 @@ function TaskDrawer() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 13 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ fontFamily: 'var(--mono)', fontSize: 13, fontWeight: 700, color: 'var(--jade-deep)', background: 'var(--jade-soft)', padding: '3px 11px', borderRadius: 8 }}>{td.id}</span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: p.fg, background: p.bg, padding: '3px 11px', borderRadius: 99 }}>Ưu tiên {p.label}</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: p.fg, background: p.bg, padding: '3px 11px', borderRadius: 99 }}>{t('Ưu tiên')} {p.label}</span>
             </div>
             <Hover as="button" onClick={s.closeTask}
               style={{ width: 34, height: 34, borderRadius: 99, border: 'none', background: 'var(--bg)', fontSize: 16, cursor: 'pointer', color: 'var(--ink-2)' }}
@@ -69,7 +71,7 @@ function TaskDrawer() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, border: '1px solid var(--line)', borderRadius: 13, padding: 13, marginBottom: 14 }}>
             <div style={{ width: 36, height: 36, borderRadius: 99, background: td.color, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, flex: 'none' }}>{td.initial}</div>
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)' }}>Phụ trách</div>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)' }}>{t('Phụ trách')}</div>
               <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink)', marginTop: 2 }}>{td.assignee}</div>
             </div>
           </div>
@@ -77,17 +79,17 @@ function TaskDrawer() {
           {/* room + time */}
           <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
             <div style={{ flex: 1, border: '1px solid var(--line)', borderRadius: 13, padding: 13 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 4 }}>Phòng</div>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 4 }}>{t('Phòng')}</div>
               <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>#{td.room}</div>
             </div>
             <div style={{ flex: 1, border: '1px solid var(--line)', borderRadius: 13, padding: 13 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 4 }}>Tạo lúc</div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>{td.time} trước</div>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 4 }}>{t('Tạo lúc')}</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>{td.time} {t('trước')}</div>
             </div>
           </div>
 
           {/* status move */}
-          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.7px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 10 }}>Chuyển trạng thái</div>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.7px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 10 }}>{t('Chuyển trạng thái')}</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 9 }}>
             {statusBtns.map((b) => (
               <Hover key={b.key} as="button"
@@ -101,10 +103,10 @@ function TaskDrawer() {
           <div style={{ display: 'flex', gap: 10, marginTop: 22, paddingTop: 20, borderTop: '1px solid var(--line)' }}>
             <Hover as="button" onClick={s.openEditTask}
               style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink)', borderRadius: 11, padding: 12, font: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
-              hover={{ background: 'var(--bg)', borderColor: 'var(--jade)' }}>✎ Sửa tác vụ</Hover>
+              hover={{ background: 'var(--bg)', borderColor: 'var(--jade)' }}>✎ {t('Sửa tác vụ')}</Hover>
             <Hover as="button" onClick={s.askDeleteTask}
               style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, border: '1px solid var(--danger)', background: '#FBEAE7', color: 'var(--danger)', borderRadius: 11, padding: 12, font: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
-              hover={{ background: 'var(--danger)', color: '#fff' }}>🗑 Xóa tác vụ</Hover>
+              hover={{ background: 'var(--danger)', color: '#fff' }}>🗑 {t('Xóa tác vụ')}</Hover>
           </div>
         </div>
       </div>
@@ -116,24 +118,25 @@ function TaskDrawer() {
 
 function TaskModal() {
   const s = useStore()
+  const t = useT()
   if (!s.showCreateTask) return null
 
   const tf = s.taskForm
   const isEdit = !!s.editingTaskId
-  const titleText    = isEdit ? 'Sửa tác vụ' : 'Tạo tác vụ mới'
+  const titleText    = isEdit ? t('Sửa tác vụ') : t('Tạo tác vụ mới')
   const subText      = isEdit
-    ? `Cập nhật thông tin tác vụ ${s.editingTaskId}.`
-    : 'Giao việc cho agent hoặc thành viên trong workspace.'
-  const submitLabel  = isEdit ? 'Lưu thay đổi' : 'Tạo tác vụ'
+    ? `${t('Cập nhật thông tin tác vụ')} ${s.editingTaskId}.`
+    : t('Giao việc cho agent hoặc thành viên trong workspace.')
+  const submitLabel  = isEdit ? t('Lưu thay đổi') : t('Tạo tác vụ')
   const submitBg     = tf.title.trim() ? 'var(--jade)' : '#9FBDB1'
   const submitCursor = tf.title.trim() ? 'pointer'     : 'default'
 
   const assignees = s.agentsData.map((a) => a.name)
 
   const prioBtns = [
-    { k: 'high', l: 'Cao' },
-    { k: 'med',  l: 'TB'  },
-    { k: 'low',  l: 'Thấp' },
+    { k: 'high', l: t('Cao') },
+    { k: 'med',  l: t('TB')  },
+    { k: 'low',  l: t('Thấp') },
   ].map((o) => ({
     k:  o.k,
     label: o.l,
@@ -167,23 +170,23 @@ function TaskModal() {
         <div style={{ fontSize: 12.5, color: 'var(--ink-2)', marginBottom: 20, lineHeight: 1.5 }}>{subText}</div>
 
         {/* title field */}
-        <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 7 }}>Tiêu đề</label>
+        <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 7 }}>{t('Tiêu đề')}</label>
         <input
           autoFocus
           value={tf.title}
           onChange={(e) => s.onTaskField('title', e.target.value)}
-          placeholder="VD: Viết nội dung 5 fanpage tháng 07"
+          placeholder={t('VD: Viết nội dung 5 fanpage tháng 07')}
           style={{ width: '100%', boxSizing: 'border-box', border: '1px solid var(--line)', background: 'var(--bg)', borderRadius: 11, padding: '12px 14px', font: 'inherit', fontSize: 13.5, color: 'var(--ink)', outline: 'none', marginBottom: 16 }}
           onFocus={(e) => (e.target.style.borderColor = 'var(--jade)')}
           onBlur={(e)  => (e.target.style.borderColor = 'var(--line)')}
         />
 
         {/* desc */}
-        <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 7 }}>Mô tả</label>
+        <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 7 }}>{t('Mô tả')}</label>
         <textarea
           value={tf.desc}
           onChange={(e) => s.onTaskField('desc', e.target.value)}
-          placeholder="Chi tiết việc cần làm, yêu cầu, dataset…"
+          placeholder={t('Chi tiết việc cần làm, yêu cầu, dataset…')}
           style={{ width: '100%', boxSizing: 'border-box', border: '1px solid var(--line)', background: 'var(--bg)', borderRadius: 11, padding: '12px 14px', font: 'inherit', fontSize: 13.5, color: 'var(--ink)', outline: 'none', marginBottom: 16, minHeight: 74, resize: 'vertical', lineHeight: 1.5 }}
           onFocus={(e) => (e.target.style.borderColor = 'var(--jade)')}
           onBlur={(e)  => (e.target.style.borderColor = 'var(--line)')}
@@ -192,7 +195,7 @@ function TaskModal() {
         {/* assignee + room row */}
         <div style={{ display: 'flex', gap: 14, marginBottom: 16 }}>
           <div style={{ flex: 1 }}>
-            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 7 }}>Phụ trách</label>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 7 }}>{t('Phụ trách')}</label>
             <select
               value={tf.assignee}
               onChange={(e) => s.onTaskField('assignee', e.target.value)}
@@ -200,12 +203,12 @@ function TaskModal() {
               onFocus={(e) => (e.target.style.borderColor = 'var(--jade)')}
               onBlur={(e)  => (e.target.style.borderColor = 'var(--line)')}
             >
-              <option value="">— Chưa giao —</option>
+              <option value="">{t('— Chưa giao —')}</option>
               {assignees.map((a) => <option key={a} value={a}>{a}</option>)}
             </select>
           </div>
           <div style={{ flex: 1 }}>
-            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 7 }}>Phòng</label>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 7 }}>{t('Phòng')}</label>
             <select
               value={tf.room}
               onChange={(e) => s.onTaskField('room', e.target.value)}
@@ -219,7 +222,7 @@ function TaskModal() {
         </div>
 
         {/* priority */}
-        <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 7 }}>Ưu tiên</label>
+        <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 7 }}>{t('Ưu tiên')}</label>
         <div style={{ display: 'flex', background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 99, padding: 3, marginBottom: 16 }}>
           {prioBtns.map((o) => (
             <button key={o.k} onClick={() => s.onTaskField('priority', o.k)}
@@ -230,7 +233,7 @@ function TaskModal() {
         </div>
 
         {/* initial status */}
-        <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 7 }}>Trạng thái ban đầu</label>
+        <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 7 }}>{t('Trạng thái ban đầu')}</label>
         <div style={{ display: 'flex', background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 99, padding: 3, marginBottom: 24 }}>
           {statusBtns.map((o) => (
             <button key={o.key} onClick={() => s.onTaskField('status', o.key)}
@@ -244,7 +247,7 @@ function TaskModal() {
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
           <Hover as="button" onClick={s.closeCreateTask}
             style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink-2)', background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 99, padding: '11px 22px', cursor: 'pointer', fontFamily: 'inherit' }}
-            hover={{ background: 'var(--line)' }}>Hủy</Hover>
+            hover={{ background: 'var(--line)' }}>{t('Hủy')}</Hover>
           <button onClick={s.createTask}
             style={{ fontSize: 13.5, fontWeight: 700, color: '#fff', background: submitBg, border: 'none', borderRadius: 99, padding: '11px 26px', cursor: submitCursor, fontFamily: 'inherit' }}>
             {submitLabel}
@@ -259,6 +262,7 @@ function TaskModal() {
 
 function DeleteConfirmModal() {
   const s = useStore()
+  const t = useT()
   if (!s.taskDeleteConfirm) return null
 
   const taskDeleteName =
@@ -272,15 +276,15 @@ function DeleteConfirmModal() {
     >
       <div onClick={stop} style={{ width: 420, maxWidth: '92vw', background: 'var(--surface)', borderRadius: 20, padding: 26, boxShadow: '0 24px 60px rgba(22,32,28,.28)', animation: 'pop .2s ease both' }}>
         <div style={{ width: 48, height: 48, borderRadius: 14, background: '#FBEAE7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, marginBottom: 16 }}>🗑</div>
-        <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.3px', marginBottom: 8 }}>Xóa tác vụ {taskDeleteName}?</div>
-        <div style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.55, marginBottom: 24 }}>Tác vụ sẽ bị xóa khỏi bảng công việc. Hành động này không thể hoàn tác.</div>
+        <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.3px', marginBottom: 8 }}>{t('Xóa tác vụ')} {taskDeleteName}?</div>
+        <div style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.55, marginBottom: 24 }}>{t('Tác vụ sẽ bị xóa khỏi bảng công việc. Hành động này không thể hoàn tác.')}</div>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
           <Hover as="button" onClick={dismiss}
             style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink-2)', background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 99, padding: '11px 22px', cursor: 'pointer', fontFamily: 'inherit' }}
-            hover={{ background: 'var(--line)' }}>Hủy</Hover>
+            hover={{ background: 'var(--line)' }}>{t('Hủy')}</Hover>
           <Hover as="button" onClick={s.confirmDeleteTask}
             style={{ fontSize: 13.5, fontWeight: 700, color: '#fff', background: 'var(--danger)', border: 'none', borderRadius: 99, padding: '11px 26px', cursor: 'pointer', fontFamily: 'inherit' }}
-            hover={{ background: '#A63E2E' }}>Xóa tác vụ</Hover>
+            hover={{ background: '#A63E2E' }}>{t('Xóa tác vụ')}</Hover>
         </div>
       </div>
     </div>
@@ -291,6 +295,7 @@ function DeleteConfirmModal() {
 
 function SaveConfirmModal() {
   const s = useStore()
+  const t = useT()
   if (!s.taskSaveConfirm) return null
 
   const taskDeleteName =
@@ -304,15 +309,15 @@ function SaveConfirmModal() {
     >
       <div onClick={stop} style={{ width: 420, maxWidth: '92vw', background: 'var(--surface)', borderRadius: 20, padding: 26, boxShadow: '0 24px 60px rgba(22,32,28,.28)', animation: 'pop .2s ease both' }}>
         <div style={{ width: 48, height: 48, borderRadius: 14, background: 'var(--jade-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, marginBottom: 16 }}>💾</div>
-        <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.3px', marginBottom: 8 }}>Lưu thay đổi?</div>
-        <div style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.55, marginBottom: 24 }}>Cập nhật thông tin tác vụ {taskDeleteName} với các thay đổi vừa nhập.</div>
+        <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.3px', marginBottom: 8 }}>{t('Lưu thay đổi')}?</div>
+        <div style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.55, marginBottom: 24 }}>{t('Cập nhật thông tin tác vụ')} {taskDeleteName} {t('với các thay đổi vừa nhập.')}</div>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
           <Hover as="button" onClick={dismiss}
             style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink-2)', background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 99, padding: '11px 22px', cursor: 'pointer', fontFamily: 'inherit' }}
-            hover={{ background: 'var(--line)' }}>Tiếp tục sửa</Hover>
+            hover={{ background: 'var(--line)' }}>{t('Tiếp tục sửa')}</Hover>
           <Hover as="button" onClick={s.confirmSaveTask}
             style={{ fontSize: 13.5, fontWeight: 700, color: '#fff', background: 'var(--jade)', border: 'none', borderRadius: 99, padding: '11px 26px', cursor: 'pointer', fontFamily: 'inherit' }}
-            hover={{ background: 'var(--jade-deep)' }}>Lưu thay đổi</Hover>
+            hover={{ background: 'var(--jade-deep)' }}>{t('Lưu thay đổi')}</Hover>
         </div>
       </div>
     </div>
@@ -323,14 +328,15 @@ function SaveConfirmModal() {
 
 export function Tasks() {
   const s = useStore()
+  const t = useT()
   const T = s.tasksData
 
   // stat cards
   const tkStats = [
-    { icon: '🗂', label: 'Tổng tác vụ', value: String(T.length),                                       sub: 'trong workspace'   },
-    { icon: '⚡', label: 'Đang xử lý',  value: String(T.filter((t) => t.status === 'running').length), sub: 'agent đang chạy'   },
-    { icon: '👀', label: 'Cần duyệt',   value: String(T.filter((t) => t.status === 'review').length),  sub: 'chờ owner duyệt'   },
-    { icon: '✓',  label: 'Hoàn tất',    value: String(T.filter((t) => t.status === 'done').length),    sub: 'đã xong'           },
+    { icon: '🗂', label: t('Tổng tác vụ'), value: String(T.length),                                       sub: t('trong workspace')   },
+    { icon: '⚡', label: t('Đang xử lý'),  value: String(T.filter((t) => t.status === 'running').length), sub: t('agent đang chạy')   },
+    { icon: '👀', label: t('Cần duyệt'),   value: String(T.filter((t) => t.status === 'review').length),  sub: t('chờ owner duyệt')   },
+    { icon: '✓',  label: t('Hoàn tất'),    value: String(T.filter((t) => t.status === 'done').length),    sub: t('đã xong')           },
   ]
 
   // room filter chips
@@ -338,7 +344,7 @@ export function Tasks() {
     const sel = r === s.tasksRoom
     return {
       key:    r,
-      label:  r === 'all' ? 'Tất cả phòng' : r,
+      label:  r === 'all' ? t('Tất cả phòng') : r,
       onSelect: () => s.setTasksRoom(r),
       bg:     sel ? 'var(--jade-soft)' : 'var(--surface)',
       border: sel ? 'var(--jade)'      : 'var(--line)',
@@ -374,10 +380,10 @@ export function Tasks() {
       {/* ===== PAGE HEADER ===== */}
       <header style={{ flex: 'none', background: 'var(--surface)', borderBottom: '1px solid var(--line)', padding: '16px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <div style={{ fontSize: 11.5, color: 'var(--placeholder)', marginBottom: 3 }}>Workspace › Tác vụ</div>
+          <div style={{ fontSize: 11.5, color: 'var(--placeholder)', marginBottom: 3 }}>Workspace › {t('Tác vụ')}</div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
-            <span style={{ fontSize: 21, fontWeight: 800, letterSpacing: '-.4px' }}>Tác vụ</span>
-            <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>Bảng công việc của user &amp; agent</span>
+            <span style={{ fontSize: 21, fontWeight: 800, letterSpacing: '-.4px' }}>{t('Tác vụ')}</span>
+            <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>{t('Bảng công việc của user & agent')}</span>
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
@@ -386,13 +392,13 @@ export function Tasks() {
             <input
               value={s.tasksQuery}
               onChange={(e) => s.set({ tasksQuery: e.target.value })}
-              placeholder="Tìm theo mã, tiêu đề, agent…"
+              placeholder={t('Tìm theo mã, tiêu đề, agent…')}
               style={{ flex: 1, border: 'none', outline: 'none', fontFamily: 'inherit', fontSize: 12.5, background: 'transparent', color: 'var(--ink)' }}
             />
           </div>
           <Hover as="button" onClick={s.openCreateTask}
             style={{ display: 'flex', alignItems: 'center', gap: 7, border: 'none', background: 'var(--jade)', color: '#fff', borderRadius: 99, padding: '10px 18px', font: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 6px 16px rgba(10,92,72,.2)' }}
-            hover={{ background: 'var(--jade-deep)' }}>＋ Tạo tác vụ</Hover>
+            hover={{ background: 'var(--jade-deep)' }}>＋ {t('Tạo tác vụ')}</Hover>
         </div>
       </header>
 
@@ -454,7 +460,7 @@ export function Tasks() {
                   </Hover>
                 ))}
                 {col.isEmpty && (
-                  <div style={{ textAlign: 'center', color: 'var(--placeholder)', fontSize: 12, padding: '18px 0' }}>Không có tác vụ</div>
+                  <div style={{ textAlign: 'center', color: 'var(--placeholder)', fontSize: 12, padding: '18px 0' }}>{t('Không có tác vụ')}</div>
                 )}
               </div>
             </div>

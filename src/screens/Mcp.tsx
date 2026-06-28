@@ -1,4 +1,5 @@
 import { useStore } from '@/store'
+import { useT } from '@/i18n'
 import { Hover } from '@/components/ui/Hover'
 import type { McpServer } from '@/types'
 
@@ -24,22 +25,23 @@ const labelStyle: React.CSSProperties = {
 
 export function Mcp() {
   const s = useStore()
+  const t = useT()
   const M = s.mcpData
 
   // ---- stat cards ----
   const mcpStats = [
-    { icon: '🔌', label: 'Tổng MCP',       value: String(M.length),                                                                   sub: 'server đã đăng ký' },
-    { icon: '🟢', label: 'Đang kết nối',   value: String(M.filter((m) => m.status === 'connected').length),                           sub: 'hoạt động ổn định' },
-    { icon: '🧰', label: 'Tools khả dụng', value: String(M.reduce((a, m) => a + (m.status === 'connected' ? m.tools.length : 0), 0)), sub: 'công cụ cho agent' },
-    { icon: '📡', label: 'Lượt gọi 24h',   value: M.reduce((a, m) => a + m.calls24, 0).toLocaleString('vi-VN'),                       sub: 'tool call' },
+    { icon: '🔌', label: t('Tổng MCP'),       value: String(M.length),                                                                   sub: t('server đã đăng ký') },
+    { icon: '🟢', label: t('Đang kết nối'),   value: String(M.filter((m) => m.status === 'connected').length),                           sub: t('hoạt động ổn định') },
+    { icon: '🧰', label: t('Tools khả dụng'), value: String(M.reduce((a, m) => a + (m.status === 'connected' ? m.tools.length : 0), 0)), sub: t('công cụ cho agent') },
+    { icon: '📡', label: t('Lượt gọi 24h'),   value: M.reduce((a, m) => a + m.calls24, 0).toLocaleString('vi-VN'),                       sub: t('tool call') },
   ]
 
   // ---- filter chips ----
   const mcpFilterDefs = [
-    { key: 'all',       label: 'Tất cả',     count: M.length },
-    { key: 'connected', label: 'Đã kết nối', count: M.filter((m) => m.status === 'connected').length },
-    { key: 'disabled',  label: 'Tạm tắt',    count: M.filter((m) => m.status === 'disabled').length },
-    { key: 'error',     label: 'Lỗi',        count: M.filter((m) => m.status === 'error').length },
+    { key: 'all',       label: t('Tất cả'),     count: M.length },
+    { key: 'connected', label: t('Đã kết nối'), count: M.filter((m) => m.status === 'connected').length },
+    { key: 'disabled',  label: t('Tạm tắt'),    count: M.filter((m) => m.status === 'disabled').length },
+    { key: 'error',     label: t('Lỗi'),        count: M.filter((m) => m.status === 'error').length },
   ]
 
   // ---- filtered + searched cards ----
@@ -67,7 +69,7 @@ export function Mcp() {
             labelFg: c.ok ? '#0A7B52' : '#C94F3D',
           })),
           hasCalls: md.recentCalls.length > 0,
-          toggleLabel: md.status === 'disabled' ? 'Bật MCP' : 'Tắt MCP',
+          toggleLabel: md.status === 'disabled' ? t('Bật MCP') : t('Tắt MCP'),
         }
       })()
     : null
@@ -84,22 +86,22 @@ export function Mcp() {
       {/* ===== HEADER ===== */}
       <header style={{ flex: 'none', background: 'var(--surface)', borderBottom: '1px solid var(--line)', padding: '16px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <div style={{ fontSize: 11.5, color: 'var(--placeholder)', marginBottom: 3 }}>Workspace › MCP</div>
+          <div style={{ fontSize: 11.5, color: 'var(--placeholder)', marginBottom: 3 }}>{t('Workspace › MCP')}</div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
             <span style={{ fontSize: 21, fontWeight: 800, letterSpacing: '-.4px' }}>MCP</span>
-            <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>Model Context Protocol · công cụ cho agent</span>
+            <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>{t('Model Context Protocol · công cụ cho agent')}</span>
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
           <Hover as="button" onClick={s.syncMcp}
             style={{ display: 'flex', alignItems: 'center', gap: 7, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink-2)', borderRadius: 99, padding: '9px 16px', font: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}
             hover={{ borderColor: 'var(--jade)', color: 'var(--jade-deep)' }}>
-            ⟳ Đồng bộ
+            ⟳ {t('Đồng bộ')}
           </Hover>
           <Hover as="button" onClick={s.openNewMcp}
             style={{ display: 'flex', alignItems: 'center', gap: 7, border: 'none', background: 'var(--jade)', color: '#fff', borderRadius: 99, padding: '10px 18px', font: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 6px 16px rgba(10,92,72,.2)' }}
             hover={{ background: 'var(--jade-deep)' }}>
-            ＋ Kết nối MCP
+            ＋ {t('Kết nối MCP')}
           </Hover>
         </div>
       </header>
@@ -140,7 +142,7 @@ export function Mcp() {
             <input
               value={s.mcpQuery}
               onChange={(e) => s.set({ mcpQuery: e.target.value })}
-              placeholder="Tìm MCP theo tên, tool…"
+              placeholder={t('Tìm MCP theo tên, tool…')}
               style={{ flex: 1, border: 'none', outline: 'none', fontFamily: 'inherit', fontSize: 12.5, background: 'transparent', color: 'var(--ink)' }}
             />
           </div>
@@ -241,7 +243,7 @@ export function Mcp() {
                 </div>
               </div>
 
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.7px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 9 }}>Tools cung cấp</div>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.7px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 9 }}>{t('Tools cung cấp')}</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 22 }}>
                 {mc.tools.map((t) => (
                   <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 10, border: '1px solid var(--line)', borderRadius: 11, padding: '10px 13px' }}>
@@ -251,7 +253,7 @@ export function Mcp() {
                 ))}
               </div>
 
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.7px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 9 }}>Lượt gọi gần đây</div>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.7px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 9 }}>{t('Lượt gọi gần đây')}</div>
               {mc.hasCalls && (
                 <div style={{ border: '1px solid var(--line)', borderRadius: 12, overflow: 'hidden' }}>
                   {mc.recentCalls.map((c, i) => (
@@ -270,11 +272,11 @@ export function Mcp() {
             <div style={{ flex: 'none', padding: '16px 24px', borderTop: '1px solid var(--line)', display: 'flex', gap: 10 }}>
               <Hover as="button" onClick={s.testMcp}
                 style={{ flex: 1, border: 'none', background: 'var(--jade)', color: '#fff', borderRadius: 99, padding: 12, font: 'inherit', fontSize: 13, fontWeight: 700, cursor: 'pointer', boxShadow: '0 6px 16px rgba(10,92,72,.2)' }}
-                hover={{ background: 'var(--jade-deep)' }}>⟳ Kiểm tra kết nối</Hover>
+                hover={{ background: 'var(--jade-deep)' }}>⟳ {t('Kiểm tra kết nối')}</Hover>
               <Hover as="button" onClick={s.toggleMcp}
                 style={{ border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink-2)', borderRadius: 99, padding: '12px 20px', font: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
                 hover={{ borderColor: 'var(--danger)', color: 'var(--danger)' }}>{mc.toggleLabel}</Hover>
-              <Hover as="button" onClick={s.askDeleteMcp} title="Xóa MCP"
+              <Hover as="button" onClick={s.askDeleteMcp} title={t('Xóa MCP')}
                 style={{ border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--danger)', borderRadius: 99, width: 44, flex: 'none', fontSize: 15, cursor: 'pointer' }}
                 hover={{ borderColor: 'var(--danger)', background: '#FBEAE7' }}>🗑</Hover>
             </div>
@@ -287,15 +289,15 @@ export function Mcp() {
         <div onClick={() => s.set({ mcpDeleteConfirm: false })} style={{ position: 'fixed', inset: 0, background: 'rgba(22,32,28,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, animation: 'fadeIn .15s ease' }}>
           <div onClick={stop} style={{ width: 420, maxWidth: '92vw', background: 'var(--surface)', borderRadius: 22, padding: 26, boxShadow: '0 24px 60px rgba(22,32,28,.28)', animation: 'pop .2s ease both' }}>
             <div style={{ width: 52, height: 52, borderRadius: 15, background: '#FBEAE7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, marginBottom: 16 }}>🗑</div>
-            <div style={{ fontSize: 19, fontWeight: 800, letterSpacing: '-.3px', marginBottom: 8 }}>Xóa MCP {mcpDeleteName}?</div>
-            <div style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.55, marginBottom: 24 }}>Server và toàn bộ tools của nó sẽ bị gỡ khỏi workspace. Các agent đang dùng sẽ mất quyền truy cập. Không thể hoàn tác.</div>
+            <div style={{ fontSize: 19, fontWeight: 800, letterSpacing: '-.3px', marginBottom: 8 }}>{t('Xóa MCP')} {mcpDeleteName}{t('?')}</div>
+            <div style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.55, marginBottom: 24 }}>{t('Server và toàn bộ tools của nó sẽ bị gỡ khỏi workspace. Các agent đang dùng sẽ mất quyền truy cập. Không thể hoàn tác.')}</div>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <Hover as="button" onClick={() => s.set({ mcpDeleteConfirm: false })}
                 style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink-2)', background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 99, padding: '11px 22px', cursor: 'pointer', fontFamily: 'inherit' }}
-                hover={{ background: 'var(--line)' }}>Hủy</Hover>
+                hover={{ background: 'var(--line)' }}>{t('Hủy')}</Hover>
               <Hover as="button" onClick={s.confirmDeleteMcp}
                 style={{ fontSize: 13.5, fontWeight: 700, color: '#fff', background: 'var(--danger)', border: 'none', borderRadius: 99, padding: '11px 26px', cursor: 'pointer', fontFamily: 'inherit' }}
-                hover={{ filter: 'brightness(.92)' }}>Xóa MCP</Hover>
+                hover={{ filter: 'brightness(.92)' }}>{t('Xóa MCP')}</Hover>
             </div>
           </div>
         </div>
@@ -306,20 +308,20 @@ export function Mcp() {
         <div onClick={s.closeOverlay} style={{ position: 'fixed', inset: 0, background: 'rgba(22,32,28,.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, animation: 'fadeIn .15s ease' }}>
           <div onClick={stop} style={{ width: 470, maxWidth: '92vw', maxHeight: '88vh', overflowY: 'auto', background: 'var(--surface)', borderRadius: 24, padding: 26, boxShadow: '0 24px 60px rgba(22,32,28,.22)', animation: 'pop .2s ease both' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-              <div style={{ fontSize: 19, fontWeight: 800, letterSpacing: '-.3px' }}>Kết nối MCP server</div>
+              <div style={{ fontSize: 19, fontWeight: 800, letterSpacing: '-.3px' }}>{t('Kết nối MCP server')}</div>
               <Hover as="button" onClick={s.closeOverlay}
                 style={{ width: 32, height: 32, borderRadius: 99, border: 'none', background: 'var(--bg)', fontSize: 16, cursor: 'pointer', color: 'var(--ink-2)' }}
                 hover={{ background: 'var(--jade-soft)' }}>✕</Hover>
             </div>
-            <div style={{ fontSize: 12.5, color: 'var(--ink-2)', marginBottom: 20, lineHeight: 1.5 }}>Đăng ký một Model Context Protocol server để cung cấp tools cho agent.</div>
+            <div style={{ fontSize: 12.5, color: 'var(--ink-2)', marginBottom: 20, lineHeight: 1.5 }}>{t('Đăng ký một Model Context Protocol server để cung cấp tools cho agent.')}</div>
 
-            <label style={labelStyle}>Tên server</label>
+            <label style={labelStyle}>{t('Tên server')}</label>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, border: '1.5px solid var(--jade)', borderRadius: 14, padding: '0 14px', marginBottom: 18 }}>
               <span style={{ fontSize: 15 }}>🔌</span>
               <input
                 value={s.mcpForm.name}
                 onChange={(e) => s.onMcpField('name', e.target.value)}
-                placeholder="vd. Notion Sync"
+                placeholder={t('vd. Notion Sync')}
                 autoFocus
                 style={{ flex: 1, border: 'none', outline: 'none', fontFamily: 'inherit', fontSize: 14.5, padding: '12px 0', background: 'transparent', color: 'var(--ink)' }}
               />
@@ -337,37 +339,37 @@ export function Mcp() {
               })}
             </div>
 
-            <label style={labelStyle}>Endpoint / lệnh chạy</label>
+            <label style={labelStyle}>{t('Endpoint / lệnh chạy')}</label>
             <input
               value={s.mcpForm.endpoint}
               onChange={(e) => s.onMcpField('endpoint', e.target.value)}
-              placeholder="https://… hoặc npx -y @org/mcp"
+              placeholder={t('https://… hoặc npx -y @org/mcp')}
               style={{ width: '100%', border: '1.5px solid var(--line)', borderRadius: 14, fontFamily: 'var(--mono)', fontSize: 12.5, padding: '11px 14px', boxSizing: 'border-box', marginBottom: 18, outline: 'none', color: 'var(--ink)', background: 'var(--surface)' }}
             />
 
-            <label style={labelStyle}>Tools <span style={{ textTransform: 'none', fontWeight: 500, color: 'var(--placeholder)' }}>· phân tách bằng dấu phẩy</span></label>
+            <label style={labelStyle}>Tools <span style={{ textTransform: 'none', fontWeight: 500, color: 'var(--placeholder)' }}>{t('· phân tách bằng dấu phẩy')}</span></label>
             <input
               value={s.mcpForm.tools}
               onChange={(e) => s.onMcpField('tools', e.target.value)}
-              placeholder="vd. query, insert, update"
+              placeholder={t('vd. query, insert, update')}
               style={{ width: '100%', border: '1.5px solid var(--line)', borderRadius: 14, fontFamily: 'var(--mono)', fontSize: 12.5, padding: '11px 14px', boxSizing: 'border-box', marginBottom: 18, outline: 'none', color: 'var(--ink)', background: 'var(--surface)' }}
             />
 
-            <label style={labelStyle}>Mô tả</label>
+            <label style={labelStyle}>{t('Mô tả')}</label>
             <textarea
               value={s.mcpForm.desc}
               onChange={(e) => s.onMcpField('desc', e.target.value)}
-              placeholder="Server này cung cấp gì cho agent?"
+              placeholder={t('Server này cung cấp gì cho agent?')}
               style={{ width: '100%', border: '1.5px solid var(--line)', borderRadius: 14, fontFamily: 'inherit', fontSize: 13.5, padding: '11px 14px', boxSizing: 'border-box', marginBottom: 22, outline: 'none', color: 'var(--ink)', background: 'var(--surface)', minHeight: 64, resize: 'vertical' }}
             />
 
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <Hover as="button" onClick={s.closeOverlay}
                 style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink-2)', background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 99, padding: '11px 22px', cursor: 'pointer', fontFamily: 'inherit' }}
-                hover={{ background: 'var(--line)' }}>Hủy</Hover>
+                hover={{ background: 'var(--line)' }}>{t('Hủy')}</Hover>
               <Hover as="button" onClick={s.createMcp}
                 style={{ fontSize: 13.5, fontWeight: 700, color: '#fff', background: canCreate ? 'var(--jade)' : 'var(--line)', border: 'none', borderRadius: 99, padding: '11px 26px', cursor: canCreate ? 'pointer' : 'not-allowed', fontFamily: 'inherit' }}
-                hover={{ background: 'var(--jade-deep)' }}>Kết nối</Hover>
+                hover={{ background: 'var(--jade-deep)' }}>{t('Kết nối')}</Hover>
             </div>
           </div>
         </div>
