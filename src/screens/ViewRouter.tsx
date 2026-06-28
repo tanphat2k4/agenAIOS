@@ -10,6 +10,7 @@ import { Editor } from './Editor'
 import { WorkflowView } from './Workflow'
 import { Trading } from './Trading'
 import { Music } from './Music'
+import { FilmView } from './Film'
 import { Overview } from './Overview'
 import { Agents } from './Agents'
 import { Mcp } from './Mcp'
@@ -31,6 +32,7 @@ const screens: Partial<Record<ViewName, ComponentType>> = {
   workflow: WorkflowView,
   trading: Trading,
   music: Music,
+  film: FilmView,
   overview: Overview,
   agents: Agents,
   mcp: Mcp,

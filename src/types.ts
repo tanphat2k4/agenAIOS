@@ -58,6 +58,30 @@ export interface Device {
   models: { name: string; vram: string }[]
 }
 
+export interface Film {
+  id: string
+  title: string
+  arcTaskId: string
+  projectSlug: string
+  stage: string
+  status: 'queued' | 'running' | 'needs_review' | 'done' | 'error'
+  publicUrl: string
+  aspectRatio: string
+  contentMode: string
+  channelId: string
+  createdBy: string
+  errorMessage: string
+  createdAt: string
+  updatedAt: string
+  // live fields from GET /films/:id (not persisted on the row)
+  progress?: Record<string, unknown>[]
+  subStage?: string | null
+  review?: Record<string, unknown> | null
+  scriptSegments?: unknown[] | null
+  elapsedSeconds?: number
+  offline?: boolean
+}
+
 export interface McpServer {
   id: string
   name: string
@@ -258,6 +282,6 @@ export interface PersonCard {
 }
 
 export type ViewName =
-  | 'channels' | 'rooms' | 'cron' | 'knowledge' | 'editor' | 'workflow' | 'trading' | 'music'
+  | 'channels' | 'rooms' | 'cron' | 'knowledge' | 'editor' | 'workflow' | 'trading' | 'music' | 'film'
   | 'overview' | 'agents' | 'mcp' | 'tasks' | 'devices' | 'logs'
   | 'perms' | 'billing' | 'plans' | 'users' | 'notifs' | 'language' | 'profile'

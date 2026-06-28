@@ -8,6 +8,7 @@ from app.routers import (
     channels,
     cron,
     devices,
+    films,
     knowledge,
     logs,
     mcp,
@@ -37,6 +38,7 @@ api_router.include_router(workflows.router)
 api_router.include_router(cron.router)
 api_router.include_router(tasks.router)
 api_router.include_router(devices.router)
+api_router.include_router(films.router)
 api_router.include_router(logs.router)
 api_router.include_router(knowledge.router)
 api_router.include_router(notifs.router)

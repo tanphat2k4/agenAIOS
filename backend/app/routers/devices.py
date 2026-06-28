@@ -30,6 +30,8 @@ _INFRA = [
      "role": "Agent Gateway (Telegram)", "os": "WSL", "router": False},
     {"id": "dev-comfyui", "name": "ComfyUI", "port": 8188, "host": "192.168.1.4", "icon": "🎨", "addr": "192.168.1.4:8188",
      "role": "Tạo ảnh/clip (GPU)", "os": "PC-B", "router": False},
+    {"id": "dev-arcreel", "name": "ArcReel", "port": 1242, "host": "localhost", "icon": "🎬", "addr": "localhost:1242",
+     "role": "Xưởng làm phim AI", "os": "FastAPI", "router": False},
 ]
 _INFRA_IDS = {s["id"] for s in _INFRA}
 

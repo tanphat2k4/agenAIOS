@@ -36,6 +36,11 @@ class Settings(BaseSettings):
     OPENCLAW_AGENT: str = "trading"
     OPENCLAW_TELEGRAM_CHAT: str = "5389237483"
 
+    # ArcReel film engine (separate FastAPI service on :1242). Call over HTTP with an arc- API key.
+    ARCREEL_BASE_URL: str = "http://127.0.0.1:1242"
+    ARCREEL_API_KEY: str = ""
+    ARCREEL_DIR: str = r"D:\ArcReel"  # same-host disk path → stream the finished mp4 directly
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]

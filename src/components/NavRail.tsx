@@ -14,6 +14,7 @@ const WORKSPACE: NavItem[] = [
   { label: 'Agent Workflow', icon: '🧩', view: 'workflow' },
   { label: 'Chứng khoán', icon: '📈', view: 'trading' },
   { label: 'Âm nhạc', icon: '🎵', view: 'music' },
+  { label: 'Phim', icon: '🎬', view: 'film' },
 ]
 const LEAD: NavItem[] = [
   { label: 'Tổng quan', icon: '▦', view: 'overview' },

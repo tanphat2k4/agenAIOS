@@ -5,7 +5,7 @@ import type { ChatMessage } from './data/richText'
 import type {
   Agent, TaskItem, Device, McpServer, Workflow, CronJob, KnowledgeEntry,
   RoleDef, SessionLog, UserRow, Invite, Signup, Notif, Channel, RoomDef,
-  RoomMember, PersonCard, ViewName,
+  RoomMember, PersonCard, ViewName, Film,
 } from './types'
 import type { RoomFile } from './data/channelsExtra'
 
@@ -236,6 +236,12 @@ export interface AppState {
   rooms: RoomDef[]
   roomForm: { name: string; channel: string; visibility: string }
   roomMembersById: Record<string, RoomMember[]>
+
+  // ----- films (ArcReel) -----
+  filmsData: Film[]
+  filmForm: { title: string; novel: string; aspectRatio: string; contentMode: string }
+  activeFilm: string | null
+  showCreateFilm: boolean
 }
 
 type Set = (partial: Partial<AppState> | ((s: AppState) => Partial<AppState>)) => void
@@ -310,6 +316,18 @@ export interface AppActions {
   createDevice: () => void
   openDevice: (id: string) => void
   closeDevice: () => void
+
+  // films (ArcReel)
+  loadFilms: () => Promise<void>
+  openCreateFilm: () => void
+  closeCreateFilm: () => void
+  onFilmField: (k: string, v: unknown) => void
+  createFilm: () => Promise<void>
+  openFilm: (id: string) => void
+  closeFilm: () => void
+  refreshFilm: (id: string) => Promise<void>
+  approveFilm: (id: string, selections?: Record<string, number>) => Promise<void>
+  cancelFilm: (id: string) => Promise<void>
 
   // logs
   setLogsTab: (t: string) => void
@@ -580,6 +598,7 @@ const initial: AppState = {
   knowledgeData: seed.knowledgeData as KnowledgeEntry[],
   rooms: seed.rooms as RoomDef[], roomForm: { name: '', channel: '', visibility: 'private' },
   roomMembersById: seed.roomMembersById as Record<string, RoomMember[]>,
+  filmsData: [], filmForm: { title: '', novel: '', aspectRatio: '9:16', contentMode: 'narration' }, activeFilm: null, showCreateFilm: false,
 }
 
 export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
@@ -652,6 +671,42 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
     try {
       const msgs = await api.get(`/channels/${id}/messages`)
       set((s) => ({ messages: { ...s.messages, [id]: msgs } }))
+    } catch { /* ignore */ }
+  },
+
+  // ---------- films (ArcReel) ----------
+  loadFilms: async () => {
+    try { const films = await api.get('/films'); set({ filmsData: films }) } catch { /* arcreel offline */ }
+  },
+  openCreateFilm: () => set({ showCreateFilm: true, filmForm: { title: '', novel: '', aspectRatio: '9:16', contentMode: 'narration' } }),
+  closeCreateFilm: () => set({ showCreateFilm: false }),
+  onFilmField: (k, v) => set((s) => ({ filmForm: { ...s.filmForm, [k]: v } })),
+  createFilm: async () => {
+    const f = get().filmForm
+    if (!f.novel.trim()) return
+    try {
+      const film = await api.post('/films', { title: f.title, novel: f.novel, aspectRatio: f.aspectRatio, contentMode: f.contentMode })
+      set((s) => ({ filmsData: [film, ...s.filmsData.filter((x) => x.id !== film.id)], showCreateFilm: false, activeFilm: film.id }))
+      get().fireToast('Đã gửi phim cho ArcReel')
+    } catch { get().fireToast('ArcReel không phản hồi — kiểm tra Thiết bị') }
+  },
+  openFilm: (id) => { set({ activeFilm: id }); get().refreshFilm(id) },
+  closeFilm: () => set({ activeFilm: null }),
+  refreshFilm: async (id) => {
+    try { const film = await api.get('/films/' + id); set((s) => ({ filmsData: s.filmsData.map((x) => x.id === id ? { ...x, ...film } : x) })) } catch { /* ignore */ }
+  },
+  approveFilm: async (id, selections) => {
+    try {
+      const film = await api.post(`/films/${id}/approve`, selections ? { selections } : {})
+      set((s) => ({ filmsData: s.filmsData.map((x) => x.id === id ? { ...x, ...film } : x) }))
+      get().fireToast('Đã duyệt — pipeline tiếp tục')
+    } catch { get().fireToast('Không duyệt được') }
+  },
+  cancelFilm: async (id) => {
+    try {
+      const film = await api.post(`/films/${id}/cancel`, {})
+      set((s) => ({ filmsData: s.filmsData.map((x) => x.id === id ? { ...x, ...film } : x) }))
+      get().fireToast('Đã hủy phim')
     } catch { /* ignore */ }
   },
 
