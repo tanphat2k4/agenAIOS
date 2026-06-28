@@ -508,6 +508,7 @@ export interface AppActions {
   sendMessage: () => void
   pollTradingAnalyze: (channelId: string, ticker: string) => void
   pollMusicChat: (channelId: string) => void
+  pollReel: (channelId: string, filmId: string) => void
   refreshTradingOps: () => void
   reloadWorkflows: () => void
   refreshAfterReport: () => void
@@ -642,6 +643,7 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
     await Promise.all([
       api.post('/trading/channel/ensure').catch(() => {}),
       api.post('/music/ensure').catch(() => {}),
+      api.post('/films/channel/ensure').catch(() => {}),
     ])
     const [channels, agents, mcp, workflows, cron, tasks, devices, sessions, audit, knowledge, rooms, roles, users, invites, signups, notifs, bill, profile, activity, settings] = await Promise.all([
       api.get('/channels'), api.get('/agents'), api.get('/mcp'), api.get('/workflows'), api.get('/cron'),
@@ -1081,6 +1083,14 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
         if (id === 'am-nhac' && text) {
           return api.post('/music/chat', { text }).then(() => get().pollMusicChat(id))
         }
+        // Film channel: Reel — create/control films; replies + gate prompts arrive async
+        if (id === 'phim' && text) {
+          return api.post('/films/chat', { channel_id: id, text }).then((res) => {
+            const replies = (res && res.messages) || []
+            set((s) => ({ messages: { ...s.messages, [id]: [...(s.messages[id] || []), ...replies] } }))
+            if (res && res.filmId) get().pollReel(id, res.filmId)
+          })
+        }
         // DM channels are 1:1 with an agent — auto-generate a real reply via 9Router
         if (dm && text) {
           return api.post(`/channels/${id}/agent-reply`, { agentName: dm.name }).then((reply) => {
@@ -1114,6 +1124,18 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
       }).catch(() => {})
     }
     setTimeout(tick, 4000)
+  },
+  pollReel: (channelId, filmId) => {
+    let n = 0
+    const tick = () => {
+      n++
+      api.get('/films/' + filmId).then((f) => {
+        api.get(`/channels/${channelId}/messages`).then((msgs) => set((s) => ({ messages: { ...s.messages, [channelId]: msgs } }))).catch(() => {})
+        const done = f && (f.status === 'done' || f.status === 'error')
+        if (!done && n < 200) setTimeout(tick, 6000)
+      }).catch(() => { if (n < 200) setTimeout(tick, 6000) })
+    }
+    setTimeout(tick, 3000)
   },
   refreshTradingOps: () => {
     Promise.all([api.get('/mcp'), api.get('/workflows'), api.get('/sessions'), api.get('/knowledge')])
