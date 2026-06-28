@@ -249,7 +249,7 @@ export interface AppActions {
   closeOverlay: () => void
 
   // backend wiring
-  login: (email: string, password: string) => Promise<void>
+  login: (email: string, password: string, remember?: boolean) => Promise<void>
   register: (name: string, email: string, password: string) => Promise<void>
   bootAuth: () => Promise<void>
   hydrate: () => Promise<void>
@@ -597,8 +597,8 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
   closeOverlay: () => set({ overlay: null }),
 
   // ---------- backend wiring ----------
-  login: async (email, password) => {
-    const r = await api.post('/auth/login', { email, password })
+  login: async (email, password, remember = true) => {
+    const r = await api.post('/auth/login', { email, password, remember })
     setToken(r.access_token)
     set({ authed: true })
     await get().hydrate()

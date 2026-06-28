@@ -56,7 +56,7 @@ export function Auth() {
     setBusy(true)
     try {
       if (mode === 'register') await register(form.name.trim(), form.email, form.password)
-      else await login(form.email, form.password)
+      else await login(form.email, form.password, remember)
       // success: `authed` flips and App swaps to the workspace
     } catch (err) {
       fireToast(err instanceof Error ? err.message : 'Có lỗi xảy ra, thử lại')

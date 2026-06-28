@@ -24,6 +24,7 @@ class RegisterIn(BaseModel):
 class LoginIn(BaseModel):
     email: EmailStr
     password: str
+    remember: bool = True
 
 
 def _initial(name: str, email: str) -> str:
@@ -34,8 +35,9 @@ def _initial(name: str, email: str) -> str:
     return base[0].upper() if base else "?"
 
 
-def _issue(user: User) -> Token:
-    return Token(access_token=create_access_token(user.id))
+def _issue(user: User, remember: bool = True) -> Token:
+    # "Ghi nhớ đăng nhập trong 30 ngày" checked → 30-day token; unchecked → 1-day session.
+    return Token(access_token=create_access_token(user.id, expires_minutes=43200 if remember else 1440))
 
 
 @router.post("/register", response_model=Token)
@@ -68,7 +70,7 @@ def login(body: LoginIn, db: Session = Depends(get_db)):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Email hoặc mật khẩu không đúng"
         )
-    return _issue(user)
+    return _issue(user, body.remember)
 
 
 @router.post("/token", response_model=Token, include_in_schema=True)
