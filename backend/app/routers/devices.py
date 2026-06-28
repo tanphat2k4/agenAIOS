@@ -1,5 +1,7 @@
 import random
+import socket
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -20,6 +22,68 @@ def _jit(v: int, lo: int, hi: int) -> int:
     return max(lo, min(hi, v + round((random.random() - 0.5) * 16)))
 
 
+# ── infra services shown as devices, with LIVE status (TCP probe) ──────────────
+_INFRA = [
+    {"id": "dev-9router", "name": "9Router", "port": 20128, "icon": "🧠", "addr": "localhost:20128",
+     "role": "LLM Gateway (fast-chat)", "os": "WSL · Next.js", "router": True},
+    {"id": "dev-openclaw", "name": "OpenClaw", "port": 18789, "icon": "🤖", "addr": "localhost:18789",
+     "role": "Agent Gateway (Telegram)", "os": "WSL", "router": False},
+]
+_INFRA_IDS = {s["id"] for s in _INFRA}
+
+
+def _probe(port: int, host: str = "localhost", timeout: float = 1.5) -> bool:
+    """True if something is listening on host:port (service up). Uses 'localhost' so WSL
+    services bound to ::1 (not 127.0.0.1) are detected."""
+    try:
+        with socket.create_connection((host, port), timeout=timeout):
+            return True
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _router_models() -> list:
+    """Models 9Router is serving (OpenAI-compatible /v1/models), or [] if unreachable."""
+    try:
+        data = httpx.get("http://localhost:20128/v1/models", timeout=3).json().get("data", [])
+        return [{"name": m.get("id", "?"), "vram": "—"} for m in data][:8]
+    except Exception:  # noqa: BLE001
+        return []
+
+
+def _ensure_infra(db: Session) -> None:
+    for i, spec in enumerate(_INFRA):
+        d = db.get(Device, spec["id"])
+        if d:  # keep static fields in sync (addr/role/icon)
+            d.name, d.addr, d.os, d.role, d.icon, d.type = (
+                spec["name"], spec["addr"], spec["os"], spec["role"], spec["icon"], "gateway")
+        else:
+            db.add(Device(
+                id=spec["id"], name=spec["name"], type="gateway", icon=spec["icon"], status="offline",
+                addr=spec["addr"], os=spec["os"], cpu="—", cpuPct=0, ram="—", ramPct=0,
+                gpu="—", gpuPct=0, vram="—", uptime="—", lastSeen="—",
+                role=spec["role"], models=[], sort=-100 + i,
+            ))
+    db.commit()
+
+
+def _refresh_infra(db: Session) -> None:
+    """Live-probe 9Router + OpenClaw and update their status/models."""
+    for spec in _INFRA:
+        d = db.get(Device, spec["id"])
+        if not d:
+            continue
+        up = _probe(spec["port"])
+        d.status = "online" if up else "offline"
+        d.uptime = "đang chạy" if up else "—"
+        d.lastSeen = "vừa xong"
+        if spec["router"]:
+            models = _router_models() if up else []
+            d.models = models
+            d.gpu = "qua 9Router" if up else "—"
+    db.commit()
+
+
 class DeviceCreate(BaseModel):
     name: str
     type: str = "server"
@@ -29,6 +93,8 @@ class DeviceCreate(BaseModel):
 
 @router.get("")
 def list_devices(db: Session = Depends(get_db)):
+    _ensure_infra(db)
+    _refresh_infra(db)  # live status for 9Router + OpenClaw
     return rows_to_list(db.scalars(select(Device).order_by(Device.sort, Device.id)))
 
 
@@ -50,8 +116,10 @@ def create_device(body: DeviceCreate, db: Session = Depends(get_db)):
 
 @router.post("/refresh")
 def refresh_devices(db: Session = Depends(get_db)):
+    _ensure_infra(db)
+    _refresh_infra(db)  # live re-probe 9Router + OpenClaw
     for d in db.scalars(select(Device)):
-        if d.status != "online":
+        if d.status != "online" or d.id in _INFRA_IDS:
             continue
         d.cpuPct = _jit(d.cpuPct, 4, 97)
         d.ramPct = _jit(d.ramPct, 20, 95)
