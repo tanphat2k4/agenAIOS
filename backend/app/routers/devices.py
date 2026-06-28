@@ -24,10 +24,12 @@ def _jit(v: int, lo: int, hi: int) -> int:
 
 # ── infra services shown as devices, with LIVE status (TCP probe) ──────────────
 _INFRA = [
-    {"id": "dev-9router", "name": "9Router", "port": 20128, "icon": "🧠", "addr": "localhost:20128",
+    {"id": "dev-9router", "name": "9Router", "port": 20128, "host": "localhost", "icon": "🧠", "addr": "localhost:20128",
      "role": "LLM Gateway (fast-chat)", "os": "WSL · Next.js", "router": True},
-    {"id": "dev-openclaw", "name": "OpenClaw", "port": 18789, "icon": "🤖", "addr": "localhost:18789",
+    {"id": "dev-openclaw", "name": "OpenClaw", "port": 18789, "host": "localhost", "icon": "🤖", "addr": "localhost:18789",
      "role": "Agent Gateway (Telegram)", "os": "WSL", "router": False},
+    {"id": "dev-comfyui", "name": "ComfyUI", "port": 8188, "host": "192.168.1.4", "icon": "🎨", "addr": "192.168.1.4:8188",
+     "role": "Tạo ảnh/clip (GPU)", "os": "PC-B", "router": False},
 ]
 _INFRA_IDS = {s["id"] for s in _INFRA}
 
@@ -73,7 +75,7 @@ def _refresh_infra(db: Session) -> None:
         d = db.get(Device, spec["id"])
         if not d:
             continue
-        up = _probe(spec["port"])
+        up = _probe(spec["port"], spec.get("host", "localhost"))
         d.status = "online" if up else "offline"
         d.uptime = "đang chạy" if up else "—"
         d.lastSeen = "vừa xong"
