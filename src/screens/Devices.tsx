@@ -1,5 +1,6 @@
 import { useStore } from '@/store'
 import { Hover } from '@/components/ui/Hover'
+import { useT } from '@/i18n'
 import type { Device } from '@/types'
 
 // ---- view-model helpers (ported verbatim from renderVals) ----
@@ -74,12 +75,13 @@ function GaugeRow({ g, large }: { g: Gauge; large?: boolean }) {
 
 function DeviceDrawer({ dd }: { dd: Device }) {
   const s = useStore()
+  const t = useT()
   const ts = devTypeStyle[dd.type] ?? devTypeStyle.server
   const on = dd.status === 'online'
   const gauges = mkGauges(dd)
 
   const specs = [
-    { k: 'Hệ điều hành', v: dd.os },
+    { k: t('Hệ điều hành'), v: dd.os },
     { k: 'CPU',          v: dd.cpu },
     { k: 'RAM',          v: dd.ram },
     { k: 'GPU',          v: dd.gpu },
@@ -126,12 +128,12 @@ function DeviceDrawer({ dd }: { dd: Device }) {
 
         {/* scrollable body */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px 24px' }}>
-          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.7px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 11 }}>Tài nguyên</div>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.7px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 11 }}>{t('Tài nguyên')}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24 }}>
             {gauges.map((g) => <GaugeRow key={g.label} g={g} large />)}
           </div>
 
-          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.7px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 10 }}>Thông số</div>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.7px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 10 }}>{t('Thông số')}</div>
           <div style={{ border: '1px solid var(--line)', borderRadius: 13, overflow: 'hidden', marginBottom: 22 }}>
             {specs.map((sp) => (
               <div key={sp.k} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '11px 14px', borderBottom: '1px solid var(--line)' }}>
@@ -143,7 +145,7 @@ function DeviceDrawer({ dd }: { dd: Device }) {
 
           {dd.models.length > 0 && (
             <>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.7px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 10 }}>Model đang nạp</div>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.7px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 10 }}>{t('Model đang nạp')}</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {dd.models.map((m) => (
                   <div key={m.name} style={{ display: 'flex', alignItems: 'center', gap: 11, border: '1px solid var(--line)', borderRadius: 11, padding: '11px 13px' }}>
@@ -164,17 +166,17 @@ function DeviceDrawer({ dd }: { dd: Device }) {
             onClick={s.openDevSsh}
             style={{ flex: 1, border: 'none', background: 'var(--jade)', color: '#fff', borderRadius: 99, padding: 12, font: 'inherit', fontSize: 13, fontWeight: 700, cursor: 'pointer', boxShadow: '0 6px 16px rgba(10,92,72,.2)' }}
             hover={{ background: 'var(--jade-deep)' }}
-          >⟳ Mở SSH</Hover>
+          >⟳ {t('Mở SSH')}</Hover>
           <Hover
             as="button"
             onClick={s.toggleDevicePower}
             style={{ border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink-2)', borderRadius: 99, padding: '12px 20px', font: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
             hover={{ borderColor: 'var(--danger)', color: 'var(--danger)' }}
-          >{on ? 'Tắt thiết bị' : 'Đánh thức'}</Hover>
+          >{on ? t('Tắt thiết bị') : t('Đánh thức')}</Hover>
           <Hover
             as="button"
             onClick={s.askDeleteDevice}
-            title="Xóa thiết bị"
+            title={t('Xóa thiết bị')}
             style={{ width: 46, flex: 'none', border: '1px solid var(--danger)', background: '#FBEAE7', color: 'var(--danger)', borderRadius: 99, padding: 12, font: 'inherit', fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             hover={{ background: 'var(--danger)', color: '#fff' }}
           >🗑</Hover>
@@ -186,6 +188,7 @@ function DeviceDrawer({ dd }: { dd: Device }) {
 
 function AddDeviceModal() {
   const s = useStore()
+  const t = useT()
   const devTypeBtns = (
     [
       { key: 'server',  label: '🖥 Server' },
@@ -210,21 +213,21 @@ function AddDeviceModal() {
         style={{ width: 500, maxWidth: '94vw', maxHeight: '88vh', overflowY: 'auto', background: 'var(--surface)', borderRadius: 22, padding: 26, boxShadow: '0 24px 60px rgba(22,32,28,.28)', animation: 'pop .2s ease both' }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-          <div style={{ fontSize: 19, fontWeight: 800, letterSpacing: '-.3px' }}>Thêm thiết bị</div>
+          <div style={{ fontSize: 19, fontWeight: 800, letterSpacing: '-.3px' }}>{t('Thêm thiết bị')}</div>
           <Hover as="button" onClick={s.closeAddDevice} style={{ width: 34, height: 34, borderRadius: 99, border: 'none', background: 'var(--bg)', fontSize: 16, cursor: 'pointer', color: 'var(--ink-2)' }} hover={{ background: 'var(--jade-soft)' }}>✕</Hover>
         </div>
-        <div style={{ fontSize: 12.5, color: 'var(--ink-2)', marginBottom: 20, lineHeight: 1.5 }}>Đăng ký máy nhà hoặc client mới vào mạng Tailscale của workspace.</div>
+        <div style={{ fontSize: 12.5, color: 'var(--ink-2)', marginBottom: 20, lineHeight: 1.5 }}>{t('Đăng ký máy nhà hoặc client mới vào mạng Tailscale của workspace.')}</div>
 
-        <label style={labelStyle}>Tên thiết bị</label>
+        <label style={labelStyle}>{t('Tên thiết bị')}</label>
         <input
           autoFocus
           value={s.devForm.name}
           onChange={(e) => s.onDevField('name', e.target.value)}
-          placeholder="VD: máy-nhà-04"
+          placeholder={t('VD: máy-nhà-04')}
           style={{ ...inputStyle, marginBottom: 16 }}
         />
 
-        <label style={labelStyle}>Loại thiết bị</label>
+        <label style={labelStyle}>{t('Loại thiết bị')}</label>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
           {devTypeBtns.map((t) => (
             <Hover
@@ -237,28 +240,28 @@ function AddDeviceModal() {
           ))}
         </div>
 
-        <label style={labelStyle}>Địa chỉ Tailscale</label>
+        <label style={labelStyle}>{t('Địa chỉ Tailscale')}</label>
         <input
           value={s.devForm.addr}
           onChange={(e) => s.onDevField('addr', e.target.value)}
-          placeholder="VD: 100.84.12.6 hoặc host.zy.ts.net"
+          placeholder={t('VD: 100.84.12.6 hoặc host.zy.ts.net')}
           style={{ ...inputStyle, marginBottom: 16, fontFamily: 'var(--mono)' }}
         />
 
-        <label style={labelStyle}>Vai trò</label>
+        <label style={labelStyle}>{t('Vai trò')}</label>
         <input
           value={s.devForm.role}
           onChange={(e) => s.onDevField('role', e.target.value)}
-          placeholder="VD: Model host phụ trợ"
+          placeholder={t('VD: Model host phụ trợ')}
           style={{ ...inputStyle, marginBottom: 22 }}
         />
 
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-          <Hover as="button" onClick={s.closeAddDevice} style={ghostBtn} hover={{ background: 'var(--line)' }}>Hủy</Hover>
+          <Hover as="button" onClick={s.closeAddDevice} style={ghostBtn} hover={{ background: 'var(--line)' }}>{t('Hủy')}</Hover>
           <button
             onClick={s.createDevice}
             style={{ fontSize: 13.5, fontWeight: 700, color: '#fff', background: canCreate ? 'var(--jade)' : '#9FBDB1', border: 'none', borderRadius: 99, padding: '11px 26px', cursor: canCreate ? 'pointer' : 'default', fontFamily: 'inherit' }}
-          >Thêm thiết bị</button>
+          >{t('Thêm thiết bị')}</button>
         </div>
       </div>
     </div>
@@ -267,6 +270,7 @@ function AddDeviceModal() {
 
 function DeleteDeviceConfirm({ deviceName }: { deviceName: string }) {
   const s = useStore()
+  const t = useT()
   const dismiss = () => s.set({ devDeleteConfirm: false })
 
   return (
@@ -279,16 +283,16 @@ function DeleteDeviceConfirm({ deviceName }: { deviceName: string }) {
         style={{ width: 420, maxWidth: '92vw', background: 'var(--surface)', borderRadius: 20, padding: 26, boxShadow: '0 24px 60px rgba(22,32,28,.28)', animation: 'pop .2s ease both' }}
       >
         <div style={{ width: 48, height: 48, borderRadius: 14, background: '#FBEAE7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, marginBottom: 16 }}>🗑</div>
-        <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.3px', marginBottom: 8 }}>Xóa thiết bị {deviceName}?</div>
-        <div style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.55, marginBottom: 24 }}>Thiết bị sẽ bị gỡ khỏi mạng Tailscale của workspace. Model đang nạp sẽ ngừng phục vụ. Hành động này không thể hoàn tác.</div>
+        <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.3px', marginBottom: 8 }}>{t('Xóa thiết bị')} {deviceName}?</div>
+        <div style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.55, marginBottom: 24 }}>{t('Thiết bị sẽ bị gỡ khỏi mạng Tailscale của workspace. Model đang nạp sẽ ngừng phục vụ. Hành động này không thể hoàn tác.')}</div>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-          <Hover as="button" onClick={dismiss} style={ghostBtn} hover={{ background: 'var(--line)' }}>Hủy</Hover>
+          <Hover as="button" onClick={dismiss} style={ghostBtn} hover={{ background: 'var(--line)' }}>{t('Hủy')}</Hover>
           <Hover
             as="button"
             onClick={s.confirmDeleteDevice}
             style={{ fontSize: 13.5, fontWeight: 700, color: '#fff', background: 'var(--danger)', border: 'none', borderRadius: 99, padding: '11px 26px', cursor: 'pointer', fontFamily: 'inherit' }}
             hover={{ background: '#A63E2E' }}
-          >Xóa thiết bị</Hover>
+          >{t('Xóa thiết bị')}</Hover>
         </div>
       </div>
     </div>
@@ -299,6 +303,7 @@ function DeleteDeviceConfirm({ deviceName }: { deviceName: string }) {
 
 export function Devices() {
   const s = useStore()
+  const t = useT()
   const D = s.devicesData
 
   // ---- view-model (ported from renderVals) ----
@@ -306,14 +311,14 @@ export function Devices() {
   const warnCount = onlineDevs.filter((d) => d.cpuPct > 85 || d.ramPct > 85 || d.gpuPct > 85).length
 
   const devStats = [
-    { icon: '🖥',  label: 'Tổng thiết bị',  value: D.length + '',                                      sub: 'đã đăng ký' },
-    { icon: '🟢', label: 'Đang online',      value: onlineDevs.length + '',                             sub: 'qua Tailscale' },
-    { icon: '🧠', label: 'Model phục vụ',    value: D.reduce((a, d) => a + d.models.length, 0) + '',   sub: 'đang nạp trên GPU' },
-    { icon: '⚠️', label: 'Cảnh báo tải',     value: warnCount + '',                                     sub: 'thiết bị quá ngưỡng' },
+    { icon: '🖥',  label: t('Tổng thiết bị'),  value: D.length + '',                                    sub: t('đã đăng ký') },
+    { icon: '🟢', label: t('Đang online'),     value: onlineDevs.length + '',                           sub: t('qua Tailscale') },
+    { icon: '🧠', label: t('Model phục vụ'),   value: D.reduce((a, d) => a + d.models.length, 0) + '',  sub: t('đang nạp trên GPU') },
+    { icon: '⚠️', label: t('Cảnh báo tải'),    value: warnCount + '',                                   sub: t('thiết bị quá ngưỡng') },
   ]
 
   const devFilterDefs = [
-    { key: 'all',     label: 'Tất cả',  count: D.length },
+    { key: 'all',     label: t('Tất cả'),  count: D.length },
     { key: 'server',  label: 'Server',  count: D.filter((d) => d.type === 'server').length },
     { key: 'gateway', label: 'Gateway', count: D.filter((d) => d.type === 'gateway').length },
     { key: 'desktop', label: 'Desktop', count: D.filter((d) => d.type === 'desktop').length },
@@ -333,10 +338,10 @@ export function Devices() {
       {/* ===== HEADER ===== */}
       <header style={{ flex: 'none', background: 'var(--surface)', borderBottom: '1px solid var(--line)', padding: '16px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <div style={{ fontSize: 11.5, color: 'var(--placeholder)', marginBottom: 3 }}>Workspace › Thiết bị</div>
+          <div style={{ fontSize: 11.5, color: 'var(--placeholder)', marginBottom: 3 }}>Workspace › {t('Thiết bị')}</div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
-            <span style={{ fontSize: 21, fontWeight: 800, letterSpacing: '-.4px' }}>Thiết bị</span>
-            <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>Máy nhà &amp; client trong mạng Tailscale</span>
+            <span style={{ fontSize: 21, fontWeight: 800, letterSpacing: '-.4px' }}>{t('Thiết bị')}</span>
+            <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>{t('Máy nhà & client trong mạng Tailscale')}</span>
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
@@ -345,13 +350,13 @@ export function Devices() {
             onClick={s.refreshDevices}
             style={{ display: 'flex', alignItems: 'center', gap: 7, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink-2)', borderRadius: 99, padding: '9px 16px', font: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}
             hover={{ borderColor: 'var(--jade)', color: 'var(--jade-deep)' }}
-          >⟳ Làm mới</Hover>
+          >⟳ {t('Làm mới')}</Hover>
           <Hover
             as="button"
             onClick={s.openAddDevice}
             style={{ display: 'flex', alignItems: 'center', gap: 7, border: 'none', background: 'var(--jade)', color: '#fff', borderRadius: 99, padding: '10px 18px', font: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 6px 16px rgba(10,92,72,.2)' }}
             hover={{ background: 'var(--jade-deep)' }}
-          >＋ Thêm thiết bị</Hover>
+          >＋ {t('Thêm thiết bị')}</Hover>
         </div>
       </header>
 
@@ -393,7 +398,7 @@ export function Devices() {
             <input
               value={s.devicesQuery}
               onChange={(e) => s.set({ devicesQuery: e.target.value })}
-              placeholder="Tìm thiết bị theo tên, IP, vai trò…"
+              placeholder={t('Tìm thiết bị theo tên, IP, vai trò…')}
               style={{ flex: 1, border: 'none', outline: 'none', fontFamily: 'inherit', fontSize: 12.5, background: 'transparent', color: 'var(--ink)' }}
             />
           </div>
