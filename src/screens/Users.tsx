@@ -334,7 +334,7 @@ export function Users() {
                   <div>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 700, color: u.statusFg, background: u.statusBg, padding: '4px 11px', borderRadius: 99 }}>
                       <span style={{ width: 7, height: 7, borderRadius: 99, background: u.statusDot }}></span>
-                      {u.statusLabel}
+                      {t(u.statusLabel)}
                     </span>
                   </div>
                   {/* last active col */}

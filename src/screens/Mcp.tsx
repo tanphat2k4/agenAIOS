@@ -167,7 +167,7 @@ export function Mcp() {
                     <div style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.name}</div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 7, flexWrap: 'wrap' }}>
                       <span style={{ fontFamily: 'var(--mono)', fontSize: 10, fontWeight: 700, color: tr.fg, background: tr.bg, padding: '2px 8px', borderRadius: 6 }}>{m.transport}</span>
-                      <span style={{ fontSize: 10.5, fontWeight: 700, color: st.fg, background: st.bg, padding: '2px 9px', borderRadius: 99 }}>{st.label}</span>
+                      <span style={{ fontSize: 10.5, fontWeight: 700, color: st.fg, background: st.bg, padding: '2px 9px', borderRadius: 99 }}>{t(st.label)}</span>
                     </div>
                   </div>
                 </div>
@@ -211,7 +211,7 @@ export function Mcp() {
                     <div style={{ fontSize: 17, fontWeight: 800, letterSpacing: '-.2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{mc.name}</div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 5 }}>
                       <span style={{ fontFamily: 'var(--mono)', fontSize: 10, fontWeight: 700, color: mc.transFg, background: mc.transBg, padding: '2px 8px', borderRadius: 6 }}>{mc.transport}</span>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: mc.statusFg, background: mc.statusBg, padding: '2px 10px', borderRadius: 99 }}>{mc.statusLabel}</span>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: mc.statusFg, background: mc.statusBg, padding: '2px 10px', borderRadius: 99 }}>{t(mc.statusLabel)}</span>
                     </div>
                   </div>
                 </div>

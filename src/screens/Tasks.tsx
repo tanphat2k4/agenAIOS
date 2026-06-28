@@ -54,7 +54,7 @@ function TaskDrawer() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 13 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ fontFamily: 'var(--mono)', fontSize: 13, fontWeight: 700, color: 'var(--jade-deep)', background: 'var(--jade-soft)', padding: '3px 11px', borderRadius: 8 }}>{td.id}</span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: p.fg, background: p.bg, padding: '3px 11px', borderRadius: 99 }}>{t('Ưu tiên')} {p.label}</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: p.fg, background: p.bg, padding: '3px 11px', borderRadius: 99 }}>{t('Ưu tiên')} {t(p.label)}</span>
             </div>
             <Hover as="button" onClick={s.closeTask}
               style={{ width: 34, height: 34, borderRadius: 99, border: 'none', background: 'var(--bg)', fontSize: 16, cursor: 'pointer', color: 'var(--ink-2)' }}
@@ -95,7 +95,7 @@ function TaskDrawer() {
               <Hover key={b.key} as="button"
                 onClick={() => s.moveTask(td.id, b.key)}
                 style={{ border: `1.5px solid ${b.border}`, background: b.bg, color: b.fg, borderRadius: 11, padding: 11, font: 'inherit', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
-                hover={{ borderColor: 'var(--jade)' }}>{b.label}</Hover>
+                hover={{ borderColor: 'var(--jade)' }}>{t(b.label)}</Hover>
             ))}
           </div>
 
@@ -238,7 +238,7 @@ function TaskModal() {
           {statusBtns.map((o) => (
             <button key={o.key} onClick={() => s.onTaskField('status', o.key)}
               style={{ flex: 1, border: 'none', background: o.bg, color: o.fg, borderRadius: 99, padding: '9px 6px', font: 'inherit', fontSize: 11.5, fontWeight: 600, cursor: 'pointer' }}>
-              {o.label}
+              {t(o.label)}
             </button>
           ))}
         </div>
@@ -436,7 +436,7 @@ export function Tasks() {
               {/* column header */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '13px 16px', borderBottom: '1px solid var(--line)' }}>
                 <span style={{ width: 9, height: 9, borderRadius: 99, background: col.accent, display: 'inline-block', flex: 'none' }} />
-                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--ink)' }}>{col.label}</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--ink)' }}>{t(col.label)}</span>
                 <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--placeholder)', background: 'var(--bg)', padding: '2px 9px', borderRadius: 99, marginLeft: 'auto' }}>{col.count}</span>
               </div>
 
@@ -448,7 +448,7 @@ export function Tasks() {
                     hover={{ borderColor: 'var(--jade)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
                       <span style={{ fontFamily: 'var(--mono)', fontSize: 11, fontWeight: 700, color: 'var(--jade-deep)' }}>{c.id}</span>
-                      <span style={{ fontSize: 10, fontWeight: 700, color: c.prioFg, background: c.prioBg, padding: '2px 8px', borderRadius: 99 }}>{c.prioLabel}</span>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: c.prioFg, background: c.prioBg, padding: '2px 8px', borderRadius: 99 }}>{t(c.prioLabel)}</span>
                     </div>
                     <div style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.4, color: 'var(--ink)', marginBottom: 11 }}>{c.title}</div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

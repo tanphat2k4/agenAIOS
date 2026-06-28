@@ -311,7 +311,7 @@ export function Cron() {
                 return (
                   <button key={o.k} onClick={() => s.onCronField('freq', o.k)}
                     style={{ flex: 1, border: 'none', background: sel ? 'var(--jade)' : 'transparent', color: sel ? '#fff' : 'var(--ink-2)', borderRadius: 99, padding: '9px 6px', font: 'inherit', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                    {o.label}
+                    {t(o.label)}
                   </button>
                 )
               })}
@@ -326,7 +326,7 @@ export function Cron() {
                     <Hover key={dc.d} as="button" onClick={() => s.onCronField('dow', dc.d)}
                       style={{ flex: 1, border: `1.5px solid ${sel ? 'var(--jade)' : 'var(--line)'}`, background: sel ? 'var(--jade)' : 'var(--surface)', color: sel ? '#fff' : 'var(--ink-2)', borderRadius: 10, padding: '9px 0', font: 'inherit', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
                       hover={{ borderColor: 'var(--jade)' }}>
-                      {dc.l}
+                      {t(dc.l)}
                     </Hover>
                   )
                 })}

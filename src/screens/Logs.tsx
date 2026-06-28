@@ -192,7 +192,7 @@ export function Logs() {
                       hover={{ background: '#FBEAE7', color: 'var(--danger)' }}>🗑</Hover>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: x.statusFg, background: x.statusBg, padding: '2px 8px', borderRadius: 99 }}>{x.statusLabel}</span>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: x.statusFg, background: x.statusBg, padding: '2px 8px', borderRadius: 99 }}>{t(x.statusLabel)}</span>
                     <span style={{ fontSize: 10.5, color: 'var(--ink-2)' }}>#{x.room}</span>
                     <span style={{ fontSize: 10.5, color: 'var(--placeholder)', marginLeft: 'auto' }}>{x.duration} · {x.tokens}</span>
                   </div>
@@ -213,7 +213,7 @@ export function Logs() {
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 7, flex: 'none' }}>
-                    <span style={{ fontSize: 10.5, fontWeight: 700, color: sessActive.statusFg, background: sessActive.statusBg, padding: '3px 10px', borderRadius: 99 }}>{sessActive.statusLabel}</span>
+                    <span style={{ fontSize: 10.5, fontWeight: 700, color: sessActive.statusFg, background: sessActive.statusBg, padding: '3px 10px', borderRadius: 99 }}>{t(sessActive.statusLabel)}</span>
                     <Hover as="button" title={t('Sao chép')}
                       style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink-2)', fontSize: 12, cursor: 'pointer' }}
                       hover={{ background: 'var(--jade-soft)', color: 'var(--jade-deep)' }}>

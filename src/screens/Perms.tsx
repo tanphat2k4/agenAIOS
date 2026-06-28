@@ -289,7 +289,7 @@ export function Perms() {
               <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, overflow: 'hidden' }}>
                 {permGroups.map((g) => (
                   <div key={g.group} style={{ borderBottom: '1px solid var(--line)' }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.7px', textTransform: 'uppercase', color: 'var(--placeholder)', padding: '14px 22px 4px' }}>{g.group}</div>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.7px', textTransform: 'uppercase', color: 'var(--placeholder)', padding: '14px 22px 4px' }}>{t(g.group)}</div>
                     {g.items.map((p) => (
                       <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '12px 22px' }}>
                         <span style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--ink)' }}>{p.label}</span>

@@ -293,7 +293,7 @@ export function WorkflowView() {
                           <div style={{ width: 26, height: 26, borderRadius: 99, background: st.color, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10.5, fontWeight: 700, flex: 'none' }}>{st.initial}</div>
                           <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--ink-2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{st.agent}</span>
                         </div>
-                        <span style={{ fontSize: 10.5, fontWeight: 700, color: st.statusFg, background: st.statusBg, padding: '3px 10px', borderRadius: 99, flex: 'none' }}>{st.statusLabel}</span>
+                        <span style={{ fontSize: 10.5, fontWeight: 700, color: st.statusFg, background: st.statusBg, padding: '3px 10px', borderRadius: 99, flex: 'none' }}>{t(st.statusLabel)}</span>
                       </div>
                       <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)', marginBottom: 8 }}>{st.title}</div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
@@ -313,7 +313,7 @@ export function WorkflowView() {
                 {awRuns.map((r, i) => (
                   <Hover key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 15px', borderBottom: i < awRuns.length - 1 ? '1px solid var(--line)' : 'none' }} hover={{ background: 'var(--bg)' }}>
                     <span style={{ width: 8, height: 8, borderRadius: 99, background: r.dot, flex: 'none' }}></span>
-                    <span style={{ fontSize: 12.5, fontWeight: 600, color: r.labelFg, width: 90, flex: 'none' }}>{r.label}</span>
+                    <span style={{ fontSize: 12.5, fontWeight: 600, color: r.labelFg, width: 90, flex: 'none' }}>{t(r.label)}</span>
                     <span style={{ fontSize: 12, color: 'var(--ink-2)', flex: 1 }}>{r.time}</span>
                     <span style={{ fontFamily: 'var(--mono)', fontSize: 11.5, color: 'var(--placeholder)' }}>{r.dur}</span>
                   </Hover>
@@ -348,7 +348,7 @@ export function WorkflowView() {
                   <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)' }}>{t('Agent phụ trách')}</div>
                   <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink)', marginTop: 2 }}>{sd.agent}</div>
                 </div>
-                <span style={{ fontSize: 11, fontWeight: 700, color: sd.statusFg, background: sd.statusBg, padding: '4px 11px', borderRadius: 99, flex: 'none' }}>{sd.statusLabel}</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: sd.statusFg, background: sd.statusBg, padding: '4px 11px', borderRadius: 99, flex: 'none' }}>{t(sd.statusLabel)}</span>
               </div>
               {/* dataset io */}
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.7px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 8 }}>Dataset in / out</div>
@@ -361,7 +361,7 @@ export function WorkflowView() {
                 </div>
                 <div style={{ flex: 1, border: '1px solid var(--line)', borderRadius: 13, padding: 12 }}>
                   <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 4 }}>{t('Trạng thái')}</div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: sd.statusFg }}>{sd.statusLabel}</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: sd.statusFg }}>{t(sd.statusLabel)}</div>
                 </div>
               </div>
               {/* description */}

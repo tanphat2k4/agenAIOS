@@ -45,82 +45,82 @@ export function Trading() {
   const pfInput = { border: '1.5px solid var(--line)', borderRadius: 10, padding: '8px 10px', font: 'inherit', fontSize: 12.5, background: 'var(--bg)', color: 'var(--ink)', outline: 'none' } as const
 
   const runFast = async (key: string, label: string) => {
-    const t = ticker.trim().toUpperCase()
-    if (!t && key !== 'macro') return
+    const sym = ticker.trim().toUpperCase()
+    if (!sym && key !== 'macro') return
     setBusy(true)
-    setTitle(label + (key === 'macro' ? '' : ' · ' + t))
-    setResult('Đang tải…')
+    setTitle(t(label) + (key === 'macro' ? '' : ' · ' + sym))
+    setResult(t('Đang tải…'))
     try {
       const path =
         key === 'macro' ? '/trading/macro'
-          : key === 'news' ? `/trading/news/${encodeURIComponent(t)}?days=7`
-            : `/trading/${key}/${encodeURIComponent(t)}`
+          : key === 'news' ? `/trading/news/${encodeURIComponent(sym)}?days=7`
+            : `/trading/${key}/${encodeURIComponent(sym)}`
       const r = await api.get(path)
-      setResult(r.text || '(không có kết quả)')
+      setResult(r.text || t('(không có kết quả)'))
       refreshOps()
     } catch (e) {
-      setResult('Lỗi: ' + (e instanceof Error ? e.message : 'unknown'))
+      setResult(t('Lỗi: ') + (e instanceof Error ? e.message : 'unknown'))
     } finally {
       setBusy(false)
     }
   }
 
   const runAnalyze = async () => {
-    const t = ticker.trim().toUpperCase()
-    if (!t || busy) return
+    const sym = ticker.trim().toUpperCase()
+    if (!sym || busy) return
     setBusy(true)
-    setTitle('Phân tích đầy đủ · ' + t)
-    setResult('⏳ Đang chạy pipeline đa-agent (analyst → tranh luận → trader → rủi ro → portfolio). Lần đầu có thể mất vài phút; kết quả được lưu cache trong ngày…')
+    setTitle(t('Phân tích đầy đủ · ') + sym)
+    setResult(t('⏳ Đang chạy pipeline đa-agent (analyst → tranh luận → trader → rủi ro → portfolio). Lần đầu có thể mất vài phút; kết quả được lưu cache trong ngày…'))
     try {
-      await api.post('/trading/analyze', { ticker: t })
+      await api.post('/trading/analyze', { ticker: sym })
       const poll = async () => {
         try {
-          const r = await api.get(`/trading/analyze?ticker=${encodeURIComponent(t)}`)
+          const r = await api.get(`/trading/analyze?ticker=${encodeURIComponent(sym)}`)
           if (r.status === 'done' || r.status === 'error') {
-            setResult(r.result || '(không có kết quả)')
+            setResult(r.result || t('(không có kết quả)'))
             setBusy(false)
             refreshOps()
           } else {
             setTimeout(poll, 3000)
           }
         } catch (e) {
-          setResult('Lỗi khi chờ kết quả: ' + (e instanceof Error ? e.message : 'unknown'))
+          setResult(t('Lỗi khi chờ kết quả: ') + (e instanceof Error ? e.message : 'unknown'))
           setBusy(false)
         }
       }
       setTimeout(poll, 3000)
     } catch (e) {
-      setResult('Lỗi: ' + (e instanceof Error ? e.message : 'unknown'))
+      setResult(t('Lỗi: ') + (e instanceof Error ? e.message : 'unknown'))
       setBusy(false)
     }
   }
 
   const runPipeline = async () => {
-    const t = ticker.trim().toUpperCase()
-    if (!t || busy) return
+    const sym = ticker.trim().toUpperCase()
+    if (!sym || busy) return
     setBusy(true)
-    setTitle('Pipeline đa-agent · ' + t)
-    setResult('⏳ Pipeline đa-agent đang chạy: Market Data · Fundamental · Technical · News → Bull/Bear → Backtest → Risk → Trader → Portfolio (mỗi agent 1 lượt 9Router)…')
+    setTitle(t('Pipeline đa-agent · ') + sym)
+    setResult(t('⏳ Pipeline đa-agent đang chạy: Market Data · Fundamental · Technical · News → Bull/Bear → Backtest → Risk → Trader → Portfolio (mỗi agent 1 lượt 9Router)…'))
     try {
-      await api.post('/trading/pipeline', { ticker: t })
+      await api.post('/trading/pipeline', { ticker: sym })
       const poll = async () => {
         try {
-          const r = await api.get(`/trading/pipeline?ticker=${encodeURIComponent(t)}`)
+          const r = await api.get(`/trading/pipeline?ticker=${encodeURIComponent(sym)}`)
           if (r.status === 'done' || r.status === 'error') {
-            setResult(r.result || '(không có kết quả)')
+            setResult(r.result || t('(không có kết quả)'))
             setBusy(false)
             refreshOps()
           } else {
             setTimeout(poll, 3000)
           }
         } catch (e) {
-          setResult('Lỗi khi chờ kết quả: ' + (e instanceof Error ? e.message : 'unknown'))
+          setResult(t('Lỗi khi chờ kết quả: ') + (e instanceof Error ? e.message : 'unknown'))
           setBusy(false)
         }
       }
       setTimeout(poll, 3000)
     } catch (e) {
-      setResult('Lỗi: ' + (e instanceof Error ? e.message : 'unknown'))
+      setResult(t('Lỗi: ') + (e instanceof Error ? e.message : 'unknown'))
       setBusy(false)
     }
   }
@@ -159,7 +159,7 @@ export function Trading() {
                   background: a.slow ? 'var(--jade)' : 'var(--jade-soft)', color: a.slow ? '#fff' : 'var(--jade-deep)',
                 }}
                 hover={busy ? {} : { background: a.slow ? 'var(--jade-deep)' : 'var(--jade)', color: '#fff' }}>
-                {a.slow ? '🧠' : '⚡'} {a.label}
+                {a.slow ? '🧠' : '⚡'} {t(a.label)}
               </Hover>
             ))}
           </div>

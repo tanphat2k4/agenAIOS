@@ -141,7 +141,7 @@ export function Agents() {
                     <div style={{ fontSize: 11.5, color: 'var(--placeholder)', marginTop: 1 }}>{a.handle}</div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
                       <span style={{ fontSize: 10.5, fontWeight: 700, color: rl.fg, background: rl.bg, padding: '2px 9px', borderRadius: 99 }}>{a.role}</span>
-                      <span style={{ fontSize: 10.5, fontWeight: 700, color: st.fg, background: st.bg, padding: '2px 9px', borderRadius: 99 }}>{st.label}</span>
+                      <span style={{ fontSize: 10.5, fontWeight: 700, color: st.fg, background: st.bg, padding: '2px 9px', borderRadius: 99 }}>{t(st.label)}</span>
                     </div>
                   </div>
                 </div>

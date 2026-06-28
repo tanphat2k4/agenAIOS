@@ -38,7 +38,7 @@ export function Overview() {
     : (RANGES.find((r) => r.key === rangeKey)?.days ?? 7)
   const rangeLabel = isCustom
     ? (custom.from && custom.to ? `${custom.from} → ${custom.to}` : t('Tùy chỉnh'))
-    : (RANGES.find((r) => r.key === rangeKey)?.label ?? t('7 ngày qua'))
+    : t(RANGES.find((r) => r.key === rangeKey)?.label ?? '7 ngày qua')
 
   // ---- time-aware greeting (tied to the signed-in user, not hard-coded) ----
   const now = new Date()
@@ -200,7 +200,7 @@ export function Overview() {
                     <Hover as="button" key={r.key} onClick={() => { setRangeKey(r.key); setRangeOpen(false) }}
                       style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, background: rangeKey === r.key ? 'var(--jade-soft)' : 'transparent', border: 'none', borderRadius: 9, padding: '9px 11px', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, color: rangeKey === r.key ? 'var(--jade-deep)' : 'var(--ink)' }}
                       hover={{ background: 'var(--jade-soft)' }}>
-                      {r.label}{rangeKey === r.key && <span>✓</span>}
+                      {t(r.label)}{rangeKey === r.key && <span>✓</span>}
                     </Hover>
                   ))}
                   <div style={{ height: 1, background: 'var(--line)', margin: '6px 8px' }} />

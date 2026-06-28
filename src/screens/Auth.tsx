@@ -70,7 +70,7 @@ export function Auth() {
   const sFill = ['#C94F3D', '#E8A33D', '#E8A33D', '#0A7B52']
   const sColors = ['#E4EAE6', '#E4EAE6', '#E4EAE6', '#E4EAE6']
   for (let i = 0; i < score; i++) sColors[i] = sFill[Math.min(score - 1, 3)]
-  const strengthLabel = form.password ? t('Độ mạnh:') + ' ' + sLabels[score] : t('Dùng 8+ ký tự, gồm chữ hoa, số và ký tự đặc biệt')
+  const strengthLabel = form.password ? t('Độ mạnh:') + ' ' + t(sLabels[score]) : t('Dùng 8+ ký tự, gồm chữ hoa, số và ký tự đặc biệt')
   const emailBad = emailTouched && !!form.email && !emailValid(form.email)
 
   const tabOn = { bg: '#fff', fg: '#16201C', shadow: '0 1px 4px rgba(22,32,28,.1)' }
@@ -102,8 +102,8 @@ export function Auth() {
               <div key={p.title} style={{ display: 'flex', alignItems: 'center', gap: 13 }}>
                 <div style={{ width: 34, height: 34, flex: 'none', borderRadius: 10, background: 'rgba(255,255,255,.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>{p.icon}</div>
                 <div>
-                  <div style={{ fontSize: 13.5, fontWeight: 700 }}>{p.title}</div>
-                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,.68)' }}>{p.sub}</div>
+                  <div style={{ fontSize: 13.5, fontWeight: 700 }}>{t(p.title)}</div>
+                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,.68)' }}>{t(p.sub)}</div>
                 </div>
               </div>
             ))}
