@@ -705,4 +705,10 @@ export const EN: Record<string, string> = {
   "Pipeline đa-agent · ": "Multi-agent pipeline · ",
   "⏳ Pipeline đa-agent đang chạy: Market Data · Fundamental · Technical · News → Bull/Bear → Backtest → Risk → Trader → Portfolio (mỗi agent 1 lượt 9Router)…": "⏳ Multi-agent pipeline running: Market Data · Fundamental · Technical · News → Bull/Bear → Backtest → Risk → Trader → Portfolio (one 9Router call per agent)…",
   "Đã dừng": "Stopped",
+
+  // -- Final 4 (Music status msgs / Rooms) --
+  '⏳ Đang trigger Beat (music-orchestrator) qua OpenClaw…\n\nPipeline ~15 phút: Research → Strategy → Songwriter → Fact-check → Arrangement → Reviewer → Scorer. Beat sẽ gửi batch (lời + điểm) lên Telegram + hiện ở mục "Batch tuần này" dưới đây.': "⏳ Triggering Beat (music-orchestrator) via OpenClaw…\n\nPipeline ~15 min: Research → Strategy → Songwriter → Fact-check → Arrangement → Reviewer → Scorer. Beat will send the batch (lyrics + scores) to Telegram and show it under \"This week's batch\" below.",
+  'Chưa có batch — bấm "Chạy batch nhạc tuần này" ở trên để Beat tạo.': "No batch yet — click \"Run this week's music batch\" above for Beat to create one.",
+  'đã tạo knowledge mới "Chuẩn bị nội dung facebook".': "created new knowledge \"Chuẩn bị nội dung facebook\".",
+  'Sửa phòng': "Edit room",
 }
