@@ -23,7 +23,7 @@ from app.core.deps import get_current_user
 from app.core.security import decode_access_token
 from app.crud import get_or_404, next_sort, now_hm, uid
 from app.models.agents import Workflow
-from app.models.comms import Channel, Message
+from app.models.comms import Channel, Message, Room
 from app.models.film import Film
 from app.models.user import User
 from app.serialize import row_to_dict, rows_to_list
@@ -299,6 +299,29 @@ class FilmChatIn(BaseModel):
     text: str = ""
 
 
+FILM_ROOM_ID = "room-phim"
+
+
+def ensure_film_room(db: Session) -> Room:
+    """A 'Phim' workspace in the Rooms list (next to Âm nhạc / Chứng khoán), linked to the
+    'phim' channel where you chat @reel to create films. Mirrors ensure_music_room."""
+    owner = db.scalar(select(User).where(User.role == "owner")) or db.scalar(select(User))
+    want: list = []
+    if owner:
+        want.append({"name": owner.name, "handle": "@" + (owner.name.split()[0].lower() if owner.name else "owner"),
+                     "type": "user", "role": "lead", "initial": owner.initial, "color": owner.color})
+    want.append({"name": REEL["name"], "handle": REEL["handle"], "type": "agent", "role": "staff",
+                 "initial": REEL["initial"], "color": REEL["color"]})
+    r = db.get(Room, FILM_ROOM_ID)
+    if not r:
+        r = Room(id=FILM_ROOM_ID, name="Phim", slug="phim", channel=FILM_CHANNEL_ID, members=want, sort=-3)
+        db.add(r)
+    else:
+        r.members = want
+    db.commit()
+    return r
+
+
 @router.post("/channel/ensure")
 def ensure_film_chat_channel(db: Session = Depends(get_db), current: User = Depends(get_current_user)):
     from app.routers.channels import _channel_dict, add_channel_member
@@ -308,6 +331,7 @@ def ensure_film_chat_channel(db: Session = Depends(get_db), current: User = Depe
                        role="Owner" if getattr(current, "role", "") == "owner" else "Member", userId=current.id)
     add_channel_member(db, ch.id, name=REEL["name"], initial=REEL["initial"], color=REEL["color"], role="Agent", isAgent=True)
     ensure_film_workflow(db)
+    ensure_film_room(db)
     return _channel_dict(db, ch)
 
 
