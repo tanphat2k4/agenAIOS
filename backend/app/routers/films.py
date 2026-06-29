@@ -102,6 +102,7 @@ def list_films(db: Session = Depends(get_db)):
                 _sync(db, f)
             except Exception:  # noqa: BLE001
                 pass
+    ensure_film_workflow(db)
     return rows_to_list(db.scalars(select(Film).order_by(Film.sort.desc())))
 
 
@@ -146,7 +147,9 @@ def create_film(body: FilmCreate, db: Session = Depends(get_db), current: User =
 
 @router.get("/{film_id}")
 def get_film(film_id: str, db: Session = Depends(get_db)):
-    return _sync(db, get_or_404(db, Film, film_id))
+    out = _sync(db, get_or_404(db, Film, film_id))
+    ensure_film_workflow(db)
+    return out
 
 
 @router.post("/{film_id}/approve")
@@ -275,6 +278,7 @@ def _bg_reel_watch(channel_id: str, film_id: str) -> None:
             f.errorMessage = st.get("error") or ""
             f.updatedAt = _now()
             db.commit()
+            ensure_film_workflow(db)
             if stage == last:
                 continue
             last = stage
@@ -558,10 +562,16 @@ def _film_stage_idx(stage: str) -> int:
     return -1
 
 
+# map film status → the run-status KEY the Agent Workflow screen colours (runDot/runLabel)
+_RUN_KEY = {"done": "success", "error": "failed", "needs_review": "paused", "running": "running", "queued": "running"}
+
+
 def ensure_film_workflow(db: Session) -> None:
-    """A 'Tạo phim (ArcReel)' workflow in the Agent Workflow screen; its 12 steps reflect
-    the latest film's stage. (The per-film live view stays the Film screen.)"""
-    latest = db.scalars(select(Film).order_by(Film.sort.desc())).first()
+    """A 'Tạo phim (ArcReel)' workflow in the Agent Workflow screen. Steps reflect the latest
+    film's stage; runs[]/stats come from the films table. Refreshed on every film poll/watch
+    tick so the card tracks live (the per-film detail view stays the Film screen)."""
+    films = list(db.scalars(select(Film).order_by(Film.sort.desc())))
+    latest = films[0] if films else None
     cur = _film_stage_idx(latest.stage) if latest else -1
     done_all = bool(latest and latest.status == "done")
     err = bool(latest and latest.status == "error")
@@ -576,6 +586,9 @@ def ensure_film_workflow(db: Session) -> None:
         steps.append({"agent": label, "initial": emoji,
                       "color": "#D85A30" if k.startswith("awaiting") else "#3B5BDB",
                       "title": label, "io": "", "status": st, "dur": ""})
+    runs = [{"time": (fm.updatedAt or fm.createdAt or ""), "status": _RUN_KEY.get(fm.status, "running"), "dur": fm.title[:24]} for fm in films[:12]]
+    total = len(films)
+    success = round(100 * sum(1 for fm in films if fm.status == "done") / total) if total else 100
     run_state = "running" if (cur >= 0 and not done_all and not err) else "idle"
     w = db.get(Workflow, _FILM_WF_ID)
     if not w:
@@ -583,11 +596,11 @@ def ensure_film_workflow(db: Session) -> None:
             id=_FILM_WF_ID, name="Tạo phim (ArcReel)",
             desc="Pipeline: tổng quan → kịch bản → thiết kế → phân cảnh → video → lồng tiếng → ghép · 4 cổng duyệt.",
             trigger="manual", triggerLabel="Khi tạo phim", enabled=True,
-            lastRun=(latest.updatedAt if latest else ""), runs24=0, success=100,
-            steps=steps, runs=[], runState=run_state, sort=-2,
+            lastRun=(latest.updatedAt if latest else ""), runs24=total, success=success,
+            steps=steps, runs=runs, runState=run_state, sort=-2,
         ))
     else:
-        w.steps, w.runState = steps, run_state
+        w.steps, w.runState, w.runs, w.runs24, w.success = steps, run_state, runs, total, success
         if latest:
             w.lastRun = latest.updatedAt
     db.commit()
@@ -595,14 +608,21 @@ def ensure_film_workflow(db: Session) -> None:
 
 @router.get("/{film_id}/cost")
 def film_cost(film_id: str, db: Session = Depends(get_db)):
-    """Actual cost/usage for a film's ArcReel project (proxied from /usage/stats)."""
+    """Full cost for a film's ArcReel project: actual usage (total + by-currency),
+    by-provider, and the estimate↔actual drill-down (episode/segment/asset-type)."""
     f = get_or_404(db, Film, film_id)
-    if not f.projectSlug:
-        return {"usage": None}
-    try:
-        return {"usage": arcreel_client.film_usage(f.projectSlug)}
-    except ArcReelError:
-        return {"usage": None, "offline": True}
+    slug = f.projectSlug
+    out: dict = {"actual": None, "byProvider": None, "estimate": None}
+    if not slug:
+        return out
+    for key, fn in (("actual", lambda: arcreel_client.film_usage(slug)),
+                    ("byProvider", lambda: arcreel_client.film_usage(slug, group_by="provider")),
+                    ("estimate", lambda: arcreel_client.cost_estimate(slug))):
+        try:
+            out[key] = fn()
+        except ArcReelError:
+            pass
+    return out
 
 
 # Media proxy — <img>/<video> can't send a Bearer header, so validate a ?token= query

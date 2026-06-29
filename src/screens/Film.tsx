@@ -37,13 +37,10 @@ const STATUS: Record<string, { bg: string; fg: string; label: string }> = {
 
 interface RItem { id: string; label: string; text?: string; image?: string; kind?: string; sceneId?: string; variants?: { variant: number; video: string }[] }
 
-function costTotal(u: Record<string, unknown> | null | undefined): string {
-  if (!u) return ''
-  for (const k of Object.keys(u)) {
-    const v = u[k]
-    if (typeof v === 'number' && v > 0 && /cost|usd|cny|total|tổng/i.test(k)) return (/cny|¥/i.test(k) ? '¥' : '$') + v.toFixed(2)
-  }
-  return ''
+function sumNums(o: unknown): number {
+  if (typeof o === 'number') return o
+  if (o && typeof o === 'object') return Object.values(o as Record<string, unknown>).reduce((s: number, v) => s + sumNums(v), 0)
+  return 0
 }
 
 function stageIndex(stage: string): number {
@@ -72,7 +69,7 @@ export function FilmView() {
   const [review, setReview] = useState<{ kind: string; items: RItem[] } | null>(null)
   const [picks, setPicks] = useState<Record<string, number>>({})
   const [feedback, setFeedback] = useState<Record<string, string>>({})
-  const [cost, setCost] = useState<{ usage?: Record<string, unknown> | null } | null>(null)
+  const [cost, setCost] = useState<{ actual?: Record<string, unknown> | null; byProvider?: unknown; estimate?: Record<string, unknown> | null } | null>(null)
 
   useEffect(() => { s.loadFilms() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -195,6 +192,28 @@ export function FilmView() {
     return null
   }
 
+  const renderCost = () => {
+    if (!cost) return null
+    const a = (cost.actual || {}) as Record<string, unknown>
+    const est = (cost.estimate || {}) as Record<string, unknown>
+    const actualTotal = typeof a.total_cost === 'number' ? (a.total_cost as number) : 0
+    const estTotal = sumNums((est.project_totals as Record<string, unknown> | undefined)?.estimate)
+    const cur = (a.cost_by_currency || {}) as Record<string, number>
+    const prov = cost.byProvider
+    const provEntries: [string, number][] = Array.isArray(prov)
+      ? (prov as Record<string, unknown>[]).map((p): [string, number] => [String(p.provider ?? p.name ?? '?'), sumNums(p)])
+      : (prov && typeof prov === 'object') ? Object.entries(prov as Record<string, unknown>).map(([k, v]): [string, number] => [k, sumNums(v)]) : []
+    return (
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 10, padding: 12, marginBottom: 20, fontSize: 12 }}>
+        <div style={{ fontWeight: 700, marginBottom: 6 }}>💰 {t('Chi phí')}</div>
+        <div style={{ color: 'var(--ink-2)' }}>{t('Thực tế')}: <b style={{ color: 'var(--ink)' }}>${actualTotal.toFixed(2)}</b> · {t('Ước tính')}: <b style={{ color: 'var(--ink)' }}>${estTotal.toFixed(2)}</b></div>
+        {Object.keys(cur).length > 0 && <div style={{ marginTop: 4, color: 'var(--ink-2)' }}>{t('Theo tiền tệ')}: {Object.entries(cur).map(([k, v]) => `${k.toUpperCase()} ${v}`).join(' · ')}</div>}
+        {provEntries.length > 0 && <div style={{ marginTop: 4, color: 'var(--ink-2)' }}>{t('Theo nhà cung cấp')}: {provEntries.map(([k, v]) => `${k}: $${v.toFixed(2)}`).join(' · ')}</div>}
+        {actualTotal === 0 && estTotal === 0 && <div style={{ marginTop: 4, color: 'var(--placeholder)' }}>{t('chưa có dữ liệu (phim chưa chạy thật)')}</div>}
+      </div>
+    )
+  }
+
   const badge = (st: string) => {
     const v = STATUS[st] || STATUS.queued
     return <span style={{ fontSize: 10.5, fontWeight: 700, color: v.fg, background: v.bg, padding: '2px 9px', borderRadius: 99 }}>{t(v.label)}</span>
@@ -243,7 +262,9 @@ export function FilmView() {
           {badge(f.status)}
           {f.offline && <span style={{ fontSize: 11, color: 'var(--danger)' }}>{t('ArcReel ngoại tuyến — kiểm tra Thiết bị')}</span>}
         </div>
-        <div style={{ fontSize: 12, color: 'var(--ink-2)', marginBottom: 18 }}>{f.aspectRatio} · {f.contentMode === 'drama' ? t('Phim truyện') : t('Thuyết minh')}{f.elapsedSeconds ? ` · ${Math.round(f.elapsedSeconds / 60)} ${t('phút')}` : ''} · 💰 {t('Chi phí')}: {costTotal(cost?.usage) || t('chưa có dữ liệu')}</div>
+        <div style={{ fontSize: 12, color: 'var(--ink-2)', marginBottom: 18 }}>{f.aspectRatio} · {f.contentMode === 'drama' ? t('Phim truyện') : t('Thuyết minh')}{f.elapsedSeconds ? ` · ${Math.round(f.elapsedSeconds / 60)} ${t('phút')}` : ''}</div>
+
+        {renderCost()}
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 20 }}>
           {STAGES.map(([key, emoji, label], i) => {

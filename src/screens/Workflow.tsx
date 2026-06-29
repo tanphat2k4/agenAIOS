@@ -1,4 +1,4 @@
-import { type MouseEvent } from 'react'
+import { useEffect, type MouseEvent } from 'react'
 import { useStore } from '@/store'
 import { useT } from '@/i18n'
 import { Hover } from '@/components/ui/Hover'
@@ -50,6 +50,12 @@ function runLabelFg(status: string): string {
 export function WorkflowView() {
   const s = useStore()
   const t = useT()
+
+  // Live-refresh while the screen is open (film workflow tracks the running film). Silent; skips overlays.
+  useEffect(() => {
+    const id = setInterval(() => { if (!useStore.getState().overlay) useStore.getState().pollWorkflows() }, 8000)
+    return () => clearInterval(id)
+  }, [])
 
   // ── derived view-model (mirrors renderVals) ───────────────────────────────
   const wfRunning = s.workflows.filter((w) => w.steps.some((st) => st.status === 'running')).length

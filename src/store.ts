@@ -510,6 +510,7 @@ export interface AppActions {
   pollMusicChat: (channelId: string) => void
   pollReel: (channelId: string, filmId: string) => void
   refreshTradingOps: () => void
+  pollWorkflows: () => void
   reloadWorkflows: () => void
   refreshAfterReport: () => void
   runMusicBatch: () => void
@@ -1142,6 +1143,7 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
       .then(([mcp, workflows, sessions, knowledge]) => set({ mcpData: mcp, workflows, sessionsData: sessions, knowledgeData: knowledge }))
       .catch(() => {})
   },
+  pollWorkflows: () => { api.get('/workflows').then((workflows) => set({ workflows })).catch(() => {}) },
   reloadWorkflows: () => {
     Promise.all([api.get('/workflows'), api.get('/sessions')])
       .then(([workflows, sessions]) => { set({ workflows, sessionsData: sessions }); get().fireToast('Đã tải lại workflow') })

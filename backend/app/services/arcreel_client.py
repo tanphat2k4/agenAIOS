@@ -91,6 +91,12 @@ def asset_ok(task_id: str, kind: str, name: str) -> dict:
     return _req("POST", f"/api/v1/film/run/{task_id}/asset-ok", json={"kind": kind, "name": name}, timeout=30.0)
 
 
-def film_usage(project_slug: str) -> dict:
-    """GET /usage/stats?project_name= — actual cost/usage for a film's project."""
-    return _req("GET", f"/api/v1/usage/stats?project_name={project_slug}", timeout=30.0)
+def film_usage(project_slug: str, group_by: str | None = None) -> dict:
+    """GET /usage/stats?project_name= — actual cost/usage for a film's project (optional group_by=provider)."""
+    q = f"?project_name={project_slug}" + (f"&group_by={group_by}" if group_by else "")
+    return _req("GET", "/api/v1/usage/stats" + q, timeout=30.0)
+
+
+def cost_estimate(project_slug: str) -> dict:
+    """GET /projects/{slug}/cost-estimate — estimate↔actual drill-down (episode/segment/asset-type)."""
+    return _req("GET", f"/api/v1/projects/{project_slug}/cost-estimate", timeout=45.0)

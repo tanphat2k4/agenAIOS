@@ -363,7 +363,6 @@ export const EN: Record<string, string> = {
   "Mô tả": "Description",
   "Server này cung cấp gì cho agent?": "What does this server provide to agents?",
   "Kết nối": "Connect",
-  "⏳ Đang trigger Beat (music-orchestrator) qua OpenClaw…\n\nPipeline ~15 phút: Research → Strategy → Songwriter → Fact-check → Arrangement → Reviewer → Scorer. Beat sẽ gửi batch (lời + điểm) lên Telegram + hiện ở mục \"Batch tuần này\" dưới đây.": "⏳ Triggering Beat (music-orchestrator) via OpenClaw…\n\nPipeline ~15 min: Research → Strategy → Songwriter → Fact-check → Arrangement → Reviewer → Scorer. Beat will send the batch (lyrics + scores) to Telegram and show it under \"This week's batch\" below.",
   "(không có kết quả)": "(no result)",
   "Lỗi khi poll: ": "Polling error: ",
   "Lỗi: ": "Error: ",
@@ -389,7 +388,6 @@ export const EN: Record<string, string> = {
   "Sẵn sàng generate + làm clip": "Ready to generate + make clips",
   "Cần bật máy thiếu để generate/clip": "Turn on the missing machine to generate/clip",
   "Đang tải batch…": "Loading batch…",
-  "Chưa có batch — bấm \"Chạy batch nhạc tuần này\" ở trên để Beat tạo.": "No batch yet — click \"Run this week's music batch\" above to have Beat create one.",
   "Ẩn lời": "Hide lyrics",
   "Xem lời": "View lyrics",
   "Đang gửi…": "Sending…",
@@ -497,7 +495,6 @@ export const EN: Record<string, string> = {
   "Cài đặt": "Settings",
   "Trạng thái": "Status",
   "Đang hoạt động": "Active",
-  "đã tạo knowledge mới \"Chuẩn bị nội dung facebook\".": "created a new knowledge base \"Facebook content prep\".",
   "cập nhật lịch đăng 6 fanpage vệ tinh.": "updated the posting schedule for 6 satellite fanpages.",
   "thêm Brook - Báo Cáo Zy Novel vào phòng.": "added Brook - Zy Novel Reporting to the room.",
   "hoàn tất research 12 bài viral.": "finished research on 12 viral posts.",
@@ -706,10 +703,6 @@ export const EN: Record<string, string> = {
   "⏳ Pipeline đa-agent đang chạy: Market Data · Fundamental · Technical · News → Bull/Bear → Backtest → Risk → Trader → Portfolio (mỗi agent 1 lượt 9Router)…": "⏳ Multi-agent pipeline running: Market Data · Fundamental · Technical · News → Bull/Bear → Backtest → Risk → Trader → Portfolio (one 9Router call per agent)…",
   "Đã dừng": "Stopped",
 
-  // -- Final 4 (Music status msgs / Rooms) --
-  '⏳ Đang trigger Beat (music-orchestrator) qua OpenClaw…\n\nPipeline ~15 phút: Research → Strategy → Songwriter → Fact-check → Arrangement → Reviewer → Scorer. Beat sẽ gửi batch (lời + điểm) lên Telegram + hiện ở mục "Batch tuần này" dưới đây.': "⏳ Triggering Beat (music-orchestrator) via OpenClaw…\n\nPipeline ~15 min: Research → Strategy → Songwriter → Fact-check → Arrangement → Reviewer → Scorer. Beat will send the batch (lyrics + scores) to Telegram and show it under \"This week's batch\" below.",
-  'Chưa có batch — bấm "Chạy batch nhạc tuần này" ở trên để Beat tạo.': "No batch yet — click \"Run this week's music batch\" above for Beat to create one.",
-  'đã tạo knowledge mới "Chuẩn bị nội dung facebook".': "created new knowledge \"Chuẩn bị nội dung facebook\".",
   'Sửa phòng': "Edit room",
 
   // ── Film screen (ArcReel) ──
@@ -774,4 +767,11 @@ export const EN: Record<string, string> = {
   // ── Film cost (Phase 4) ──
   "Chi phí": "Cost",
   "chưa có dữ liệu": "no data yet",
+
+  // ── Film cost detail (Phase 4+) ──
+  "Thực tế": "Actual",
+  "Ước tính": "Estimate",
+  "Theo tiền tệ": "By currency",
+  "Theo nhà cung cấp": "By provider",
+  "chưa có dữ liệu (phim chưa chạy thật)": "no data yet (film not run for real)",
 }
