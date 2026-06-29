@@ -770,4 +770,8 @@ export const EN: Record<string, string> = {
   "Đang ghép lại phim…": "Recomposing the film…",
   "Đổi bản & ghép lại": "Swap variant & recompose",
   "Ghép lại": "Recompose",
+
+  // ── Film cost (Phase 4) ──
+  "Chi phí": "Cost",
+  "chưa có dữ liệu": "no data yet",
 }

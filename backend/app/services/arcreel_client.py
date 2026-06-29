@@ -89,3 +89,8 @@ def scene_ok(task_id: str, scene_id: str) -> dict:
 def asset_ok(task_id: str, kind: str, name: str) -> dict:
     """POST /film/run/{id}/asset-ok — accept one asset sheet (accumulates)."""
     return _req("POST", f"/api/v1/film/run/{task_id}/asset-ok", json={"kind": kind, "name": name}, timeout=30.0)
+
+
+def film_usage(project_slug: str) -> dict:
+    """GET /usage/stats?project_name= — actual cost/usage for a film's project."""
+    return _req("GET", f"/api/v1/usage/stats?project_name={project_slug}", timeout=30.0)

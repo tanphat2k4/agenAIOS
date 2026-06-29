@@ -37,6 +37,15 @@ const STATUS: Record<string, { bg: string; fg: string; label: string }> = {
 
 interface RItem { id: string; label: string; text?: string; image?: string; kind?: string; sceneId?: string; variants?: { variant: number; video: string }[] }
 
+function costTotal(u: Record<string, unknown> | null | undefined): string {
+  if (!u) return ''
+  for (const k of Object.keys(u)) {
+    const v = u[k]
+    if (typeof v === 'number' && v > 0 && /cost|usd|cny|total|tổng/i.test(k)) return (/cny|¥/i.test(k) ? '¥' : '$') + v.toFixed(2)
+  }
+  return ''
+}
+
 function stageIndex(stage: string): number {
   const i = STAGES.findIndex(([k]) => k === stage)
   if (i >= 0) return i
@@ -63,6 +72,7 @@ export function FilmView() {
   const [review, setReview] = useState<{ kind: string; items: RItem[] } | null>(null)
   const [picks, setPicks] = useState<Record<string, number>>({})
   const [feedback, setFeedback] = useState<Record<string, string>>({})
+  const [cost, setCost] = useState<{ usage?: Record<string, unknown> | null } | null>(null)
 
   useEffect(() => { s.loadFilms() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -92,6 +102,11 @@ export function FilmView() {
       api.get(`/films/${film.id}/review`).then((r) => setReview(r)).catch(() => {})
     }
   }, [film?.id, film?.status, film?.stage]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    setCost(null)
+    if (film) api.get(`/films/${film.id}/cost`).then((c) => setCost(c)).catch(() => {})
+  }, [film?.id, film?.status]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const assetSrc = (fid: string, p: string) => `${api.base}/films/${fid}/asset?path=${encodeURIComponent(p)}&token=${getToken()}`
   const doRegen = (fid: string, sceneId: string) => {
@@ -228,7 +243,7 @@ export function FilmView() {
           {badge(f.status)}
           {f.offline && <span style={{ fontSize: 11, color: 'var(--danger)' }}>{t('ArcReel ngoại tuyến — kiểm tra Thiết bị')}</span>}
         </div>
-        <div style={{ fontSize: 12, color: 'var(--ink-2)', marginBottom: 18 }}>{f.aspectRatio} · {f.contentMode === 'drama' ? t('Phim truyện') : t('Thuyết minh')}{f.elapsedSeconds ? ` · ${Math.round(f.elapsedSeconds / 60)} ${t('phút')}` : ''}</div>
+        <div style={{ fontSize: 12, color: 'var(--ink-2)', marginBottom: 18 }}>{f.aspectRatio} · {f.contentMode === 'drama' ? t('Phim truyện') : t('Thuyết minh')}{f.elapsedSeconds ? ` · ${Math.round(f.elapsedSeconds / 60)} ${t('phút')}` : ''} · 💰 {t('Chi phí')}: {costTotal(cost?.usage) || t('chưa có dữ liệu')}</div>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 20 }}>
           {STAGES.map(([key, emoji, label], i) => {

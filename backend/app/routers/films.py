@@ -22,6 +22,7 @@ from app.core.database import SessionLocal, get_db
 from app.core.deps import get_current_user
 from app.core.security import decode_access_token
 from app.crud import get_or_404, next_sort, now_hm, uid
+from app.models.agents import Workflow
 from app.models.comms import Channel, Message
 from app.models.film import Film
 from app.models.user import User
@@ -302,6 +303,7 @@ def ensure_film_chat_channel(db: Session = Depends(get_db), current: User = Depe
     add_channel_member(db, ch.id, name=current.name, initial=current.initial, color=current.color,
                        role="Owner" if getattr(current, "role", "") == "owner" else "Member", userId=current.id)
     add_channel_member(db, ch.id, name=REEL["name"], initial=REEL["initial"], color=REEL["color"], role="Agent", isAgent=True)
+    ensure_film_workflow(db)
     return _channel_dict(db, ch)
 
 
@@ -535,6 +537,72 @@ def recompose_film(film_id: str, body: RecomposeBody, db: Session = Depends(get_
     except ArcReelError as exc:
         raise HTTPException(status_code=503, detail=f"ArcReel không phản hồi: {exc}") from exc
     return _sync(db, f)
+
+
+# ───────────────────────── Phase 4: pipeline workflow + cost ─────────────────────────
+_FILM_WF_ID = "wf-film-arcreel"
+_FILM_STAGES = [
+    ("overview", "📖", "Tổng quan"), ("script", "📝", "Kịch bản"),
+    ("awaiting_script_review", "🚪", "Duyệt kịch bản"), ("asset_sheets", "👤", "Thiết kế NV"),
+    ("awaiting_asset_review", "🚪", "Duyệt thiết kế"), ("storyboards", "🖼", "Phân cảnh"),
+    ("awaiting_review", "🚪", "Duyệt phân cảnh"), ("videos", "🎬", "Dựng video"),
+    ("awaiting_video_review", "🚪", "Duyệt video"), ("narration", "🎙", "Lồng tiếng"),
+    ("compose", "🎞", "Ghép phim"), ("done", "✅", "Giao phim"),
+]
+
+
+def _film_stage_idx(stage: str) -> int:
+    for i, (k, _e, _l) in enumerate(_FILM_STAGES):
+        if k == stage:
+            return i
+    return -1
+
+
+def ensure_film_workflow(db: Session) -> None:
+    """A 'Tạo phim (ArcReel)' workflow in the Agent Workflow screen; its 12 steps reflect
+    the latest film's stage. (The per-film live view stays the Film screen.)"""
+    latest = db.scalars(select(Film).order_by(Film.sort.desc())).first()
+    cur = _film_stage_idx(latest.stage) if latest else -1
+    done_all = bool(latest and latest.status == "done")
+    err = bool(latest and latest.status == "error")
+    steps = []
+    for i, (k, emoji, label) in enumerate(_FILM_STAGES):
+        if done_all or (cur >= 0 and i < cur):
+            st = "done"
+        elif i == cur and not done_all:
+            st = "paused" if k.startswith("awaiting") else "running"
+        else:
+            st = "idle"
+        steps.append({"agent": label, "initial": emoji,
+                      "color": "#D85A30" if k.startswith("awaiting") else "#3B5BDB",
+                      "title": label, "io": "", "status": st, "dur": ""})
+    run_state = "running" if (cur >= 0 and not done_all and not err) else "idle"
+    w = db.get(Workflow, _FILM_WF_ID)
+    if not w:
+        db.add(Workflow(
+            id=_FILM_WF_ID, name="Tạo phim (ArcReel)",
+            desc="Pipeline: tổng quan → kịch bản → thiết kế → phân cảnh → video → lồng tiếng → ghép · 4 cổng duyệt.",
+            trigger="manual", triggerLabel="Khi tạo phim", enabled=True,
+            lastRun=(latest.updatedAt if latest else ""), runs24=0, success=100,
+            steps=steps, runs=[], runState=run_state, sort=-2,
+        ))
+    else:
+        w.steps, w.runState = steps, run_state
+        if latest:
+            w.lastRun = latest.updatedAt
+    db.commit()
+
+
+@router.get("/{film_id}/cost")
+def film_cost(film_id: str, db: Session = Depends(get_db)):
+    """Actual cost/usage for a film's ArcReel project (proxied from /usage/stats)."""
+    f = get_or_404(db, Film, film_id)
+    if not f.projectSlug:
+        return {"usage": None}
+    try:
+        return {"usage": arcreel_client.film_usage(f.projectSlug)}
+    except ArcReelError:
+        return {"usage": None, "offline": True}
 
 
 # Media proxy — <img>/<video> can't send a Bearer header, so validate a ?token= query
