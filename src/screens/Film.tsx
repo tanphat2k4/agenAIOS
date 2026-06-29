@@ -35,6 +35,8 @@ const STATUS: Record<string, { bg: string; fg: string; label: string }> = {
   error: { bg: '#FBEAE7', fg: '#C94F3D', label: 'Lỗi' },
 }
 
+interface RItem { id: string; label: string; text?: string; image?: string; kind?: string; sceneId?: string; variants?: { variant: number; video: string }[] }
+
 function stageIndex(stage: string): number {
   const i = STAGES.findIndex(([k]) => k === stage)
   if (i >= 0) return i
@@ -58,6 +60,9 @@ export function FilmView() {
   const film = films.find((f) => f.id === s.activeFilm) || null
   const form = s.filmForm
   const [videoUrl, setVideoUrl] = useState('')
+  const [review, setReview] = useState<{ kind: string; items: RItem[] } | null>(null)
+  const [picks, setPicks] = useState<Record<string, number>>({})
+  const [feedback, setFeedback] = useState<Record<string, string>>({})
 
   useEffect(() => { s.loadFilms() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -79,6 +84,86 @@ export function FilmView() {
       .catch(() => {})
     return () => { if (url) URL.revokeObjectURL(url) }
   }, [film?.id, film?.status, film?.publicUrl]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // load the gate's review items (segments / asset+storyboard images / video variants)
+  useEffect(() => {
+    setReview(null); setPicks({}); setFeedback({})
+    if (film && film.status === 'needs_review') {
+      api.get(`/films/${film.id}/review`).then((r) => setReview(r)).catch(() => {})
+    }
+  }, [film?.id, film?.status, film?.stage]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const assetSrc = (fid: string, p: string) => `${api.base}/films/${fid}/asset?path=${encodeURIComponent(p)}&token=${getToken()}`
+  const doRegen = (fid: string, sceneId: string) => {
+    api.post(`/films/${fid}/regenerate`, { sceneId, instructions: feedback[sceneId] || '' })
+      .then(() => { s.fireToast(t('Đã yêu cầu dựng lại') + ' ' + sceneId); api.get(`/films/${fid}/review`).then((r) => setReview(r)).catch(() => {}) })
+      .catch(() => s.fireToast(t('Không dựng lại được')))
+  }
+  const doPick = (fid: string, sceneId: string, variant: number) => {
+    setPicks((x) => ({ ...x, [sceneId]: variant }))
+    api.post(`/films/${fid}/pick`, { sceneId, variant }).catch(() => {})
+  }
+  const renderGate = (f: Film) => {
+    if (!review) return <div style={{ fontSize: 12, color: 'var(--ink-2)', marginBottom: 4 }}>{t('Đang tải nội dung duyệt…')}</div>
+    const items = review.items || []
+    if (items.length === 0) return <div style={{ fontSize: 12, color: 'var(--ink-2)', marginBottom: 4 }}>{t('(chưa có nội dung để duyệt)')}</div>
+    if (review.kind === 'script') {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 360, overflowY: 'auto', marginBottom: 4 }}>
+          {items.map((it) => (
+            <div key={it.id} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 8, padding: '8px 10px' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--jade-deep)' }}>{it.label}</div>
+              <div style={{ fontSize: 12.5, color: 'var(--ink)', lineHeight: 1.5, marginTop: 2 }}>{it.text}</div>
+            </div>
+          ))}
+        </div>
+      )
+    }
+    if (review.kind === 'asset' || review.kind === 'storyboard') {
+      return (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(150px,1fr))', gap: 10, marginBottom: 4 }}>
+          {items.map((it) => (
+            <div key={it.id} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden' }}>
+              <img src={assetSrc(f.id, it.image || '')} alt={it.label} style={{ width: '100%', display: 'block', aspectRatio: '1 / 1', objectFit: 'cover', background: '#eee' }} />
+              <div style={{ padding: '6px 8px', fontSize: 11, fontWeight: 600 }}>{it.label}</div>
+              {review.kind === 'storyboard' && (
+                <div style={{ padding: '0 8px 8px', display: 'flex', gap: 4 }}>
+                  <input value={feedback[it.id] || ''} onChange={(e) => setFeedback((x) => ({ ...x, [it.id]: e.target.value }))} placeholder={t('góp ý…')} style={{ flex: 1, minWidth: 0, fontSize: 11, border: '1px solid var(--line)', borderRadius: 6, padding: '3px 6px', fontFamily: 'inherit', background: 'var(--surface)', color: 'var(--ink)' }} />
+                  <Hover as="button" onClick={() => doRegen(f.id, it.id)} style={{ fontSize: 11, border: '1px solid var(--line)', background: 'var(--surface)', borderRadius: 6, padding: '3px 8px', cursor: 'pointer', flex: 'none' }} hover={{ borderColor: 'var(--jade)' }}>{t('Dựng lại')}</Hover>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )
+    }
+    if (review.kind === 'video') {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 4 }}>
+          {items.map((it) => (
+            <div key={it.id} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 8, padding: 8 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 6 }}>{t('Cảnh')} {it.label}</div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {(it.variants || []).map((v) => (
+                  <div key={v.variant} style={{ textAlign: 'center' }}>
+                    <video src={assetSrc(f.id, v.video)} controls style={{ width: 150, borderRadius: 6, background: '#000' }} />
+                    {(it.variants || []).length > 1 && (
+                      <Hover as="button" onClick={() => doPick(f.id, it.sceneId || it.id, v.variant)} style={{ display: 'block', width: '100%', marginTop: 4, fontSize: 11, border: '1px solid', borderColor: picks[it.sceneId || it.id] === v.variant ? 'var(--jade)' : 'var(--line)', background: picks[it.sceneId || it.id] === v.variant ? 'var(--jade-soft)' : 'var(--surface)', borderRadius: 6, padding: '3px', cursor: 'pointer' }} hover={{ borderColor: 'var(--jade)' }}>{picks[it.sceneId || it.id] === v.variant ? '✓ ' : ''}{t('Bản')} {v.variant}</Hover>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: 'flex', gap: 4, marginTop: 8 }}>
+                <input value={feedback[it.sceneId || it.id] || ''} onChange={(e) => setFeedback((x) => ({ ...x, [it.sceneId || it.id]: e.target.value }))} placeholder={t('góp ý…')} style={{ flex: 1, fontSize: 11, border: '1px solid var(--line)', borderRadius: 6, padding: '3px 6px', fontFamily: 'inherit', background: 'var(--surface)', color: 'var(--ink)' }} />
+                <Hover as="button" onClick={() => doRegen(f.id, it.sceneId || it.id)} style={{ fontSize: 11, border: '1px solid var(--line)', background: 'var(--surface)', borderRadius: 6, padding: '3px 8px', cursor: 'pointer', flex: 'none' }} hover={{ borderColor: 'var(--jade)' }}>{t('Dựng lại')}</Hover>
+              </div>
+            </div>
+          ))}
+        </div>
+      )
+    }
+    return null
+  }
 
   const badge = (st: string) => {
     const v = STATUS[st] || STATUS.queued
@@ -150,8 +235,9 @@ export function FilmView() {
         {f.status === 'needs_review' && (
           <div style={{ background: '#FCEFE8', border: '1px solid #F0997B', borderRadius: 12, padding: 16, marginBottom: 20 }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: '#993C1D', marginBottom: 4 }}>🚪 {t(GATE_PROMPT[f.stage] || 'Cần duyệt')}</div>
-            <div style={{ fontSize: 12.5, color: '#712B13', marginBottom: 12 }}>{t('Pipeline đang đợi bạn duyệt để tiếp tục.')}</div>
-            <Hover as="button" onClick={() => s.approveFilm(f.id)} style={{ border: 'none', background: '#D85A30', color: '#fff', borderRadius: 99, padding: '9px 18px', font: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer' }} hover={{ background: '#993C1D' }}>{t('Duyệt & tiếp')}</Hover>
+            <div style={{ fontSize: 12.5, color: '#712B13', marginBottom: 14 }}>{t('Xem rồi bấm Duyệt để pipeline tiếp tục.')}</div>
+            {renderGate(f)}
+            <Hover as="button" onClick={() => s.approveFilm(f.id, review?.kind === 'video' ? picks : undefined)} style={{ border: 'none', background: '#D85A30', color: '#fff', borderRadius: 99, padding: '9px 18px', font: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer', marginTop: 14 }} hover={{ background: '#993C1D' }}>{t('Duyệt & tiếp')}</Hover>
           </div>
         )}
 

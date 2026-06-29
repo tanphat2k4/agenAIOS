@@ -11,7 +11,7 @@ import os
 import threading
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.database import SessionLocal, get_db
 from app.core.deps import get_current_user
+from app.core.security import decode_access_token
 from app.crud import get_or_404, next_sort, now_hm, uid
 from app.models.comms import Channel, Message
 from app.models.film import Film
@@ -373,3 +374,126 @@ def film_chat(body: FilmChatIn, db: Session = Depends(get_db), current: User = D
 
     # too short / general
     return {"messages": [_save_reel_msg(db, cid, "Dán **nội dung truyện** (vài câu trở lên) để em dựng phim. Lệnh: **duyệt** · **trạng thái** · **hủy**.")], "filmId": f.id if f else None}
+
+
+# ───────────────────────── Phase 3: gate review (assets + variants) ─────────────────────────
+_ASSET_DIRS = ("storyboards", "characters", "scenes", "props", "videos", "output", "audio", "thumbnails")
+_IMG = (".png", ".jpg", ".jpeg", ".webp")
+
+
+def _proj_dir(f: Film, db: Session) -> str:
+    """Absolute path to the ArcReel project dir on disk (same machine), or '' if unknown."""
+    slug = f.projectSlug
+    if not slug and f.arcTaskId:
+        try:
+            slug = arcreel_client.film_status(f.arcTaskId).get("project_name") or ""
+            if slug:
+                f.projectSlug = slug
+                db.commit()
+        except ArcReelError:
+            slug = ""
+    return os.path.join(settings.ARCREEL_DIR, "projects", slug) if slug else ""
+
+
+def _ls(base: str, sub: str, exts: tuple) -> list:
+    d = os.path.join(base, sub)
+    if not base or not os.path.isdir(d):
+        return []
+    return sorted(fn for fn in os.listdir(d) if fn.lower().endswith(exts))
+
+
+@router.get("/{film_id}/review")
+def film_review(film_id: str, db: Session = Depends(get_db)):
+    """Items to show at the current gate: script segments (text), asset/storyboard
+    images, or video variants — from script_segments + on-disk files."""
+    f = get_or_404(db, Film, film_id)
+    stage = f.stage
+    if stage == "awaiting_script_review":
+        try:
+            segs = arcreel_client.film_status(f.arcTaskId).get("script_segments") or []
+        except ArcReelError:
+            segs = []
+        items = [{
+            "id": s.get("segment_id") or str(i),
+            "label": s.get("segment_id") or f"Cảnh {i + 1}",
+            "text": s.get("novel_text") or ((s.get("image_prompt") or {}).get("scene") or ""),
+        } for i, s in enumerate(segs)]
+        return {"kind": "script", "items": items}
+    base = _proj_dir(f, db)
+    if stage == "awaiting_asset_review":
+        items = []
+        for kind, sub in (("character", "characters"), ("scene", "scenes"), ("prop", "props")):
+            for fn in _ls(base, sub, _IMG):
+                items.append({"id": f"{kind}:{os.path.splitext(fn)[0]}", "label": os.path.splitext(fn)[0], "kind": kind, "image": f"{sub}/{fn}"})
+        return {"kind": "asset", "items": items}
+    if stage == "awaiting_review":
+        items = [{"id": os.path.splitext(fn)[0].replace("scene_", ""), "label": os.path.splitext(fn)[0].replace("scene_", ""), "image": f"storyboards/{fn}"} for fn in _ls(base, "storyboards", _IMG)]
+        return {"kind": "storyboard", "items": items}
+    if stage == "awaiting_video_review":
+        scenes: dict = {}
+        for fn in _ls(base, "videos", (".mp4",)):
+            name = os.path.splitext(fn)[0]
+            sc, variant = name, 1
+            if "_v" in name:
+                head, _, vn = name.rpartition("_v")
+                if vn.isdigit():
+                    sc, variant = head, int(vn)
+            scenes.setdefault(sc, []).append({"variant": variant, "video": f"videos/{fn}"})
+        items = [{"id": sc.replace("scene_", ""), "sceneId": sc.replace("scene_", ""), "label": sc.replace("scene_", ""),
+                  "variants": sorted(vs, key=lambda x: x["variant"])} for sc, vs in sorted(scenes.items())]
+        return {"kind": "video", "items": items}
+    return {"kind": stage, "items": []}
+
+
+class RegenBody(BaseModel):
+    sceneId: str
+    instructions: str = ""
+
+
+@router.post("/{film_id}/regenerate")
+def regenerate_scene(film_id: str, body: RegenBody, db: Session = Depends(get_db)):
+    f = get_or_404(db, Film, film_id)
+    instr = {body.sceneId: body.instructions} if body.instructions.strip() else None
+    try:
+        arcreel_client.regenerate_film(f.arcTaskId, [body.sceneId], instr, "edit")
+    except ArcReelError as exc:
+        raise HTTPException(status_code=503, detail=f"ArcReel không phản hồi: {exc}") from exc
+    return _sync(db, f)
+
+
+class PickBody(BaseModel):
+    sceneId: str
+    variant: int
+
+
+@router.post("/{film_id}/pick")
+def pick_scene_variant(film_id: str, body: PickBody, db: Session = Depends(get_db)):
+    f = get_or_404(db, Film, film_id)
+    try:
+        arcreel_client.pick_variant(f.arcTaskId, body.sceneId, body.variant)
+    except ArcReelError as exc:
+        raise HTTPException(status_code=503, detail=f"ArcReel không phản hồi: {exc}") from exc
+    return {"ok": True}
+
+
+# Media proxy — <img>/<video> can't send a Bearer header, so validate a ?token= query
+# param instead. Serves files from the ArcReel project dir on disk, with path guards.
+media_router = APIRouter(prefix="/films", tags=["films-media"])
+
+
+@media_router.get("/{film_id}/asset")
+def film_asset(film_id: str, path: str = Query(...), token: str = Query(...), db: Session = Depends(get_db)):
+    if not decode_access_token(token):
+        raise HTTPException(status_code=401, detail="Token không hợp lệ")
+    f = get_or_404(db, Film, film_id)
+    base = _proj_dir(f, db)
+    p = path.replace("\\", "/").lstrip("/")
+    if not base or ".." in p or (p.split("/")[0] not in _ASSET_DIRS):
+        raise HTTPException(status_code=400, detail="Đường dẫn không hợp lệ")
+    full = os.path.join(base, *p.split("/"))
+    if not os.path.realpath(full).startswith(os.path.realpath(base)) or not os.path.isfile(full):
+        raise HTTPException(status_code=404, detail="Không thấy file")
+    pl = p.lower()
+    mt = ("video/mp4" if pl.endswith(".mp4") else "image/jpeg" if pl.endswith((".jpg", ".jpeg"))
+          else "image/webp" if pl.endswith(".webp") else "image/png")
+    return FileResponse(full, media_type=mt)

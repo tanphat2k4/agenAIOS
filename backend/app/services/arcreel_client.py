@@ -51,3 +51,15 @@ def approve_film(task_id: str, selections: dict | None = None) -> dict:
 def cancel_film(task_id: str) -> dict:
     """POST /film/run/{id}/cancel — stop the run."""
     return _req("POST", f"/api/v1/film/run/{task_id}/cancel", timeout=30.0)
+
+
+def regenerate_film(task_id: str, scene_ids: list, instructions: dict | None = None, mode: str = "edit") -> dict:
+    """POST /film/run/{id}/regenerate — re-render scenes at the current review gate."""
+    return _req("POST", f"/api/v1/film/run/{task_id}/regenerate",
+                json={"scene_ids": scene_ids, "instructions": instructions, "mode": mode}, timeout=60.0)
+
+
+def pick_variant(task_id: str, scene_id: str, variant: int) -> dict:
+    """POST /film/run/{id}/pick — pick a video variant for a scene (video gate)."""
+    return _req("POST", f"/api/v1/film/run/{task_id}/pick",
+                json={"scene_id": scene_id, "variant": variant}, timeout=30.0)

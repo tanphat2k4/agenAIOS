@@ -752,4 +752,15 @@ export const EN: Record<string, string> = {
   "Hủy phim": "Cancel film",
   "Nhật ký": "Log",
   "ArcReel ngoại tuyến — kiểm tra Thiết bị": "ArcReel offline — check Devices",
+
+  // ── Film gate review (Phase 3) ──
+  "Xem rồi bấm Duyệt để pipeline tiếp tục.": "Review, then click Approve to continue.",
+  "Đang tải nội dung duyệt…": "Loading review content…",
+  "(chưa có nội dung để duyệt)": "(nothing to review yet)",
+  "góp ý…": "feedback…",
+  "Dựng lại": "Regenerate",
+  "Cảnh": "Scene",
+  "Bản": "Variant",
+  "Đã yêu cầu dựng lại": "Regeneration requested",
+  "Không dựng lại được": "Couldn't regenerate",
 }
