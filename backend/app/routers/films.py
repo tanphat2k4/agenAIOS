@@ -429,7 +429,7 @@ def film_review(film_id: str, db: Session = Depends(get_db)):
     if stage == "awaiting_review":
         items = [{"id": os.path.splitext(fn)[0].replace("scene_", ""), "label": os.path.splitext(fn)[0].replace("scene_", ""), "image": f"storyboards/{fn}"} for fn in _ls(base, "storyboards", _IMG)]
         return {"kind": "storyboard", "items": items}
-    if stage == "awaiting_video_review":
+    if stage in ("awaiting_video_review", "done"):
         scenes: dict = {}
         for fn in _ls(base, "videos", (".mp4",)):
             name = os.path.splitext(fn)[0]
@@ -474,6 +474,67 @@ def pick_scene_variant(film_id: str, body: PickBody, db: Session = Depends(get_d
     except ArcReelError as exc:
         raise HTTPException(status_code=503, detail=f"ArcReel không phản hồi: {exc}") from exc
     return {"ok": True}
+
+
+class AssetActionBody(BaseModel):
+    kind: str  # character | scene | prop
+    name: str
+
+
+class SceneOkBody(BaseModel):
+    sceneId: str
+
+
+class RecomposeBody(BaseModel):
+    selections: dict[str, int] | None = None
+
+
+@router.post("/{film_id}/regenerate-asset")
+def regenerate_asset_sheet(film_id: str, body: AssetActionBody, db: Session = Depends(get_db)):
+    f = get_or_404(db, Film, film_id)
+    try:
+        arcreel_client.regenerate_asset(f.arcTaskId, body.kind, body.name)
+    except ArcReelError as exc:
+        raise HTTPException(status_code=503, detail=f"ArcReel không phản hồi: {exc}") from exc
+    return _sync(db, f)
+
+
+@router.post("/{film_id}/asset-ok")
+def asset_ok(film_id: str, body: AssetActionBody, db: Session = Depends(get_db)):
+    f = get_or_404(db, Film, film_id)
+    try:
+        return arcreel_client.asset_ok(f.arcTaskId, body.kind, body.name)
+    except ArcReelError as exc:
+        raise HTTPException(status_code=503, detail=f"ArcReel không phản hồi: {exc}") from exc
+
+
+@router.post("/{film_id}/scene-ok")
+def scene_ok(film_id: str, body: SceneOkBody, db: Session = Depends(get_db)):
+    f = get_or_404(db, Film, film_id)
+    try:
+        return arcreel_client.scene_ok(f.arcTaskId, body.sceneId)
+    except ArcReelError as exc:
+        raise HTTPException(status_code=503, detail=f"ArcReel không phản hồi: {exc}") from exc
+
+
+@router.post("/{film_id}/retry-videos")
+def retry_videos(film_id: str, db: Session = Depends(get_db)):
+    f = get_or_404(db, Film, film_id)
+    try:
+        arcreel_client.retry_videos(f.arcTaskId)
+    except ArcReelError as exc:
+        raise HTTPException(status_code=503, detail=f"ArcReel không phản hồi: {exc}") from exc
+    return _sync(db, f)
+
+
+@router.post("/{film_id}/recompose")
+def recompose_film(film_id: str, body: RecomposeBody, db: Session = Depends(get_db)):
+    f = get_or_404(db, Film, film_id)
+    try:
+        arcreel_client.recompose(f.arcTaskId, body.selections)
+    except ArcReelError as exc:
+        raise HTTPException(status_code=503, detail=f"ArcReel không phản hồi: {exc}") from exc
+    return _sync(db, f)
 
 
 # Media proxy — <img>/<video> can't send a Bearer header, so validate a ?token= query

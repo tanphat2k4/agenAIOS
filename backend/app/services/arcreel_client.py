@@ -63,3 +63,29 @@ def pick_variant(task_id: str, scene_id: str, variant: int) -> dict:
     """POST /film/run/{id}/pick — pick a video variant for a scene (video gate)."""
     return _req("POST", f"/api/v1/film/run/{task_id}/pick",
                 json={"scene_id": scene_id, "variant": variant}, timeout=30.0)
+
+
+def regenerate_asset(task_id: str, kind: str, name: str) -> dict:
+    """POST /film/run/{id}/regenerate-asset — re-render one character/scene/prop sheet."""
+    return _req("POST", f"/api/v1/film/run/{task_id}/regenerate-asset",
+                json={"asset_kind": kind, "asset_name": name}, timeout=60.0)
+
+
+def retry_videos(task_id: str) -> dict:
+    """POST /film/run/{id}/retry-videos — re-render only the missing/failed clips."""
+    return _req("POST", f"/api/v1/film/run/{task_id}/retry-videos", timeout=60.0)
+
+
+def recompose(task_id: str, selections: dict | None = None) -> dict:
+    """POST /film/run/{id}/recompose — re-run ffmpeg with new variant picks (no re-gen)."""
+    return _req("POST", f"/api/v1/film/run/{task_id}/recompose", json={"selections": selections}, timeout=120.0)
+
+
+def scene_ok(task_id: str, scene_id: str) -> dict:
+    """POST /film/run/{id}/scene-ok — accept one storyboard scene (accumulates → auto-resume)."""
+    return _req("POST", f"/api/v1/film/run/{task_id}/scene-ok", json={"scene_id": scene_id}, timeout=30.0)
+
+
+def asset_ok(task_id: str, kind: str, name: str) -> dict:
+    """POST /film/run/{id}/asset-ok — accept one asset sheet (accumulates)."""
+    return _req("POST", f"/api/v1/film/run/{task_id}/asset-ok", json={"kind": kind, "name": name}, timeout=30.0)

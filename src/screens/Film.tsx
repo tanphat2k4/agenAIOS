@@ -88,7 +88,7 @@ export function FilmView() {
   // load the gate's review items (segments / asset+storyboard images / video variants)
   useEffect(() => {
     setReview(null); setPicks({}); setFeedback({})
-    if (film && film.status === 'needs_review') {
+    if (film && (film.status === 'needs_review' || film.status === 'done')) {
       api.get(`/films/${film.id}/review`).then((r) => setReview(r)).catch(() => {})
     }
   }, [film?.id, film?.status, film?.stage]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -103,6 +103,18 @@ export function FilmView() {
     setPicks((x) => ({ ...x, [sceneId]: variant }))
     api.post(`/films/${fid}/pick`, { sceneId, variant }).catch(() => {})
   }
+  const refetchReview = (fid: string) => api.get(`/films/${fid}/review`).then((r) => setReview(r)).catch(() => {})
+  const doRegenAsset = (fid: string, kind: string, name: string) => {
+    api.post(`/films/${fid}/regenerate-asset`, { kind, name }).then(() => { s.fireToast(t('Đã yêu cầu dựng lại') + ' ' + name); refetchReview(fid) }).catch(() => s.fireToast(t('Không dựng lại được')))
+  }
+  const doSceneOk = (fid: string, sceneId: string) => {
+    api.post(`/films/${fid}/scene-ok`, { sceneId }).then((r) => { s.fireToast('✓ ' + sceneId + (r && r.total ? ` (${r.approved}/${r.total})` : '')); if (r && r.all_approved) s.refreshFilm(fid) }).catch(() => {})
+  }
+  const doAssetOk = (fid: string, kind: string, name: string) => {
+    api.post(`/films/${fid}/asset-ok`, { kind, name }).then((r) => s.fireToast('✓ ' + name + (r && r.total ? ` (${r.approved}/${r.total})` : ''))).catch(() => {})
+  }
+  const doRetry = (fid: string) => { api.post(`/films/${fid}/retry-videos`, {}).then(() => { s.fireToast(t('Đang dựng lại cảnh lỗi…')); s.refreshFilm(fid) }).catch(() => {}) }
+  const doRecompose = (fid: string) => { api.post(`/films/${fid}/recompose`, { selections: picks }).then(() => { s.fireToast(t('Đang ghép lại phim…')); s.refreshFilm(fid) }).catch(() => {}) }
   const renderGate = (f: Film) => {
     if (!review) return <div style={{ fontSize: 12, color: 'var(--ink-2)', marginBottom: 4 }}>{t('Đang tải nội dung duyệt…')}</div>
     const items = review.items || []
@@ -120,18 +132,20 @@ export function FilmView() {
       )
     }
     if (review.kind === 'asset' || review.kind === 'storyboard') {
+      const isAsset = review.kind === 'asset'
       return (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(150px,1fr))', gap: 10, marginBottom: 4 }}>
           {items.map((it) => (
             <div key={it.id} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden' }}>
               <img src={assetSrc(f.id, it.image || '')} alt={it.label} style={{ width: '100%', display: 'block', aspectRatio: '1 / 1', objectFit: 'cover', background: '#eee' }} />
-              <div style={{ padding: '6px 8px', fontSize: 11, fontWeight: 600 }}>{it.label}</div>
-              {review.kind === 'storyboard' && (
-                <div style={{ padding: '0 8px 8px', display: 'flex', gap: 4 }}>
-                  <input value={feedback[it.id] || ''} onChange={(e) => setFeedback((x) => ({ ...x, [it.id]: e.target.value }))} placeholder={t('góp ý…')} style={{ flex: 1, minWidth: 0, fontSize: 11, border: '1px solid var(--line)', borderRadius: 6, padding: '3px 6px', fontFamily: 'inherit', background: 'var(--surface)', color: 'var(--ink)' }} />
-                  <Hover as="button" onClick={() => doRegen(f.id, it.id)} style={{ fontSize: 11, border: '1px solid var(--line)', background: 'var(--surface)', borderRadius: 6, padding: '3px 8px', cursor: 'pointer', flex: 'none' }} hover={{ borderColor: 'var(--jade)' }}>{t('Dựng lại')}</Hover>
+              <div style={{ padding: '6px 8px 2px', fontSize: 11, fontWeight: 600 }}>{it.label}</div>
+              <div style={{ padding: '0 8px 8px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <input value={feedback[it.id] || ''} onChange={(e) => setFeedback((x) => ({ ...x, [it.id]: e.target.value }))} placeholder={t('góp ý…')} style={{ fontSize: 11, border: '1px solid var(--line)', borderRadius: 6, padding: '3px 6px', fontFamily: 'inherit', background: 'var(--surface)', color: 'var(--ink)' }} />
+                <div style={{ display: 'flex', gap: 4 }}>
+                  <Hover as="button" onClick={() => isAsset ? doRegenAsset(f.id, it.kind || 'character', it.label) : doRegen(f.id, it.id)} style={{ flex: 1, fontSize: 11, border: '1px solid var(--line)', background: 'var(--surface)', borderRadius: 6, padding: '3px', cursor: 'pointer' }} hover={{ borderColor: 'var(--jade)' }}>{t('Dựng lại')}</Hover>
+                  <Hover as="button" onClick={() => isAsset ? doAssetOk(f.id, it.kind || 'character', it.label) : doSceneOk(f.id, it.id)} style={{ flex: 1, fontSize: 11, border: '1px solid var(--line)', background: 'var(--surface)', borderRadius: 6, padding: '3px', cursor: 'pointer', color: 'var(--jade-deep)' }} hover={{ background: 'var(--jade-soft)' }}>✓ {t('OK')}</Hover>
                 </div>
-              )}
+              </div>
             </div>
           ))}
         </div>
@@ -140,6 +154,7 @@ export function FilmView() {
     if (review.kind === 'video') {
       return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 4 }}>
+          <Hover as="button" onClick={() => doRetry(f.id)} style={{ alignSelf: 'flex-start', fontSize: 11.5, border: '1px solid var(--line)', background: 'var(--surface)', borderRadius: 99, padding: '5px 12px', cursor: 'pointer' }} hover={{ borderColor: 'var(--jade)' }}>↻ {t('Dựng lại cảnh lỗi')}</Hover>
           {items.map((it) => (
             <div key={it.id} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 8, padding: 8 }}>
               <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 6 }}>{t('Cảnh')} {it.label}</div>
@@ -247,6 +262,14 @@ export function FilmView() {
 
         {f.status === 'done' && videoUrl && (
           <video src={videoUrl} controls style={{ width: '100%', maxWidth: f.aspectRatio === '9:16' ? 320 : 640, borderRadius: 12, marginBottom: 20, background: '#000' }} />
+        )}
+
+        {f.status === 'done' && review?.kind === 'video' && (review.items || []).some((it) => (it.variants || []).length > 1) && (
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, padding: 14, marginBottom: 20 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>{t('Đổi bản & ghép lại')}</div>
+            {renderGate(f)}
+            <Hover as="button" onClick={() => doRecompose(f.id)} style={{ border: 'none', background: 'var(--jade)', color: '#fff', borderRadius: 99, padding: '8px 16px', font: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', marginTop: 10 }} hover={{ background: 'var(--jade-deep)' }}>{t('Ghép lại')}</Hover>
+          </div>
         )}
 
         {prog.length > 0 && (

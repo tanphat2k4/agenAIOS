@@ -763,4 +763,11 @@ export const EN: Record<string, string> = {
   "Bản": "Variant",
   "Đã yêu cầu dựng lại": "Regeneration requested",
   "Không dựng lại được": "Couldn't regenerate",
+
+  // ── Film gate review extras (Phase 3+) ──
+  "Dựng lại cảnh lỗi": "Retry failed scenes",
+  "Đang dựng lại cảnh lỗi…": "Retrying failed scenes…",
+  "Đang ghép lại phim…": "Recomposing the film…",
+  "Đổi bản & ghép lại": "Swap variant & recompose",
+  "Ghép lại": "Recompose",
 }
