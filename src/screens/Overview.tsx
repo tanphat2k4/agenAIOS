@@ -122,7 +122,7 @@ export function Overview() {
   // ---- open tasks modal ----
   const showOpenTasks = s.overlay === 'openTasks'
   const openTasksCount = s.tasksData.filter((t) => t.status !== 'done').length
-  const openTasksList = s.tasksData.filter((t) => t.status !== 'done').map((t: TaskItem) => {
+  const openTasksList = s.tasksData.filter((t) => t.status !== 'done').map((task: TaskItem) => {
     const prioMap: Record<string, { fg: string; bg: string; l: string }> = {
       high: { fg: '#C94F3D', bg: '#FBEAE7', l: t('Cao') },
       med: { fg: '#9A6A1B', bg: '#FBF1DE', l: t('TB') },
@@ -133,11 +133,11 @@ export function Overview() {
       running: { l: t('Đang xử lý'), fg: 'var(--jade-deep)', bg: 'var(--jade-soft)' },
       review: { l: t('Cần duyệt'), fg: '#9A6A1B', bg: '#FBF1DE' },
     }
-    const prio = prioMap[t.priority] ?? prioMap['med']
-    const st = stMap[t.status] ?? stMap['queued']
+    const prio = prioMap[task.priority] ?? prioMap['med']
+    const st = stMap[task.status] ?? stMap['queued']
     return {
-      id: t.id, title: t.title, assignee: t.assignee, initial: t.initial, color: t.color,
-      room: t.room, time: t.time,
+      id: task.id, title: task.title, assignee: task.assignee, initial: task.initial, color: task.color,
+      room: task.room, time: task.time,
       prioFg: prio.fg, prioBg: prio.bg, prioLabel: prio.l,
       statusFg: st.fg, statusBg: st.bg, statusLabel: st.l,
     }
