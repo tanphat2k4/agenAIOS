@@ -668,12 +668,13 @@ class RelayIn(BaseModel):
     sender: str = "Telegram"
 
 
-def _save_user_msg(db: Session, channel_id: str, text: str, sender: str) -> None:
-    """Mirror an inbound Telegram message into the channel as a (non-agent) user message."""
+def _save_user_msg(db: Session, channel_id: str, text: str) -> None:
+    """Mirror an inbound Telegram message as the workspace OWNER (it's their own Telegram chat)."""
+    owner = db.scalar(select(User).where(User.role == "owner")) or db.scalar(select(User))
     db.add(Message(
-        id=uid("m"), channel_id=channel_id, authorName=(sender or "Telegram"), time=now_hm(),
-        avatarInitial=((sender or "T")[:1].upper()), avatarColor="#3B5BDB", isAgent=False,
-        raw=_to_raw(text), sort=next_sort(db, Message),
+        id=uid("m"), channel_id=channel_id, authorName=(owner.name if owner else "Telegram"), time=now_hm(),
+        avatarInitial=(owner.initial if owner else "T"), avatarColor=(owner.color if owner else "#3B5BDB"),
+        isAgent=False, raw=_to_raw(text), sort=next_sort(db, Message),
     ))
     db.commit()
 
@@ -692,7 +693,7 @@ def trading_relay(body: RelayIn, x_relay_key: str = Header(default="")):
     try:
         cid = TRADING_CHANNEL_ID
         ensure_trading_channel(db)
-        _save_user_msg(db, cid, text, body.sender)
+        _save_user_msg(db, cid, text)
         cmd, ticker = ta.classify(text)
         # recommendation / analysis intents → run the full pipeline (so the Agent Workflow runs);
         # quick price/news/greeting → conversational reply.
