@@ -30,7 +30,7 @@ _INFRA = [
      "role": "Agent Gateway (Telegram)", "os": "WSL", "router": False},
     {"id": "dev-comfyui", "name": "ComfyUI", "port": 8188, "host": "192.168.1.4", "icon": "🎨", "addr": "192.168.1.4:8188",
      "role": "Tạo ảnh/clip (GPU)", "os": "PC-B", "router": False},
-    {"id": "dev-sunobot", "name": "Bot PC", "port": 1243, "host": "192.168.1.3", "icon": "🖥", "addr": "192.168.1.3:1243",
+    {"id": "dev-sunobot", "name": "Bot PC", "port": 1243, "host": "192.168.1.3", "ports": [3389, 1243], "icon": "🖥", "addr": "192.168.1.3",
      "role": "Suno (nhạc) + làm phim · PC-B", "os": "PC-B", "router": False},
     {"id": "dev-arcreel", "name": "ArcReel", "port": 1242, "host": "localhost", "icon": "🎬", "addr": "localhost:1242",
      "role": "Xưởng làm phim AI", "os": "FastAPI", "router": False},
@@ -79,7 +79,10 @@ def _refresh_infra(db: Session) -> None:
         d = db.get(Device, spec["id"])
         if not d:
             continue
-        up = _probe(spec["port"], spec.get("host", "localhost"))
+        # A device may list several "ports": online if ANY is reachable. The Bot PC is
+        # "alive" whenever the PC answers (RDP :3389) OR the Suno service (:1243) is up,
+        # so it shows online even when it's only being used for film (Suno off).
+        up = any(_probe(p, spec.get("host", "localhost")) for p in (spec.get("ports") or [spec["port"]]))
         d.status = "online" if up else "offline"
         d.uptime = "đang chạy" if up else "—"
         d.lastSeen = "vừa xong"
