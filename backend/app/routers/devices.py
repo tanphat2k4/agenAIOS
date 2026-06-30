@@ -30,8 +30,8 @@ _INFRA = [
      "role": "Agent Gateway (Telegram)", "os": "WSL", "router": False},
     {"id": "dev-comfyui", "name": "ComfyUI", "port": 8188, "host": "192.168.1.4", "icon": "🎨", "addr": "192.168.1.4:8188",
      "role": "Tạo ảnh/clip (GPU)", "os": "PC-B", "router": False},
-    {"id": "dev-sunobot", "name": "Suno-bot", "port": 1243, "host": "192.168.1.3", "icon": "🎵", "addr": "192.168.1.3:1243",
-     "role": "Bot tạo nhạc Suno (PC-B)", "os": "PC-B", "router": False},
+    {"id": "dev-sunobot", "name": "Bot PC", "port": 1243, "host": "192.168.1.3", "icon": "🖥", "addr": "192.168.1.3:1243",
+     "role": "Suno (nhạc) + làm phim · PC-B", "os": "PC-B", "router": False},
     {"id": "dev-arcreel", "name": "ArcReel", "port": 1242, "host": "localhost", "icon": "🎬", "addr": "localhost:1242",
      "role": "Xưởng làm phim AI", "os": "FastAPI", "router": False},
 ]
