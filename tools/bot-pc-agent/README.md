@@ -5,7 +5,11 @@ Lets the AgentAIOS **Devices** page show the **real CPU / RAM / GPU** of a remot
 (online/offline) — to see *inside* it (resource usage) something must run **on** that host and
 report out. That's this agent.
 
-## Cài trên Bot PC (192.168.1.3)
+## Cách nhanh nhất (1 double-click)
+Copy CẢ thư mục này sang Bot PC → **double-click `run-stats-agent.bat`** → bấm Yes ở UAC.
+Nó tự mở firewall 9998 + chạy agent. (Cần Python trên Bot PC.)
+
+## Cài thủ công trên Bot PC (192.168.1.3)
 1. Copy **`stats_agent.py`** sang máy Bot PC (vd `C:\agentaios\stats_agent.py`).
 2. Chạy: `python stats_agent.py`
    - Tự cài `psutil` lần đầu; GPU lấy qua `nvidia-smi` (có NVIDIA thì hiện, không thì để trống).
