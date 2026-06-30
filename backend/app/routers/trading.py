@@ -1,11 +1,12 @@
 import re
 import threading
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.database import SessionLocal, get_db
 from app.core.deps import get_current_user
 from app.crud import next_sort, now_hm, uid
@@ -17,6 +18,8 @@ from app.services import trading_record as rec
 from app.services import tradingagents as ta
 
 router = APIRouter(prefix="/trading", tags=["trading"], dependencies=[Depends(get_current_user)])
+# Relay router has NO JWT dep — OpenClaw (server-side) authenticates with RELAY_KEY instead.
+relay_router = APIRouter(prefix="/trading", tags=["trading-relay"])
 
 TRADING_CHANNEL_ID = "chung-khoan"
 _AGENT_NAME = "Phân tích CK"
@@ -657,3 +660,60 @@ def remove_holding(ticker: str, db: Session = Depends(get_db), current: User = D
     holdings = [h for h in _get_holdings(current) if h["ticker"] != ticker.strip().upper()]
     _save_holdings(db, current, holdings)
     return _portfolio_pnl(holdings)
+
+
+# ----------------------- Telegram → app relay (option B) -----------------------
+class RelayIn(BaseModel):
+    text: str
+    sender: str = "Telegram"
+
+
+def _save_user_msg(db: Session, channel_id: str, text: str, sender: str) -> None:
+    """Mirror an inbound Telegram message into the channel as a (non-agent) user message."""
+    db.add(Message(
+        id=uid("m"), channel_id=channel_id, authorName=(sender or "Telegram"), time=now_hm(),
+        avatarInitial=((sender or "T")[:1].upper()), avatarColor="#3B5BDB", isAgent=False,
+        raw=_to_raw(text), sort=next_sort(db, Message),
+    ))
+    db.commit()
+
+
+@relay_router.post("/relay")
+def trading_relay(body: RelayIn, x_relay_key: str = Header(default="")):
+    """Called by the OpenClaw trading agent for each Telegram message: AgentAIOS runs its OWN
+    analysis (so the Agent Workflow runs + #chung-khoan mirrors the exchange) and returns the reply
+    for OpenClaw to relay back to Telegram. Key-protected (no JWT)."""
+    if not settings.RELAY_KEY or x_relay_key != settings.RELAY_KEY:
+        raise HTTPException(status_code=401, detail="bad relay key")
+    text = (body.text or "").strip()
+    if not text:
+        return {"reply": ""}
+    db = SessionLocal()
+    try:
+        cid = TRADING_CHANNEL_ID
+        ensure_trading_channel(db)
+        _save_user_msg(db, cid, text, body.sender)
+        cmd, ticker = ta.classify(text)
+        if ticker and (cmd == "analyze" or ta.is_opinion(text)):
+            outputs, _ok, headline = rec.run_pipeline(db, ticker)  # runs the 5-agent workflow
+            team = "\n".join(f"[{a['name']} · {a['role']}]: {txt}" for a, txt in outputs)
+            mkt = ta.market_overview_text()
+            system = {"role": "system", "content": (f"{rec.ADVISOR['persona']} {rec.ANTI_HALLUCINATION} "
+                      "KHÔNG lặp lại dòng giá đầu (đã có). Công cụ nghiên cứu, KHÔNG phải lời khuyên đầu tư.")}
+            user = {"role": "user", "content": (f"Câu hỏi: {text}\n\n" + (f"Thị trường: {mkt}\n\n" if mkt else "")
+                    + f"Kết quả team về {ticker} (giá real-time):\n{team[:3200]}\n\n"
+                    "Tổng hợp NGẮN: Khuyến nghị (MUA/BÁN/GIỮ) + vùng mua/chốt lời/cắt lỗ + 1 câu rủi ro.")}
+            try:
+                synth = ninerouter.chat([system, user, {"role": "system", "content": headline}],
+                                        temperature=0.3, max_tokens=600)["content"] or ""
+            except Exception as exc:  # noqa: BLE001
+                synth = (outputs[-1][1] if outputs else f"(không tổng hợp được: {exc})")
+            reply = f"{headline}\n\n{synth}".strip() if synth.strip() else headline
+        else:
+            reply = _llm_reply(db, cid, text)
+        _save_advisor_msg(db, cid, reply)
+        return {"reply": reply}
+    except Exception as exc:  # noqa: BLE001
+        return {"reply": "", "error": str(exc)}
+    finally:
+        db.close()

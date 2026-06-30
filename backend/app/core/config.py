@@ -36,6 +36,11 @@ class Settings(BaseSettings):
     OPENCLAW_AGENT: str = "trading"
     OPENCLAW_TELEGRAM_CHAT: str = "5389237483"
 
+    # Telegram → AgentAIOS relay (option B): OpenClaw agents POST the user's Telegram message to
+    # AgentAIOS (key-protected), which runs its pipeline + mirrors to the channel and returns the
+    # reply to relay back to Telegram. Blank = relay disabled (endpoint rejects).
+    RELAY_KEY: str = ""
+
     # ArcReel film engine (separate FastAPI service on :1242). Call over HTTP with an arc- API key.
     ARCREEL_BASE_URL: str = "http://127.0.0.1:1242"
     ARCREEL_API_KEY: str = ""
