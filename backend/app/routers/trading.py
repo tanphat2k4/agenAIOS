@@ -694,8 +694,20 @@ def trading_relay(body: RelayIn, x_relay_key: str = Header(default="")):
         ensure_trading_channel(db)
         _save_user_msg(db, cid, text, body.sender)
         cmd, ticker = ta.classify(text)
-        if ticker and (cmd == "analyze" or ta.is_opinion(text)):
-            outputs, _ok, headline = rec.run_pipeline(db, ticker)  # runs the 5-agent workflow
+        # recommendation / analysis intents → run the full pipeline (so the Agent Workflow runs);
+        # quick price/news/greeting → conversational reply.
+        deep = any(k in text.lower() for k in (
+            "khuyến nghị", "khuyên nghị", "nên mua", "nên bán", "nên giữ", "có nên",
+            "đánh giá", "phân tích", "nhận định", "thế nào", "ra sao", "recommend"))
+        if ticker and (cmd == "analyze" or ta.is_opinion(text) or deep):
+            # run the pipeline on its OWN session (like the in-app thread) so its workflow/log/knowledge
+            # writes commit cleanly — sharing this request's session (after _save_user_msg) made
+            # _record_pipeline roll back, so the Agent Workflow never updated.
+            pdb = SessionLocal()
+            try:
+                outputs, _ok, headline = rec.run_pipeline(pdb, ticker)  # runs the 5-agent workflow
+            finally:
+                pdb.close()
             team = "\n".join(f"[{a['name']} · {a['role']}]: {txt}" for a, txt in outputs)
             mkt = ta.market_overview_text()
             system = {"role": "system", "content": (f"{rec.ADVISOR['persona']} {rec.ANTI_HALLUCINATION} "
