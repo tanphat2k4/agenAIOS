@@ -4,7 +4,7 @@ import time
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -75,13 +75,51 @@ def add_channel_member(db: Session, channel_id: str, *, name: str, initial: str,
     return m
 
 
+def _unread_map(db: Session, current: User) -> dict[str, int]:
+    """Per-channel count of messages newer than the user's last-read mark, excluding their own."""
+    reads = dict((current.settings or {}).get("channelReads", {}))
+    out: dict[str, int] = {}
+    for cid in db.scalars(select(Channel.id)):
+        n = db.scalar(
+            select(func.count()).select_from(Message).where(
+                Message.channel_id == cid,
+                Message.sort > reads.get(cid, 0),
+                Message.authorName != current.name,
+            )
+        )
+        if n:
+            out[cid] = int(n)
+    return out
+
+
 @router.get("/channels")
-def list_channels(db: Session = Depends(get_db)):
+def list_channels(db: Session = Depends(get_db), current: User = Depends(get_current_user)):
     """Grouped exactly like the store: {public, private, direct}."""
     out: dict[str, list] = {"public": [], "private": [], "direct": []}
+    um = _unread_map(db, current)
     for c in db.scalars(select(Channel).order_by(Channel.sort, Channel.id)):
-        out.setdefault(c.kind, out["public"]).append(_channel_dict(db, c))
+        d = _channel_dict(db, c)
+        d["unread"] = um.get(c.id, 0)
+        out.setdefault(c.kind, out["public"]).append(d)
     return out
+
+
+@router.get("/channels/unread")
+def channels_unread(db: Session = Depends(get_db), current: User = Depends(get_current_user)):
+    """Lightweight poll: {channelId: unreadCount} — new bot replies / others' messages since you last opened it."""
+    return _unread_map(db, current)
+
+
+@router.post("/channels/{channel_id}/read")
+def mark_channel_read(channel_id: str, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
+    """Advance the user's last-read mark for a channel to its newest message (call when opening it)."""
+    get_or_404(db, Channel, channel_id)
+    top = db.scalar(select(func.max(Message.sort)).where(Message.channel_id == channel_id)) or 0
+    reads = dict((current.settings or {}).get("channelReads", {}))
+    reads[channel_id] = int(top)
+    current.settings = {**(current.settings or {}), "channelReads": reads}
+    db.commit()
+    return {"channelId": channel_id, "lastRead": int(top)}
 
 
 @router.post("/channels", status_code=201)

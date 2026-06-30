@@ -38,6 +38,7 @@ const sectionLabel: React.CSSProperties = {
 function NavSection({ title, items, first, collapsed }: { title: string; items: NavItem[]; first?: boolean; collapsed?: boolean }) {
   const view = useStore((s) => s.view)
   const setView = useStore((s) => s.setView)
+  const totalUnread = useStore((s) => Object.values(s.unread).reduce((a, b) => a + b, 0))
   const t = useT()
   return (
     <>
@@ -46,6 +47,7 @@ function NavSection({ title, items, first, collapsed }: { title: string; items: 
         : <div style={{ ...sectionLabel, paddingTop: first ? 0 : 16 }}>{t(title)}</div>}
       {items.map((n) => {
         const active = n.view === view
+        const badge = n.view === 'channels' ? totalUnread : 0
         return (
           <Hover
             key={n.label}
@@ -54,7 +56,7 @@ function NavSection({ title, items, first, collapsed }: { title: string; items: 
             style={{
               display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'flex-start',
               gap: collapsed ? 0 : 11, padding: collapsed ? '10px 0' : '8px 10px', borderRadius: 10,
-              cursor: 'pointer', fontSize: 13, fontWeight: 500, marginBottom: 1,
+              cursor: 'pointer', fontSize: 13, fontWeight: 500, marginBottom: 1, position: 'relative',
               background: active ? 'rgba(255,255,255,.16)' : 'transparent',
               color: active ? '#fff' : 'rgba(255,255,255,.78)',
             }}
@@ -62,6 +64,9 @@ function NavSection({ title, items, first, collapsed }: { title: string; items: 
           >
             <span style={{ width: 18, textAlign: 'center', fontSize: 14 }}>{n.icon}</span>
             {!collapsed && <span>{t(n.label)}</span>}
+            {badge > 0 && (collapsed
+              ? <span style={{ position: 'absolute', top: 6, right: 12, width: 7, height: 7, borderRadius: 99, background: 'var(--jade)' }} />
+              : <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 700, background: 'var(--jade)', color: '#fff', minWidth: 18, height: 18, padding: '0 5px', borderRadius: 99, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{badge}</span>)}
           </Hover>
         )
       })}

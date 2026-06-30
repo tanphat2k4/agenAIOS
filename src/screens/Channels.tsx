@@ -33,8 +33,8 @@ function ChannelRow({ c, kind }: { c: Channel; kind: 'public' | 'private' | 'dir
         <div style={{ fontSize: kind === 'direct' ? 13 : 13.5, fontWeight: 600, color: nameColor, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.name}</div>
         <div style={{ fontSize: kind === 'direct' ? 10.5 : 11, color: 'var(--ink-2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.desc}</div>
       </div>
-      {kind === 'private' && unread > 0 && (
-        <span style={{ fontSize: 10.5, fontWeight: 700, background: 'var(--jade)', color: '#fff', minWidth: 19, height: 19, padding: '0 5px', borderRadius: 99, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>{unread}</span>
+      {!sel && unread > 0 && (
+        <span title={t('Tin mới')} style={{ fontSize: 10.5, fontWeight: 700, background: 'var(--jade)', color: '#fff', minWidth: 19, height: 19, padding: '0 5px', borderRadius: 99, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>{unread}</span>
       )}
       {iconBtn(t('Đổi tên channel'), '✎', (e) => { e.stopPropagation(); askRename(c.id) })}
       {iconBtn(t('Xóa channel'), '🗑', (e) => { e.stopPropagation(); askDeleteChannel(c.id) }, true)}

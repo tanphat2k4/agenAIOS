@@ -14,8 +14,16 @@ export function App() {
   const authed = useStore((s) => s.authed)
   const personCard = useStore((s) => s.personCard)
   const bootAuth = useStore((s) => s.bootAuth)
+  const pollUnread = useStore((s) => s.pollUnread)
   const [booting, setBooting] = useState(() => !!getToken())
   useEffect(() => { bootAuth().finally(() => setBooting(false)) }, [bootAuth])
+  // global unread poll — keeps channel badges live (bot replies / new messages) on every screen
+  useEffect(() => {
+    if (!authed) return
+    pollUnread()
+    const iv = setInterval(pollUnread, 5000)
+    return () => clearInterval(iv)
+  }, [authed, pollUnread])
   useEffect(() => {
     const onUnauth = () => {
       const st = useStore.getState()
