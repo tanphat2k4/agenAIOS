@@ -1,5 +1,6 @@
 import random
 import socket
+from concurrent.futures import ThreadPoolExecutor
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
@@ -73,22 +74,29 @@ def _ensure_infra(db: Session) -> None:
     db.commit()
 
 
+def _probe_spec(spec: dict) -> bool:
+    """Online if ANY of a device's ports is reachable. A device may list several "ports":
+    e.g. the Bot PC is alive whenever the PC answers (RDP :3389) OR Suno (:1243) is up, so
+    it stays online even when used only for film (Suno off)."""
+    return any(_probe(p, spec.get("host", "localhost"), timeout=1.0) for p in (spec.get("ports") or [spec["port"]]))
+
+
 def _refresh_infra(db: Session) -> None:
-    """Live-probe 9Router + OpenClaw and update their status/models."""
-    for spec in _INFRA:
+    """Live-probe every infra device CONCURRENTLY (so /devices stays snappy for real-time
+    polling even when several hosts are down) and update status/models."""
+    specs = [s for s in _INFRA if db.get(Device, s["id"])]
+    if not specs:
+        return
+    with ThreadPoolExecutor(max_workers=len(specs)) as ex:
+        ups = dict(zip((s["id"] for s in specs), ex.map(_probe_spec, specs)))
+    for spec in specs:
         d = db.get(Device, spec["id"])
-        if not d:
-            continue
-        # A device may list several "ports": online if ANY is reachable. The Bot PC is
-        # "alive" whenever the PC answers (RDP :3389) OR the Suno service (:1243) is up,
-        # so it shows online even when it's only being used for film (Suno off).
-        up = any(_probe(p, spec.get("host", "localhost")) for p in (spec.get("ports") or [spec["port"]]))
+        up = ups.get(spec["id"], False)
         d.status = "online" if up else "offline"
         d.uptime = "đang chạy" if up else "—"
         d.lastSeen = "vừa xong"
         if spec["router"]:
-            models = _router_models() if up else []
-            d.models = models
+            d.models = _router_models() if up else []
             d.gpu = "qua 9Router" if up else "—"
     db.commit()
 

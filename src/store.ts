@@ -305,6 +305,7 @@ export interface AppActions {
 
   // devices
   setDevicesFilter: (f: string) => void
+  pollDevices: () => void
   refreshDevices: () => void
   toggleDevicePower: () => void
   openDevSsh: () => void
@@ -799,6 +800,8 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
 
   // ---------- devices ----------
   setDevicesFilter: (f) => set({ devicesFilter: f }),
+  // Real-time: pull the live device status the backend probes on each GET (no fake jitter, silent).
+  pollDevices: () => { api.get('/devices').then((devices) => set({ devicesData: devices })).catch(() => {}) },
   refreshDevices: () => { persist(api.post('/devices/refresh')); set((s) => ({ devicesData: s.devicesData.map((d) => { if (d.status !== 'online') return d; const j = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v + Math.round((Math.random() - 0.5) * 16))); return { ...d, cpuPct: j(d.cpuPct, 4, 97), ramPct: j(d.ramPct, 20, 95), gpuPct: d.gpu === '—' ? 0 : j(d.gpuPct, 5, 96), lastSeen: 'vừa xong' } }) })); get().fireToast('Đã làm mới trạng thái thiết bị') },
   toggleDevicePower: () => { const id = get().deviceDrawer; if (id) persist(api.post(`/devices/${id}/power`)); set((s) => ({ devicesData: s.devicesData.map((d) => { if (d.id !== id) return d; const on = d.status === 'online'; return on ? { ...d, status: 'offline' as const, cpuPct: 0, ramPct: 0, gpuPct: 0, uptime: '—', lastSeen: 'vừa xong' } : { ...d, status: 'online' as const, cpuPct: 18, ramPct: 42, gpuPct: d.gpu === '—' ? 0 : 20, uptime: 'vừa bật', lastSeen: 'vừa xong' } }) })); const dd = get().devicesData.find((d) => d.id === id); get().fireToast(dd && dd.status === 'online' ? 'Đã đánh thức ' + dd.name : 'Đã tắt ' + (dd ? dd.name : 'thiết bị')) },
   openDevSsh: () => { const dd = get().devicesData.find((d) => d.id === get().deviceDrawer); get().fireToast('Đang mở phiên SSH tới ' + (dd ? dd.name : 'thiết bị') + '…') },

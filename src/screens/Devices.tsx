@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useStore } from '@/store'
 import { Hover } from '@/components/ui/Hover'
 import { useT } from '@/i18n'
@@ -304,6 +305,17 @@ function DeleteDeviceConfirm({ deviceName }: { deviceName: string }) {
 export function Devices() {
   const s = useStore()
   const t = useT()
+
+  // Real-time status: re-fetch live device probes every 6s while the screen is open
+  // (skip while the add/delete dialogs are open so they don't re-render mid-edit).
+  useEffect(() => {
+    const id = setInterval(() => {
+      const st = useStore.getState()
+      if (!st.showAddDevice && !st.devDeleteConfirm) st.pollDevices()
+    }, 6000)
+    return () => clearInterval(id)
+  }, [])
+
   const D = s.devicesData
 
   // ---- view-model (ported from renderVals) ----
