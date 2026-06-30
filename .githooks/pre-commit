@@ -1,0 +1,14 @@
+#!/bin/sh
+# Real type-check gate. NOTE: bare `tsc --noEmit` is a NO-OP in this repo (the root tsconfig.json is
+# references-only) — the only check that actually type-checks is `tsc -b`. The Vite dev server uses
+# esbuild and silently ignores type errors, so without this hook a broken build (or a runtime crash like
+# a shadowed variable, or duplicate i18n keys) can slip into a commit. Bypass with `git commit --no-verify`.
+if git diff --cached --name-only --diff-filter=ACM | grep -qE '\.(ts|tsx)$'; then
+  echo "[pre-commit] tsc -b --noEmit ..."
+  if ! npx tsc -b --noEmit; then
+    echo ""
+    echo "X Type-check failed -- commit blocked. Fix the errors above (or: git commit --no-verify)."
+    exit 1
+  fi
+  echo "[pre-commit] OK type-check passed"
+fi

@@ -663,6 +663,8 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
       agentsData: agents, mcpData: mcp, workflows, cronJobsData: cron, tasksData: tasks,
       devicesData: devices, sessionsData: sessions, auditLog: audit, knowledgeData: knowledge,
       rooms, roomMembersById, activeRoom: rooms.find((r: { id: string }) => r.id === get().activeRoom) ? get().activeRoom : (rooms[0]?.id || ''),
+      // activeId is a CHANNEL id (chat view). The seed default points at a room → 404 on hydrate; snap it to a real channel.
+      activeId: [...channels.public, ...channels.private, ...channels.direct].find((c: { id: string }) => c.id === get().activeId) ? get().activeId : (channels.public[0]?.id || channels.private[0]?.id || channels.direct[0]?.id || ''),
       rolesData: roles, rolePerms, usersData: users, invitesData: invites,
       signupsData: signups, notifsData: notifs, billMonths: bill, recentActivity: activity, unread,
       profileData: { name: profile.name, email: profile.email, phone: profile.phone, title: profile.title, bio: profile.bio, location: profile.location },
