@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useStore } from '@/store'
 import { Hover } from '@/components/ui/Hover'
 import { useT } from '@/i18n'
@@ -305,14 +305,19 @@ function DeleteDeviceConfirm({ deviceName }: { deviceName: string }) {
 export function Devices() {
   const s = useStore()
   const t = useT()
+  const [updatedAt, setUpdatedAt] = useState('')
 
-  // Real-time status: re-fetch live device probes every 6s while the screen is open
-  // (skip while the add/delete dialogs are open so they don't re-render mid-edit).
+  // Real-time status: re-fetch live device probes every 6s while the screen is open, and stamp the
+  // time so it's VISIBLE the page is auto-updating (skip while the add/delete dialogs are open).
   useEffect(() => {
-    const id = setInterval(() => {
+    const tick = () => {
       const st = useStore.getState()
-      if (!st.showAddDevice && !st.devDeleteConfirm) st.pollDevices()
-    }, 6000)
+      if (st.showAddDevice || st.devDeleteConfirm) return
+      st.pollDevices()
+      setUpdatedAt(new Date().toLocaleTimeString())
+    }
+    tick()
+    const id = setInterval(tick, 6000)
     return () => clearInterval(id)
   }, [])
 
@@ -354,6 +359,7 @@ export function Devices() {
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
             <span style={{ fontSize: 21, fontWeight: 800, letterSpacing: '-.4px' }}>{t('Thiết bị')}</span>
             <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>{t('Máy nhà & client trong mạng Tailscale')}</span>
+            {updatedAt && <span style={{ fontSize: 11.5, color: 'var(--jade-deep)', display: 'flex', alignItems: 'center', gap: 4 }}>🟢 {t('tự cập nhật')} · {updatedAt}</span>}
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
