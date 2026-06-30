@@ -81,20 +81,37 @@ def _probe_spec(spec: dict) -> bool:
     return any(_probe(p, spec.get("host", "localhost"), timeout=1.0) for p in (spec.get("ports") or [spec["port"]]))
 
 
+def _host_cpu_ram() -> tuple[int | None, int | None]:
+    """This machine's live CPU% + RAM% (the services bound to localhost run here)."""
+    try:
+        import psutil
+        return round(psutil.cpu_percent(interval=None)), round(psutil.virtual_memory().percent)
+    except Exception:  # noqa: BLE001
+        return None, None
+
+
 def _refresh_infra(db: Session) -> None:
     """Live-probe every infra device CONCURRENTLY (so /devices stays snappy for real-time
-    polling even when several hosts are down) and update status/models."""
+    polling even when several hosts are down) and update status + real metrics."""
     specs = [s for s in _INFRA if db.get(Device, s["id"])]
     if not specs:
         return
     with ThreadPoolExecutor(max_workers=len(specs)) as ex:
         ups = dict(zip((s["id"] for s in specs), ex.map(_probe_spec, specs)))
+    hcpu, hram = _host_cpu_ram()
     for spec in specs:
         d = db.get(Device, spec["id"])
         up = ups.get(spec["id"], False)
         d.status = "online" if up else "offline"
         d.uptime = "đang chạy" if up else "—"
         d.lastSeen = "vừa xong"
+        # localhost services share THIS machine's CPU/RAM → show real host usage.
+        # Remote hosts (ComfyUI/Bot PC) have no agent here → leave "—".
+        local = spec.get("host", "localhost") in ("localhost", "127.0.0.1")
+        if up and local and hcpu is not None:
+            d.cpu, d.cpuPct, d.ram, d.ramPct = f"{hcpu}%", hcpu, f"{hram}%", hram
+        elif not up:
+            d.cpuPct = d.ramPct = d.gpuPct = 0
         if spec["router"]:
             d.models = _router_models() if up else []
             d.gpu = "qua 9Router" if up else "—"

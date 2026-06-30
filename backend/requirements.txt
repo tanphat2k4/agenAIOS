@@ -18,3 +18,4 @@ python-multipart         # OAuth2 form parsing
 
 # --- HTTP client (9Router gateway) ---
 httpx
+psutil>=5.9

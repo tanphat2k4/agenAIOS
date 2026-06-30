@@ -317,7 +317,7 @@ export function Devices() {
       setUpdatedAt(new Date().toLocaleTimeString())
     }
     tick()
-    const id = setInterval(tick, 6000)
+    const id = setInterval(tick, 3000)
     return () => clearInterval(id)
   }, [])
 
