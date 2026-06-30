@@ -50,4 +50,10 @@ def send_agent(prompt: str, *, agent: str | None = None, deliver: bool = True, t
         payloads = res.get("payloads") or []
         reply = payloads[0].get("text", "") if payloads else ""
     delivered = bool((res.get("deliveryStatus") or {}).get("succeeded"))
-    return (reply or "").strip(), delivered
+    out = (reply or "").strip()
+    # OpenClaw emits the sentinel "NO_REPLY" when the agent chose not to answer. Treat it as
+    # empty so callers fall back (e.g. the morning report builds its own 9Router briefing)
+    # instead of posting the literal "NO_REPLY".
+    if out.upper() == "NO_REPLY":
+        out = ""
+    return out, delivered
