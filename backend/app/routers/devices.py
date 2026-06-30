@@ -32,7 +32,8 @@ _INFRA = [
     {"id": "dev-comfyui", "name": "ComfyUI", "port": 8188, "host": "192.168.1.4", "icon": "🎨", "addr": "192.168.1.4:8188",
      "role": "Tạo ảnh/clip (GPU)", "os": "PC-B", "router": False},
     {"id": "dev-sunobot", "name": "Bot PC", "port": 1243, "host": "192.168.1.3", "ports": [3389, 1243], "icon": "🖥", "addr": "192.168.1.3",
-     "role": "Suno (nhạc) + làm phim · PC-B", "os": "PC-B", "router": False},
+     "role": "Suno (nhạc) + làm phim · PC-B", "os": "PC-B", "router": False,
+     "stats_url": "http://192.168.1.3:9998/stats"},  # run tools/bot-pc-agent/stats_agent.py on that PC
     {"id": "dev-arcreel", "name": "ArcReel", "port": 1242, "host": "localhost", "icon": "🎬", "addr": "localhost:1242",
      "role": "Xưởng làm phim AI", "os": "FastAPI", "router": False},
 ]
@@ -110,6 +111,19 @@ def _refresh_infra(db: Session) -> None:
         local = spec.get("host", "localhost") in ("localhost", "127.0.0.1")
         if up and local and hcpu is not None:
             d.cpu, d.cpuPct, d.ram, d.ramPct = f"{hcpu}%", hcpu, f"{hram}%", hram
+        elif up and spec.get("stats_url"):
+            # remote host running our stats agent (tools/bot-pc-agent) → pull its real metrics
+            try:
+                st = httpx.get(spec["stats_url"], timeout=1.5).json()
+                if st.get("cpu") is not None:
+                    d.cpu, d.cpuPct = f"{st['cpu']}%", st["cpu"]
+                if st.get("ram") is not None:
+                    d.ram, d.ramPct = f"{st['ram']}%", st["ram"]
+                g = st.get("gpu") or {}
+                if g.get("vram_pct") is not None:
+                    d.gpu, d.gpuPct = "VRAM", g["vram_pct"]
+            except Exception:  # noqa: BLE001
+                pass  # agent not running on that host yet → leave 0/— (device still shows online)
         elif not up:
             d.cpuPct = d.ramPct = d.gpuPct = 0
         if spec["router"]:
