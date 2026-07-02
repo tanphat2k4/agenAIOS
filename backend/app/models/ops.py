@@ -82,6 +82,7 @@ class KnowledgeEntry(Base):
     avatars: Mapped[list] = mapped_column(JSON, default=list)
     extra: Mapped[int | None] = mapped_column(Integer, nullable=True)
     content: Mapped[str | None] = mapped_column(Text, nullable=True)  # full document text (e.g. analyze report)
+    created_at: Mapped[int] = mapped_column(Integer, default=_now_epoch)  # epoch — 7-day retention
     sort: Mapped[int] = mapped_column(Integer, default=0)
 
 

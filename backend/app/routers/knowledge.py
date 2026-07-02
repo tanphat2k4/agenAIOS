@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.deps import get_current_user
-from app.crud import get_or_404, next_sort, uid
+from app.crud import get_or_404, next_sort, prune_old_logs, uid
 from app.models.ops import KnowledgeEntry
 from app.serialize import row_to_dict, rows_to_list
 
@@ -24,6 +24,7 @@ class KnowledgeIn(BaseModel):
 
 @router.get("")
 def list_knowledge(db: Session = Depends(get_db)):
+    prune_old_logs(db, KnowledgeEntry)  # 7-day retention, same policy as logs/runs
     out = []
     for k in db.scalars(select(KnowledgeEntry).order_by(KnowledgeEntry.sort, KnowledgeEntry.id)):
         d = row_to_dict(k, exclude={"content"})  # keep the list light

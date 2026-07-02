@@ -89,6 +89,8 @@ def ensure(db: Session = Depends(get_db), current: User = Depends(get_current_us
     ch = ensure_metals_channel(db)
     ensure_aurum_agent(db)
     mp.ensure_metals_workflow(db)  # the P2 pipeline card in Agent Workflow
+    mp.ensure_metals_agents(db)    # pipeline team in the Agents screen
+    mp.ensure_metals_room(db)      # "Giá vàng bạc" room with the whole team
     add_channel_member(db, ch.id, name=current.name, initial=current.initial, color=current.color,
                        role="Owner" if getattr(current, "role", "") == "owner" else "Member", userId=current.id)
     add_channel_member(db, ch.id, name=AURUM["name"], initial=AURUM["initial"], color=AURUM["color"],

@@ -7,15 +7,19 @@ call grounded in metals.snapshot()/tech_text()/news_headlines(); the workflow ca
 """
 import time
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.crud import now_hm, today_ymd, uid
-from app.models.agents import Workflow
-from app.models.ops import KnowledgeEntry, SessionLog
+from app.models.agents import Agent, Workflow
+from app.models.comms import Room
+from app.models.user import User
 from app.services import metals, ninerouter
+from app.models.ops import KnowledgeEntry, SessionLog
 from app.services.trading_record import ANTI_HALLUCINATION, _top_sort
 
 WF_ID = "wf-metals-analysis"
+ROOM_ID = "room-vang-bac"
 
 _PIPELINE = [
     # --- data layer (parallel) ---
@@ -83,6 +87,45 @@ def ensure_metals_workflow(db: Session) -> Workflow:
         w.steps = template
         db.commit()
     return w
+
+
+def ensure_metals_agents(db: Session) -> None:
+    """Register every pipeline agent in the Agents screen (Aurum already exists via the router)."""
+    for a in _PIPELINE:
+        if a["id"] == "agent-au-final":  # Aurum — ensured by routers/metals.ensure_aurum_agent
+            continue
+        ag = db.get(Agent, a["id"])
+        if not ag:
+            db.add(Agent(
+                id=a["id"], name=a["name"], handle="@" + a["id"].replace("agent-au-", "au-"),
+                role=a["role"], roleType="research", initial=a["initial"], color=a["color"],
+                status="online", model="fast-chat", modelType="local", tasks=0, rooms=1, success=100,
+                skills=[a.get("io", "")], lastActive="vừa xong", bio=a["persona"],
+                roomsList=["Giá vàng bạc"], recentTasks=[], sort=-1,
+            ))
+    db.commit()
+
+
+def ensure_metals_room(db: Session) -> Room:
+    """'Giá vàng bạc' room: owner (lead) + Aurum + the whole pipeline team (staff)."""
+    owner = db.scalar(select(User).where(User.role == "owner")) or db.scalar(select(User))
+    want: list = []
+    if owner:
+        want.append({"name": owner.name, "handle": "@" + (owner.name.split()[0].lower() if owner.name else "owner"),
+                     "type": "user", "role": "lead", "initial": owner.initial, "color": owner.color})
+    for a in _PIPELINE:
+        want.append({"name": a["name"], "handle": "@" + a["id"].replace("agent-au-", "au-"),
+                     "type": "agent", "role": "staff", "initial": a["initial"], "color": a["color"]})
+    want.append({"name": "Backtest", "handle": "@au-backtest", "type": "agent", "role": "staff",
+                 "initial": _BACKTEST_STEP["initial"], "color": _BACKTEST_STEP["color"]})
+    r = db.get(Room, ROOM_ID)
+    if not r:
+        r = Room(id=ROOM_ID, name="Giá vàng bạc", slug="vang-bac", channel="vang-bac", members=want, sort=-2)
+        db.add(r)
+    else:
+        r.name, r.channel, r.members = "Giá vàng bạc", "vang-bac", want
+    db.commit()
+    return r
 
 
 def run_pipeline(db: Session, question: str = "") -> tuple[list, bool, str]:
