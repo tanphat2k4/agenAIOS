@@ -115,11 +115,31 @@ export function WorkflowView() {
   })
 
   const awRuns = (aw?.runs || []).map((r) => ({
-    time: r.time, dur: r.dur,
+    time: r.time, dur: r.dur, date: r.date,
     dot: runDot(r.status),
     label: runLabel(r.status),
     labelFg: runLabelFg(r.status),
   }))
+
+  // group runs by day: Hôm nay / Hôm qua / dd-mm (old entries without a date → Trước đó)
+  const dayLabel = (date?: string) => {
+    if (!date) return t('Trước đó')
+    const pad = (n: number) => String(n).padStart(2, '0')
+    const ymd = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+    const today = new Date()
+    if (date === ymd(today)) return t('Hôm nay')
+    const yest = new Date(today); yest.setDate(yest.getDate() - 1)
+    if (date === ymd(yest)) return t('Hôm qua')
+    const [y, m, d] = date.split('-')
+    return y === String(today.getFullYear()) ? `${d}-${m}` : `${d}-${m}-${y}`
+  }
+  const awRunGroups: { label: string; runs: typeof awRuns }[] = []
+  for (const r of awRuns) {
+    const label = dayLabel(r.date)
+    const last = awRunGroups[awRunGroups.length - 1]
+    if (last && last.label === label) last.runs.push(r)
+    else awRunGroups.push({ label, runs: [r] })
+  }
 
   const awProgressPct = totalSteps ? Math.round((doneCount / totalSteps) * 100) + '%' : '0%'
   const awProgressLabel = doneCount + '/' + totalSteps + ' ' + t('bước hoàn tất')
@@ -316,13 +336,21 @@ export function WorkflowView() {
             <div style={{ padding: '0 24px 22px' }}>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.7px', textTransform: 'uppercase', color: 'var(--placeholder)', padding: '8px 0 8px' }}>{t('Lần chạy gần đây')}</div>
               <div style={{ border: '1px solid var(--line)', borderRadius: 14, overflow: 'hidden' }}>
-                {awRuns.map((r, i) => (
-                  <Hover key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 15px', borderBottom: i < awRuns.length - 1 ? '1px solid var(--line)' : 'none' }} hover={{ background: 'var(--bg)' }}>
-                    <span style={{ width: 8, height: 8, borderRadius: 99, background: r.dot, flex: 'none' }}></span>
-                    <span style={{ fontSize: 12.5, fontWeight: 600, color: r.labelFg, width: 90, flex: 'none' }}>{t(r.label)}</span>
-                    <span style={{ fontSize: 12, color: 'var(--ink-2)', flex: 1 }}>{r.time}</span>
-                    <span style={{ fontFamily: 'var(--mono)', fontSize: 11.5, color: 'var(--placeholder)' }}>{r.dur}</span>
-                  </Hover>
+                {awRunGroups.map((g, gi) => (
+                  <div key={g.label + gi}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 15px', background: 'var(--bg)', borderBottom: '1px solid var(--line)', borderTop: gi > 0 ? '1px solid var(--line)' : 'none' }}>
+                      <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--placeholder)' }}>{g.label}</span>
+                      <span style={{ fontSize: 10.5, color: 'var(--placeholder)', marginLeft: 'auto' }}>{g.runs.length} runs</span>
+                    </div>
+                    {g.runs.map((r, i) => (
+                      <Hover key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 15px', borderBottom: i < g.runs.length - 1 ? '1px solid var(--line)' : 'none' }} hover={{ background: 'var(--bg)' }}>
+                        <span style={{ width: 8, height: 8, borderRadius: 99, background: r.dot, flex: 'none' }}></span>
+                        <span style={{ fontSize: 12.5, fontWeight: 600, color: r.labelFg, width: 90, flex: 'none' }}>{t(r.label)}</span>
+                        <span style={{ fontSize: 12, color: 'var(--ink-2)', flex: 1 }}>{r.time}</span>
+                        <span style={{ fontFamily: 'var(--mono)', fontSize: 11.5, color: 'var(--placeholder)' }}>{r.dur}</span>
+                      </Hover>
+                    ))}
+                  </div>
                 ))}
                 {awRuns.length === 0 && (
                   <div style={{ padding: 16, fontSize: 12.5, color: 'var(--placeholder)', textAlign: 'center' }}>{t('Chưa có lần chạy nào')}</div>

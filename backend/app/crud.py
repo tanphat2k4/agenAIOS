@@ -19,6 +19,11 @@ def now_hm() -> str:
     return f"{d.hour:02d}:{d.minute:02d}"
 
 
+def today_ymd() -> str:
+    """Current local date as YYYY-MM-DD — lets the UI group workflow runs by day."""
+    return datetime.now().strftime("%Y-%m-%d")
+
+
 def get_or_404(db: Session, model, obj_id):
     obj = db.get(model, obj_id)
     if obj is None:

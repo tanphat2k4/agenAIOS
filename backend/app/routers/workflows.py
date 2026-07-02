@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.deps import get_current_user
-from app.crud import get_or_404, next_sort, uid
+from app.crud import get_or_404, next_sort, today_ymd, uid
 from app.models.agents import Workflow
 from app.serialize import row_to_dict, rows_to_list
 
@@ -80,7 +80,7 @@ def toggle_workflow(wf_id: str, db: Session = Depends(get_db)):
 def run_workflow(wf_id: str, db: Session = Depends(get_db)):
     w = get_or_404(db, Workflow, wf_id)
     w.steps = [{**st, "status": ("running" if i == 0 else "idle")} for i, st in enumerate(w.steps)]
-    w.runs = [{"time": "vừa xong", "status": "running", "dur": "…"}, *w.runs]
+    w.runs = [{"time": "vừa xong", "date": today_ymd(), "status": "running", "dur": "…"}, *w.runs]
     w.runState = "running"
     w.lastRun = "vừa xong"
     w.runs24 = w.runs24 + 1

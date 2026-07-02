@@ -14,7 +14,7 @@ import subprocess
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.crud import next_sort, now_hm, uid
+from app.crud import next_sort, now_hm, today_ymd, uid
 from app.models.agents import Agent, CronJob, Workflow
 from app.models.comms import Channel, Message, Notification, Room
 from app.models.ops import KnowledgeEntry
@@ -257,7 +257,7 @@ def run_batch(db: Session, *, prompt: str = "Chạy batch nhạc tuần này") -
                 sort=rec._top_sort(db, KnowledgeEntry),
             ))
         w = ensure_music_workflow(db)
-        w.runs = [{"time": now_hm(), "status": "success", "dur": ""}, *(w.runs or [])][:12]
+        w.runs = [{"time": now_hm(), "date": today_ymd(), "status": "success", "dur": ""}, *(w.runs or [])][:12]
         w.lastRun = now_hm()
         w.runs24 = (w.runs24 or 0) + 1
         db.commit()

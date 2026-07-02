@@ -775,4 +775,7 @@ export const EN: Record<string, string> = {
   "Theo nhà cung cấp": "By provider",
   "chưa có dữ liệu (phim chưa chạy thật)": "no data yet (film not run for real)",
   "tự cập nhật": "auto-refresh",
+
+  // ── Channel unread badge ──
+  "Tin mới": "New messages",
 }
