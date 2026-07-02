@@ -91,6 +91,7 @@ def ensure(db: Session = Depends(get_db), current: User = Depends(get_current_us
     mp.ensure_metals_workflow(db)  # the P2 pipeline card in Agent Workflow
     mp.ensure_metals_agents(db)    # pipeline team in the Agents screen
     mp.ensure_metals_room(db)      # "Giá vàng bạc" room with the whole team
+    mp.ensure_metals_mcp(db)       # metals-vn toolbox in the MCP screen
     add_channel_member(db, ch.id, name=current.name, initial=current.initial, color=current.color,
                        role="Owner" if getattr(current, "role", "") == "owner" else "Member", userId=current.id)
     add_channel_member(db, ch.id, name=AURUM["name"], initial=AURUM["initial"], color=AURUM["color"],
@@ -184,6 +185,7 @@ def metals_chat(body: ChatIn, db: Session = Depends(get_db)):
 
     # bare price question → deterministic card, no LLM (fast + can't hallucinate)
     if any(k in low for k in _PRICE_WORDS) and len(text) <= 60:
+        mp.record_metals_call(db, "get_sjc_gold_price" if _detect_asset(low) != "silver" else "get_btmc_silver_price")
         return {"messages": [_save_aurum_msg(db, cid, head)]}
 
     # anything richer → grounded LLM reply, headline always prepended
@@ -248,8 +250,9 @@ def relay_answer_if_metals(db: Session, text: str) -> str | None:
 
 
 @public_router.get("/brief")
-def metals_brief(x_relay_key: str = Header(default="")):
+def metals_brief(x_relay_key: str = Header(default=""), db: Session = Depends(get_db)):
     """Plain-text gold+silver card for the WSL morning-report script (key-protected)."""
     if not settings.RELAY_KEY or x_relay_key != settings.RELAY_KEY:
         raise HTTPException(status_code=401, detail="bad relay key")
+    mp.record_metals_call(db, "get_world_spot")
     return PlainTextResponse(metals.headline().replace("**", ""))

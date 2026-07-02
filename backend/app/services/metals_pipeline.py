@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.crud import now_hm, today_ymd, uid
-from app.models.agents import Agent, Workflow
+from app.models.agents import Agent, McpServer, Workflow
 from app.models.comms import Room
 from app.models.user import User
 from app.services import metals, ninerouter
@@ -20,6 +20,8 @@ from app.services.trading_record import ANTI_HALLUCINATION, _top_sort
 
 WF_ID = "wf-metals-analysis"
 ROOM_ID = "room-vang-bac"
+MCP_ID = "mcp-metals-vn"
+_MCP_TOOLS = ["get_sjc_gold_price", "get_btmc_silver_price", "get_world_spot", "get_metals_news", "run_metals_pipeline"]
 
 _PIPELINE = [
     # --- data layer (parallel) ---
@@ -104,6 +106,35 @@ def ensure_metals_agents(db: Session) -> None:
                 roomsList=["Giá vàng bạc"], recentTasks=[], sort=-1,
             ))
     db.commit()
+
+
+def ensure_metals_mcp(db: Session) -> McpServer:
+    """The metals data toolbox in the MCP screen (twin of tradingagents-vn)."""
+    m = db.get(McpServer, MCP_ID)
+    if m:
+        return m
+    m = McpServer(
+        id=MCP_ID, name="metals-vn", icon="🥇",
+        desc="Giá vàng SJC/BTMC + bạc trong nước (vnstock) · spot thế giới GC=F/SI=F, DXY, tỷ giá (Yahoo) · tin Google News — premium trong nước vs TG.",
+        transport="python subprocess + HTTPS", status="connected", tools=_MCP_TOOLS,
+        agents=len(_PIPELINE) + 1, calls24=0, lastSync=now_hm(),
+        endpoint="app/services/metals.py (vnstock system-python + Yahoo chart API)",
+        recentCalls=[], sort=-1,
+    )
+    db.add(m)
+    db.commit()
+    return m
+
+
+def record_metals_call(db: Session, tool: str, ok: bool = True) -> None:
+    try:
+        m = ensure_metals_mcp(db)
+        m.recentCalls = [{"tool": tool, "time": now_hm(), "ok": ok}, *(m.recentCalls or [])][:8]
+        m.calls24 = (m.calls24 or 0) + 1
+        m.lastSync = now_hm()
+        db.commit()
+    except Exception:  # noqa: BLE001
+        db.rollback()
 
 
 def ensure_metals_room(db: Session) -> Room:
@@ -191,6 +222,7 @@ def run_pipeline(db: Session, question: str = "") -> tuple[list, bool, str]:
 
     outputs = data_out + [(bull, bull_r), (bear, bear_r), (_BACKTEST_STEP, bt)] + decision_out
     _record(db, outputs, f"{int(time.time() - t0)}s", ok["v"])
+    record_metals_call(db, "run_metals_pipeline", ok["v"])
     return outputs, ok["v"], headline
 
 
