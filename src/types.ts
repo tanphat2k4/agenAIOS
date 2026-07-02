@@ -109,6 +109,7 @@ export interface WorkflowStep {
 export interface WorkflowRun {
   time: string
   date?: string  // YYYY-MM-DD — day grouping in the runs list (older entries lack it)
+  exp?: string   // YYYY-MM-DD — retention deadline stamped on legacy dateless entries
   status: string
   dur: string
 }

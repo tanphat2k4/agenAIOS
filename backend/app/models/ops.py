@@ -1,7 +1,13 @@
+import time
+
 from sqlalchemy import JSON, Boolean, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
+
+
+def _now_epoch() -> int:
+    return int(time.time())
 
 
 class Task(Base):
@@ -59,6 +65,7 @@ class SessionLog(Base):
     duration: Mapped[str] = mapped_column(String, default="")
     tokens: Mapped[str] = mapped_column(String, default="")
     log: Mapped[list] = mapped_column(JSON, default=list)
+    created_at: Mapped[int] = mapped_column(Integer, default=_now_epoch)  # epoch — 7-day retention
     sort: Mapped[int] = mapped_column(Integer, default=0)
 
 
@@ -87,6 +94,7 @@ class AuditLog(Base):
     target: Mapped[str] = mapped_column(String, default="")
     lvl: Mapped[str] = mapped_column(String, default="info")
     time: Mapped[str] = mapped_column(String, default="")
+    created_at: Mapped[int] = mapped_column(Integer, default=_now_epoch)  # epoch — 7-day retention
     sort: Mapped[int] = mapped_column(Integer, default=0)
 
 
@@ -102,4 +110,5 @@ class ActivityLog(Base):
     tag: Mapped[str] = mapped_column(String, default="")
     tagFg: Mapped[str] = mapped_column(String, default="")
     tagBg: Mapped[str] = mapped_column(String, default="")
+    created_at: Mapped[int] = mapped_column(Integer, default=_now_epoch)  # epoch — 7-day retention
     sort: Mapped[int] = mapped_column(Integer, default=0)

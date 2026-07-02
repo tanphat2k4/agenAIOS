@@ -257,7 +257,7 @@ def run_batch(db: Session, *, prompt: str = "Chạy batch nhạc tuần này") -
                 sort=rec._top_sort(db, KnowledgeEntry),
             ))
         w = ensure_music_workflow(db)
-        w.runs = [{"time": now_hm(), "date": today_ymd(), "status": "success", "dur": ""}, *(w.runs or [])][:12]
+        w.runs = [{"time": now_hm(), "date": today_ymd(), "status": "success", "dur": ""}, *(w.runs or [])][:200]
         w.lastRun = now_hm()
         w.runs24 = (w.runs24 or 0) + 1
         db.commit()

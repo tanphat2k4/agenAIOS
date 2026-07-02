@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 10080  # 7 days
     ALGORITHM: str = "HS256"
     CORS_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173"
+    LOG_RETENTION_DAYS: int = 7  # workflow runs + session/audit/activity logs auto-expire after this
 
     # 9Router LLM gateway (OpenAI-compatible). Loopback needs no key; set one if remote.
     NINEROUTER_BASE_URL: str = "http://localhost:20128/v1"

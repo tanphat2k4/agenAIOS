@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.deps import get_current_user
-from app.crud import get_or_404
+from app.crud import get_or_404, prune_old_logs
 from app.models.ops import AuditLog, SessionLog
 from app.serialize import rows_to_list
 
@@ -13,6 +13,7 @@ router = APIRouter(tags=["logs"], dependencies=[Depends(get_current_user)])
 
 @router.get("/sessions")
 def list_sessions(db: Session = Depends(get_db)):
+    prune_old_logs(db, SessionLog)  # 7-day retention
     return rows_to_list(db.scalars(select(SessionLog).order_by(SessionLog.sort, SessionLog.id)))
 
 
@@ -33,6 +34,7 @@ def delete_session(session_id: str, db: Session = Depends(get_db)):
 
 @router.get("/audit")
 def list_audit(db: Session = Depends(get_db)):
+    prune_old_logs(db, AuditLog)  # 7-day retention
     return rows_to_list(db.scalars(select(AuditLog).order_by(AuditLog.sort.desc())))
 
 

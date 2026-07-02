@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.deps import get_current_user
-from app.crud import get_or_404, next_sort, uid
+from app.crud import get_or_404, next_sort, prune_old_logs, uid
 from app.models.agents import Agent
 from app.models.ops import ActivityLog, Task
 from app.serialize import row_to_dict, rows_to_list
@@ -104,4 +104,5 @@ def delete_task(task_id: str, db: Session = Depends(get_db)):
 
 @router.get("/activity")
 def list_activity(db: Session = Depends(get_db)):
+    prune_old_logs(db, ActivityLog)  # 7-day retention
     return rows_to_list(db.scalars(select(ActivityLog).order_by(ActivityLog.sort.desc())))

@@ -304,7 +304,7 @@ def record_analysis(db: Session, ticker: str, *, report: str = "", duration: str
     ticker = ticker.upper()
     try:
         w = ensure_analysis_workflow(db)
-        w.runs = [{"time": now_hm(), "date": today_ymd(), "status": "success" if ok else "failed", "dur": duration}, *(w.runs or [])][:12]
+        w.runs = [{"time": now_hm(), "date": today_ymd(), "status": "success" if ok else "failed", "dur": duration}, *(w.runs or [])][:200]
         w.lastRun = now_hm()
         w.runs24 = (w.runs24 or 0) + 1
         w.runState = "idle"
@@ -491,7 +491,7 @@ def _record_pipeline(db: Session, ticker: str, outputs: list, dur: str, ok: bool
         w = ensure_analysis_workflow(db)
         by_name = {a["name"]: txt for a, txt in outputs}
         w.steps = [{**s, "status": "done", "dur": "", "io": (by_name.get(s["agent"], "")[:70].replace("\n", " ") or s.get("io", ""))} for s in (w.steps or [])]
-        w.runs = [{"time": now_hm(), "date": today_ymd(), "status": "success" if ok else "failed", "dur": dur}, *(w.runs or [])][:12]
+        w.runs = [{"time": now_hm(), "date": today_ymd(), "status": "success" if ok else "failed", "dur": dur}, *(w.runs or [])][:200]
         w.lastRun = now_hm()
         w.runs24 = (w.runs24 or 0) + 1
         w.runState = "idle"

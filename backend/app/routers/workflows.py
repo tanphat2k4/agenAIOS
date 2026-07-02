@@ -1,8 +1,11 @@
+from datetime import date, timedelta
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.crud import get_or_404, next_sort, today_ymd, uid
@@ -39,9 +42,40 @@ class WorkflowCreate(BaseModel):
     steps: list[WfStep] = []
 
 
+def _prune_runs(w: Workflow) -> bool:
+    """7-day retention on the runs list. Dated entries expire by their date; legacy
+    dateless entries get stamped an `exp` (today + retention) so they age out too
+    instead of being wiped immediately or living forever."""
+    ret = settings.LOG_RETENTION_DAYS
+    today = date.today()
+    cutoff = (today - timedelta(days=ret - 1)).isoformat()  # rolling window incl. today
+    legacy_exp = (today + timedelta(days=ret)).isoformat()
+    today_s = today.isoformat()
+    changed, kept = False, []
+    for r in w.runs or []:
+        if r.get("date"):
+            if r["date"] >= cutoff:
+                kept.append(r)
+            else:
+                changed = True
+        elif not r.get("exp"):
+            kept.append({**r, "exp": legacy_exp})
+            changed = True
+        elif r["exp"] >= today_s:
+            kept.append(r)
+        else:
+            changed = True
+    if changed:
+        w.runs = kept
+    return changed
+
+
 @router.get("")
 def list_workflows(db: Session = Depends(get_db)):
-    return rows_to_list(db.scalars(select(Workflow).order_by(Workflow.sort, Workflow.id)))
+    workflows = db.scalars(select(Workflow).order_by(Workflow.sort, Workflow.id)).all()
+    if any([_prune_runs(w) for w in workflows]):  # list first: prune ALL, not short-circuit
+        db.commit()
+    return rows_to_list(workflows)
 
 
 @router.post("", status_code=201)
@@ -80,7 +114,7 @@ def toggle_workflow(wf_id: str, db: Session = Depends(get_db)):
 def run_workflow(wf_id: str, db: Session = Depends(get_db)):
     w = get_or_404(db, Workflow, wf_id)
     w.steps = [{**st, "status": ("running" if i == 0 else "idle")} for i, st in enumerate(w.steps)]
-    w.runs = [{"time": "vừa xong", "date": today_ymd(), "status": "running", "dur": "…"}, *w.runs]
+    w.runs = [{"time": "vừa xong", "date": today_ymd(), "status": "running", "dur": "…"}, *w.runs][:200]
     w.runState = "running"
     w.lastRun = "vừa xong"
     w.runs24 = w.runs24 + 1

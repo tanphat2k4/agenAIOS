@@ -1,10 +1,11 @@
 """Small shared helpers used across routers."""
 
+import time
 import uuid
 from datetime import datetime
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 
@@ -22,6 +23,21 @@ def now_hm() -> str:
 def today_ymd() -> str:
     """Current local date as YYYY-MM-DD — lets the UI group workflow runs by day."""
     return datetime.now().strftime("%Y-%m-%d")
+
+
+def prune_old_logs(db: Session, model) -> int:
+    """Retention: drop rows older than LOG_RETENTION_DAYS (model needs a created_at epoch column).
+
+    Rows with created_at == 0 (pre-migration placeholder) are left alone.
+    Called lazily from the list endpoints, mirroring the chat auto-delete pattern.
+    """
+    from app.core.config import settings  # local import: keep crud free of config at import time
+
+    cutoff = int(time.time()) - settings.LOG_RETENTION_DAYS * 86400
+    n = db.execute(delete(model).where(model.created_at > 0, model.created_at < cutoff)).rowcount
+    if n:
+        db.commit()
+    return n or 0
 
 
 def get_or_404(db: Session, model, obj_id):
