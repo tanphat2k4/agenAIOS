@@ -235,6 +235,12 @@ def _is_advisor_call(text: str) -> bool:
 _SCREEN_KW = ("mua gì", "cổ phiếu gì", "cổ phiếu nào", "mã gì", "mã nào", "nên mua gì", "gợi ý mã",
               "gợi ý mua", "chọn mã", "lọc mã", "đáng mua", "con nào", "mua con", "mã nào ngon")
 
+# Advice-intent keywords → the VISIBLE Sage pipeline (shared by in-app chat + Telegram relay).
+_DEEP_KW = ("khuyến nghị", "khuyên nghị", "nên mua", "nên bán", "nên giữ", "có nên",
+            "đánh giá", "phân tích", "nhận định", "thế nào", "ra sao", "recommend")
+# …unless the user explicitly wants the FULL deep report (slow vn_cli analyze).
+_FULL_REPORT_KW = ("đầy đủ", "day du", "báo cáo", "bao cao", "analyze", "full", "chi tiết", "chi tiet")
+
 
 def _wants_screening(text: str) -> bool:
     """True if the user asks WHICH stock to buy (watchlist screen), not about one ticker."""
@@ -530,6 +536,21 @@ def trading_chat(body: ChatIn, db: Session = Depends(get_db), current: User = De
         # general question / follow-up → conversational reply, signed Sage
         return {"messages": [_save_advisor_msg(db, cid, _llm_reply(db, cid, body.text))], "analyzing": None}
 
+    # "khuyến nghị <MÃ>" / opinion questions WITHOUT @cố vấn → the SAME visible Sage
+    # pipeline the Telegram relay uses (Agent Workflow runs live, ~30-60s), NOT the
+    # opaque minutes-long vn_cli analyze. The full report stays behind _FULL_REPORT_KW.
+    low = body.text.lower()
+    if ticker and (cmd == "analyze" or ta.is_opinion(body.text) or any(k in low for k in _DEEP_KW)) \
+            and not any(k in low for k in _FULL_REPORT_KW):
+        key = _key(ticker, None)
+        job = _jobs.get(key)
+        if not (job and job["status"] == "running"):
+            _jobs[key] = {"status": "running", "result": None}
+            interim = _save_advisor_msg(db, cid, f"💼 **{rec.ADVISOR['name']}** đang hỏi team (Analyst → Bull/Bear → Trader → Risk → Portfolio) cho **{ticker}** trên giá real-time, chờ ~30 giây…")
+            threading.Thread(target=_bg_advise, args=(cid, ticker, body.text), daemon=True).start()
+            return {"messages": [interim], "analyzing": ticker}
+        return {"messages": [_save_advisor_msg(db, cid, f"Em đang phân tích {ticker} rồi, chờ chút nhé.")], "analyzing": ticker}
+
     if cmd == "analyze":
         if not ticker:
             return {"messages": [_save_agent_msg(db, cid, "Anh cho em mã cổ phiếu để phân tích nhé (vd FPT).")], "analyzing": None}
@@ -697,9 +718,7 @@ def trading_relay(body: RelayIn, x_relay_key: str = Header(default="")):
         cmd, ticker = ta.classify(text)
         # recommendation / analysis intents → run the full pipeline (so the Agent Workflow runs);
         # quick price/news/greeting → conversational reply.
-        deep = any(k in text.lower() for k in (
-            "khuyến nghị", "khuyên nghị", "nên mua", "nên bán", "nên giữ", "có nên",
-            "đánh giá", "phân tích", "nhận định", "thế nào", "ra sao", "recommend"))
+        deep = any(k in text.lower() for k in _DEEP_KW)
         if ticker and (cmd == "analyze" or ta.is_opinion(text) or deep):
             # run the pipeline on its OWN session (like the in-app thread) so its workflow/log/knowledge
             # writes commit cleanly — sharing this request's session (after _save_user_msg) made
