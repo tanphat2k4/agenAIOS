@@ -510,6 +510,7 @@ export interface AppActions {
   replyTo: (name: string) => void
   sendMessage: () => void
   pollTradingAnalyze: (channelId: string, ticker: string) => void
+  pollMetalsAnalyze: (channelId: string) => void
   pollMusicChat: (channelId: string) => void
   pollReel: (channelId: string, filmId: string) => void
   refreshTradingOps: () => void
@@ -1105,11 +1106,12 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
         if (id === 'am-nhac' && text) {
           return api.post('/music/chat', { text }).then(() => get().pollMusicChat(id))
         }
-        // Metals channel: Aurum answers price questions on real SJC/BTMC/Yahoo data
+        // Metals channel: Aurum — price card sync, advice runs the async pipeline
         if (id === 'vang-bac' && text) {
           return api.post('/metals/chat', { channel_id: id, text }).then((res) => {
             const replies = (res && res.messages) || []
             set((s) => ({ messages: { ...s.messages, [id]: [...(s.messages[id] || []), ...replies] } }))
+            if (res && res.analyzing) get().pollMetalsAnalyze(id)
           })
         }
         // Film channel: Reel — create/control films; replies + gate prompts arrive async
@@ -1135,6 +1137,19 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
         if (r.status === 'done' || r.status === 'error') {
           api.get(`/channels/${channelId}/messages`).then((msgs) => set((s) => ({ messages: { ...s.messages, [channelId]: msgs } }))).catch(() => {})
           get().refreshTradingOps()
+        } else {
+          setTimeout(tick, 4000)
+        }
+      }).catch(() => {})
+    }
+    setTimeout(tick, 4000)
+  },
+  pollMetalsAnalyze: (channelId) => {
+    const tick = () => {
+      api.get('/metals/analyze').then((r) => {
+        if (r.status === 'done' || r.status === 'error') {
+          api.get(`/channels/${channelId}/messages`).then((msgs) => set((s) => ({ messages: { ...s.messages, [channelId]: msgs } }))).catch(() => {})
+          get().pollWorkflows()  // the wf-metals card just recorded a run
         } else {
           setTimeout(tick, 4000)
         }

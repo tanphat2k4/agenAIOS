@@ -145,6 +145,125 @@ def _tr(v: float | None) -> str:
     return f"{v / 1e6:,.2f}" if v else "—"
 
 
+# ---------------------------------------------------------------- P2: history / indicators / news
+_hist_cache: dict = {}
+
+
+def history(symbol: str, rng: str = "1y") -> list[float]:
+    """Daily closes from Yahoo (cache 10 min). Empty list on failure."""
+    key = f"{symbol}:{rng}"
+    hit = _hist_cache.get(key)
+    if hit and _t.time() - hit["t"] < 600:
+        return hit["d"]
+    closes: list[float] = []
+    try:
+        with httpx.Client(timeout=10, headers={"User-Agent": "Mozilla/5.0"}) as client:
+            j = client.get(f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}",
+                           params={"range": rng, "interval": "1d"}).json()
+            raw = j["chart"]["result"][0]["indicators"]["quote"][0]["close"]
+            closes = [float(c) for c in raw if c is not None]
+    except Exception:  # noqa: BLE001
+        pass
+    _hist_cache[key] = {"t": _t.time(), "d": closes}
+    return closes
+
+
+def _ema(vals: list[float], n: int) -> list[float]:
+    if not vals:
+        return []
+    k, out = 2 / (n + 1), [vals[0]]
+    for v in vals[1:]:
+        out.append(v * k + out[-1] * (1 - k))
+    return out
+
+
+def indicators(symbol: str) -> dict:
+    """Wilder RSI(14), MACD(12,26,9), SMA50/200 on daily closes — pure python, no pandas."""
+    closes = history(symbol)
+    if len(closes) < 60:
+        return {}
+    gains, losses = [], []
+    for a, b in zip(closes[:-1], closes[1:]):
+        d = b - a
+        gains.append(max(d, 0.0))
+        losses.append(max(-d, 0.0))
+    ag, al = sum(gains[:14]) / 14, sum(losses[:14]) / 14
+    for g, l in zip(gains[14:], losses[14:]):  # Wilder smoothing = ewm(alpha=1/14)
+        ag, al = (ag * 13 + g) / 14, (al * 13 + l) / 14
+    rsi = 100.0 if al == 0 else 100 - 100 / (1 + ag / al)
+    macd_line = [a - b for a, b in zip(_ema(closes, 12), _ema(closes, 26))]
+    signal = _ema(macd_line, 9)
+    return {
+        "price": round(closes[-1], 2), "rsi": round(rsi, 1),
+        "macd": round(macd_line[-1], 2), "macd_sig": round(signal[-1], 2),
+        "sma50": round(sum(closes[-50:]) / 50, 2),
+        "sma200": round(sum(closes[-200:]) / 200, 2) if len(closes) >= 200 else None,
+    }
+
+
+def tech_text() -> str:
+    """Formatted world-technical block for gold + silver (+ G/S ratio)."""
+    parts = []
+    for sym, label in (("GC=F", "VÀNG (GC=F)"), ("SI=F", "BẠC (SI=F)")):
+        i = indicators(sym)
+        if not i:
+            parts.append(f"{label}: không đủ dữ liệu lịch sử")
+            continue
+        trend = "TRÊN" if i["sma200"] and i["price"] > i["sma200"] else "DƯỚI"
+        parts.append(
+            f"{label}: giá {i['price']:,} · RSI(14) {i['rsi']} · MACD {i['macd']} (signal {i['macd_sig']}) · "
+            f"SMA50 {i['sma50']:,}" + (f" · SMA200 {i['sma200']:,} (giá {trend} SMA200)" if i["sma200"] else ""))
+    s = snapshot()
+    if s.get("gold_silver_ratio"):
+        parts.append(f"Tỷ số GOLD/SILVER: {s['gold_silver_ratio']} (tham chiếu: >80 bạc rẻ tương đối, <65 vàng rẻ tương đối)")
+    return "\n".join(parts)
+
+
+def backtest_sma50(symbol: str = "GC=F") -> str:
+    """Deterministic SMA50-cross backtest on ~1y of daily closes (long above SMA50)."""
+    closes = history(symbol)
+    if len(closes) < 60:
+        return "(không đủ dữ liệu backtest)"
+    strat, bh, pos = 1.0, closes[-1] / closes[50], False
+    for i in range(50, len(closes) - 1):
+        sma = sum(closes[i - 49:i + 1]) / 50
+        pos = closes[i] > sma
+        if pos:
+            strat *= closes[i + 1] / closes[i]
+    return (f"BACKTEST {symbol} ~1 năm (máy tính, không LLM): chiến lược SMA50-cross "
+            f"{(strat - 1) * 100:+.1f}% vs mua-giữ {(bh - 1) * 100:+.1f}% · "
+            f"trạng thái hiện tại: {'TRÊN SMA50 (đang giữ)' if pos else 'DƯỚI SMA50 (đứng ngoài)'}")
+
+
+_news_cache: dict = {}
+
+
+def news_headlines() -> list[str]:
+    """Top headlines from Google News RSS — VN 'giá vàng' + world 'gold price' (cache 10 min)."""
+    import re as _re
+    if _news_cache and _t.time() - _news_cache.get("t", 0) < 600:
+        return _news_cache["d"]
+    out: list[str] = []
+    feeds = [
+        ("https://news.google.com/rss/search?q=gi%C3%A1%20v%C3%A0ng&hl=vi&gl=VN&ceid=VN:vi", 4),
+        ("https://news.google.com/rss/search?q=gold%20price%20fed&hl=en-US&gl=US&ceid=US:en", 3),
+    ]
+    try:
+        with httpx.Client(timeout=8, headers={"User-Agent": "Mozilla/5.0"}, follow_redirects=True) as client:
+            for url, n in feeds:
+                try:
+                    xml = client.get(url).text
+                    titles = _re.findall(r"<title>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?</title>", xml)
+                    titles = [t.strip() for t in titles if t.strip() and not t.strip().startswith(("Google Tin", "Google News"))]
+                    out += titles[:n]
+                except Exception:  # noqa: BLE001
+                    continue
+    except Exception:  # noqa: BLE001
+        pass
+    _news_cache.update(t=_t.time(), d=out)
+    return out
+
+
 def headline(snap: dict | None = None) -> str:
     """Deterministic price lines — ALWAYS prepended to Aurum's replies so the user
     sees machine-computed numbers even if a model drifts (mirror of price_headline)."""
