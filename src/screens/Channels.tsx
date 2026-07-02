@@ -49,6 +49,9 @@ export function Channels() {
   const t = useT()
   const composerRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const scrollerRef = useRef<HTMLDivElement>(null)
+  const newMarkRef = useRef<HTMLDivElement>(null)
+  const jumpDoneFor = useRef<string | null>(null)  // channel id whose open-scroll already ran
   const onPickAttach = (kind: string) => {
     if (kind === 'record') { s.pickAttach('record'); return }  // pickAttach closes the menu
     s.toggleAttachMenu()  // close menu, then open the real file dialog
@@ -111,6 +114,24 @@ export function Channels() {
   }
 
   useEffect(() => { if (composerRef.current && !s.draft) composerRef.current.style.height = 'auto' }, [s.draft])
+
+  // ---- auto-scroll: jump to the "— Tin mới —" marker (first bot reply you haven't seen),
+  //      else open at the latest message; stick to the bottom while new replies stream in ----
+  const jump = s.unreadJump && s.unreadJump.id === active?.id ? s.unreadJump : null
+  const firstNewIdx = jump && allMsgs.length > 0 ? Math.max(0, allMsgs.length - jump.count) : -1
+  const showNewMark = firstNewIdx >= 0 && !chatQ
+  useEffect(() => {
+    const el = scrollerRef.current
+    if (!el || allMsgs.length === 0) return
+    if (jumpDoneFor.current !== active?.id) {
+      if (showNewMark && newMarkRef.current) newMarkRef.current.scrollIntoView({ block: 'start' })
+      else el.scrollTop = el.scrollHeight
+      jumpDoneFor.current = active?.id || null
+    } else if (el.scrollHeight - el.scrollTop - el.clientHeight < 160) {
+      el.scrollTop = el.scrollHeight
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active?.id, allMsgs.length])
 
   const headerBtn = (title: string, glyph: string, onClick: () => void, danger?: boolean) => (
     <Hover as="button" title={title} onClick={onClick}
@@ -200,7 +221,7 @@ export function Channels() {
           </div>
         </header>
 
-        <div className="msgscroll" style={{ flex: 1, overflowY: 'auto', padding: '18px 22px 8px' }}>
+        <div ref={scrollerRef} className="msgscroll" style={{ flex: 1, overflowY: 'auto', padding: '18px 22px 8px' }}>
           {msgs.length === 0 && (
             <div style={{ height: '100%', minHeight: 380, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', color: 'var(--ink-2)' }}>
               <div style={{ width: 72, height: 72, borderRadius: 20, background: 'var(--jade-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, marginBottom: 18 }}>🗂</div>
@@ -212,7 +233,15 @@ export function Channels() {
             const blocks = buildBlocks(mm.raw)
             const openCard = () => s.openPersonCard({ name: mm.authorName, initial: mm.avatarInitial, color: mm.avatarColor, isAgent: !!mm.isAgent })
             return (
-              <div key={i} style={{ display: 'flex', gap: 13, padding: '10px 0 14px', animation: 'msgIn .25s ease both' }}>
+              <div key={i}>
+              {showNewMark && i === firstNewIdx && (
+                <div ref={newMarkRef} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0 10px', scrollMarginTop: 12 }}>
+                  <span style={{ flex: 1, height: 1, background: 'var(--jade)' }} />
+                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--jade-deep)', background: 'var(--jade-soft)', padding: '3px 10px', borderRadius: 99 }}>{t('Tin mới')} ↓</span>
+                  <span style={{ flex: 1, height: 1, background: 'var(--jade)' }} />
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: 13, padding: '10px 0 14px', animation: 'msgIn .25s ease both' }}>
                 <div onClick={openCard} title={t('Xem hồ sơ')} style={{ width: 38, height: 38, borderRadius: 11, background: mm.avatarColor, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 15, flex: 'none', cursor: 'pointer' }}>{mm.avatarInitial}</div>
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 5 }}>
@@ -250,6 +279,7 @@ export function Channels() {
                     return <div key={bi} style={{ display: 'inline-flex', alignItems: 'center', gap: 11, maxWidth: '100%', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, padding: '10px 14px', marginTop: 4 }}><span style={{ fontSize: 20, flex: 'none' }}>{block.icon}</span><div style={{ minWidth: 0 }}><div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{block.name}</div><div style={{ fontSize: 11, color: 'var(--placeholder)' }}>{block.label}</div></div></div>
                   })}
                 </div>
+              </div>
               </div>
             )
           })}

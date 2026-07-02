@@ -199,6 +199,7 @@ export interface AppState {
   createFocused: boolean
   switchQuery: string
   unread: Record<string, number>
+  unreadJump: { id: string; count: number } | null  // set on opening a channel with unread → chat scrolls to the first new message
   messages: Record<string, ChatMessage[]>
   publicData: Channel[]
   privateData: Channel[]
@@ -590,6 +591,7 @@ const initial: AppState = {
   deleteTarget: null, channelTaskDetail: null, fileDetail: null, renameTarget: null, renameValue: '', composerFocused: false,
   createForm: { name: '', type: 'private', desc: '' }, createFocused: false, switchQuery: '',
   unread: { 'room-zy-novel': 4 },
+  unreadJump: null,
   messages: seed.messages,
   publicData: seed.publicData as Channel[], privateData: seed.privateData as Channel[], directData: seed.directData as Channel[],
   cronFilter: 'all',
@@ -1057,13 +1059,14 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
   // ---------- channels / chat ----------
   selectChannel: (id) => {
     const prev = get().activeId
+    const count = get().unread[id] || 0
     const unread = { ...get().unread }; delete unread[id]
-    set({ activeId: id, overlay: null, unread })
+    // remember how many messages were new so the chat can scroll to the first one (— Tin mới — marker)
+    set({ activeId: id, overlay: null, unread, unreadJump: count > 0 ? { id, count } : null })
     if (prev && prev !== id) api.post(`/channels/${prev}/read`).catch(() => {})  // mark the channel you left read
     api.post(`/channels/${id}/read`).catch(() => {})                              // and the one you opened
-    if (!get().messages[id]) {
-      api.get(`/channels/${id}/messages`).then((msgs) => set((s) => ({ messages: { ...s.messages, [id]: msgs } }))).catch(() => {})
-    }
+    // refetch so the jump target (the bot's reply) is actually in the list
+    api.get(`/channels/${id}/messages`).then((msgs) => set((s) => ({ messages: { ...s.messages, [id]: msgs } }))).catch(() => {})
   },
   openCreate: () => set({ overlay: 'create', createForm: { name: '', type: 'private', desc: '' } }),
   openSwitch: () => set({ overlay: 'switch', switchQuery: '' }),
