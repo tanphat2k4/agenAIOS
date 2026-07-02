@@ -12,6 +12,7 @@ from app.routers import (
     knowledge,
     logs,
     mcp,
+    metals,
     music,
     notifs,
     overview,
@@ -48,5 +49,6 @@ api_router.include_router(overview.router)
 api_router.include_router(trading.router)
 api_router.include_router(trading.relay_router)
 api_router.include_router(music.router)
+api_router.include_router(metals.router)
 api_router.include_router(uploads.router)
 api_router.include_router(ai.router)

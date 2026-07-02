@@ -649,6 +649,7 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
       api.post('/trading/channel/ensure').catch(() => {}),
       api.post('/music/ensure').catch(() => {}),
       api.post('/films/channel/ensure').catch(() => {}),
+      api.post('/metals/ensure').catch(() => {}),
     ])
     const [channels, agents, mcp, workflows, cron, tasks, devices, sessions, audit, knowledge, rooms, roles, users, invites, signups, notifs, bill, profile, activity, settings] = await Promise.all([
       api.get('/channels'), api.get('/agents'), api.get('/mcp'), api.get('/workflows'), api.get('/cron'),
@@ -1103,6 +1104,13 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
         // Music channel: forward to Beat (music-orchestrator), reply arrives async
         if (id === 'am-nhac' && text) {
           return api.post('/music/chat', { text }).then(() => get().pollMusicChat(id))
+        }
+        // Metals channel: Aurum answers price questions on real SJC/BTMC/Yahoo data
+        if (id === 'vang-bac' && text) {
+          return api.post('/metals/chat', { channel_id: id, text }).then((res) => {
+            const replies = (res && res.messages) || []
+            set((s) => ({ messages: { ...s.messages, [id]: [...(s.messages[id] || []), ...replies] } }))
+          })
         }
         // Film channel: Reel — create/control films; replies + gate prompts arrive async
         if (id === 'phim' && text) {
