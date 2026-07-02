@@ -111,6 +111,19 @@ _PRICE_WORDS = ("giá", "gia ", "bao nhiêu", "bao nhieu", "premium", "chênh", 
 _ADVICE_KW = ("khuyến nghị", "khuyên nghị", "nên mua", "nên bán", "nên giữ", "có nên", "đánh giá",
               "phân tích", "nhận định", "đầu tư", "xuống tiền", "chốt lời", "bắt đáy", "recommend")
 
+
+def _detect_asset(low: str) -> str | None:
+    """'silver' / 'gold' when the question is about ONLY one metal, else None (both)."""
+    import re as _re
+    silver = "bạc" in low or "silver" in low or "xag" in low or bool(_re.search(r"\bbac\b", low))
+    gold = ("vàng" in low or "gold" in low or "sjc" in low or "nhẫn" in low or "xau" in low
+            or bool(_re.search(r"\bvang\b", low)))
+    if silver and not gold:
+        return "silver"
+    if gold and not silver:
+        return "gold"
+    return None
+
 _jobs: dict = {}
 _JOB_KEY = "METALS"
 
@@ -119,7 +132,8 @@ def _bg_advise(channel_id: str, question: str) -> None:
     """Run the multi-agent pipeline on its own session, then post Aurum's advisory."""
     db = SessionLocal()
     try:
-        outputs, ok, headline = mp.run_pipeline(db, question)
+        outputs, ok, _full_head = mp.run_pipeline(db, question)
+        headline = metals.headline(metals.snapshot(), _detect_asset(question.lower()))  # asset-filtered card
         by_name = {a["name"]: txt for a, txt in outputs}
         final = by_name.get("Aurum", "").strip() or "(pipeline không trả kết luận)"
         bear = (by_name.get("Bear", "") or "").strip()
@@ -160,7 +174,7 @@ def metals_chat(body: ChatIn, db: Session = Depends(get_db)):
         return {"messages": [interim], "analyzing": _JOB_KEY}
 
     snap = metals.snapshot()
-    head = metals.headline(snap)
+    head = metals.headline(snap, _detect_asset(low))  # "giá bạc" → silver-only card, "giá vàng" → gold-only
 
     # bare price question → deterministic card, no LLM (fast + can't hallucinate)
     if any(k in low for k in _PRICE_WORDS) and len(text) <= 60:

@@ -264,29 +264,35 @@ def news_headlines() -> list[str]:
     return out
 
 
-def headline(snap: dict | None = None) -> str:
+def headline(snap: dict | None = None, asset: str | None = None) -> str:
     """Deterministic price lines — ALWAYS prepended to Aurum's replies so the user
-    sees machine-computed numbers even if a model drifts (mirror of price_headline)."""
+    sees machine-computed numbers even if a model drifts (mirror of price_headline).
+
+    asset: "gold" → only gold lines, "silver" → only silver lines, None → both.
+    """
     s = snap or snapshot()
+    show_gold, show_silver = asset in (None, "gold"), asset in (None, "silver")
     lines: list[str] = []
     bar, ring, sil = s.get("sjc_bar"), s.get("sjc_ring"), s.get("silver")
-    if bar:
+    if show_gold and bar:
         prem = f" · **PREMIUM {s['premium_pct']:+.1f}%** vs TG" if s.get("premium_pct") is not None else ""
         lines.append(f"📍 Vàng SJC miếng **{_tr(bar['buy'])} – {_tr(bar['sell'])} tr/lượng**{prem}")
-    if ring:
+    if show_gold and ring:
         rb, rs = ring.get("buy") or 0, ring.get("sell") or 0
         if rb and rb < 30e6:  # BTMC quotes rings per CHỈ (1/10 lượng) — normalize to lượng
             rb, rs = rb * 10, rs * 10
         lines.append(f"💍 Nhẫn 99,99: {_tr(rb)} – {_tr(rs)} tr/lượng")
-    if s.get("gold_usd"):
+    if show_gold and s.get("gold_usd"):
         w = f" ≈ {_tr(s['world_luong_vnd'])} tr/lượng" if s.get("world_luong_vnd") else ""
         lines.append(f"🌍 Vàng TG **{s['gold_usd']:,.0f} $/oz**{w}")
-    if sil:
+    if show_silver and sil:
         up = sil["name"].upper()
         brand = "Phú Quý" if "PHÚ QUÝ" in up else ("Rồng Thăng Long" if "RỒNG" in up else "miếng")
-        sp = f" · premium {s['silver_premium_pct']:+.1f}%" if s.get("silver_premium_pct") is not None else ""
-        lines.append(f"🥈 Bạc {brand} **{_tr(sil['buy'])} – {_tr(sil['sell'])} tr/kg** · TG {s['silver_usd']:,.2f} $/oz{sp}" if s.get("silver_usd")
-                     else f"🥈 Bạc {brand} **{_tr(sil['buy'])} – {_tr(sil['sell'])} tr/kg**{sp}")
+        sp = f" · **premium {s['silver_premium_pct']:+.1f}%** vs TG" if s.get("silver_premium_pct") is not None else ""
+        lines.append(f"🥈 Bạc {brand} **{_tr(sil['buy'])} – {_tr(sil['sell'])} tr/kg**{sp}")
+        if s.get("silver_usd"):
+            w = f" ≈ {_tr(s['silver_world_kg_vnd'])} tr/kg" if s.get("silver_world_kg_vnd") else ""
+            lines.append(f"🌍 Bạc TG **{s['silver_usd']:,.2f} $/oz**{w}")
     macro = []
     if s.get("gold_silver_ratio"):
         macro.append(f"Gold/Silver {s['gold_silver_ratio']}")
