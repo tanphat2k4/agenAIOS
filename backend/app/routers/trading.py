@@ -712,6 +712,12 @@ def trading_relay(body: RelayIn, x_relay_key: str = Header(default="")):
         return {"reply": ""}
     db = SessionLocal()
     try:
+        # gold/silver questions → the Aurum metals flow (#vang-bac mirror + pipeline) — P3
+        from app.routers.metals import relay_answer_if_metals  # lazy: avoid import cycle
+        metals_reply = relay_answer_if_metals(db, text)
+        if metals_reply is not None:
+            return {"reply": metals_reply}
+
         cid = TRADING_CHANNEL_ID
         ensure_trading_channel(db)
         _save_user_msg(db, cid, text)

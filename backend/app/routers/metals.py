@@ -9,10 +9,12 @@ import json
 import threading
 
 import httpx
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.database import SessionLocal, get_db
 from app.core.deps import get_current_user
 from app.crud import next_sort, now_hm, uid
@@ -24,6 +26,8 @@ from app.services import metals, metals_pipeline as mp, ninerouter
 from app.services import trading_record as rec
 
 router = APIRouter(prefix="/metals", tags=["metals"], dependencies=[Depends(get_current_user)])
+# key-protected, NO JWT — for the Telegram relay + the WSL morning-report script
+public_router = APIRouter(prefix="/metals", tags=["metals-public"])
 
 METALS_CHANNEL_ID = "vang-bac"
 
@@ -195,3 +199,55 @@ def metals_chat(body: ChatIn, db: Session = Depends(get_db)):
     except httpx.HTTPError:
         reply = "Không gọi được 9Router — em trả số liệu thô ở trên, hỏi lại sau nhé."
     return {"messages": [_save_aurum_msg(db, cid, head + "\n\n" + reply)]}
+
+
+# ----------------------- Telegram relay + morning-report hooks (P3) -----------------------
+def relay_answer_if_metals(db: Session, text: str) -> str | None:
+    """Handle a Telegram-relayed message if it's about gold/silver: mirror the Q+A into
+    #vang-bac (owner-authored, like #chung-khoan) and return the reply text for Telegram.
+    Returns None when the message isn't about metals → the stock flow handles it."""
+    import re as _re
+    low = text.lower()
+    has_metal = ("vàng" in low or "bạc" in low or "gold" in low or "silver" in low or "sjc" in low
+                 or "nhẫn" in low or "xau" in low or "xag" in low or bool(_re.search(r"\b(vang|bac)\b", low)))
+    if not has_metal:
+        return None
+    ensure_metals_channel(db)
+    ensure_aurum_agent(db)
+    from app.routers.trading import _save_user_msg  # lazy import — avoids a router import cycle
+    _save_user_msg(db, METALS_CHANNEL_ID, text)
+    asset = _detect_asset(low)
+
+    if any(k in low for k in _ADVICE_KW):
+        pdb = SessionLocal()  # pipeline on its OWN session so workflow/log/knowledge commits cleanly
+        try:
+            outputs, _ok, _h = mp.run_pipeline(pdb, text)
+        finally:
+            pdb.close()
+        by_name = {a["name"]: t for a, t in outputs}
+        final = (by_name.get("Aurum") or "").strip() or "(pipeline không trả kết luận)"
+        reply = metals.headline(metals.snapshot(), asset) + "\n\n" + final
+    else:
+        head = metals.headline(metals.snapshot(), asset)
+        if any(k in low for k in _PRICE_WORDS) and len(text.strip()) <= 60:
+            reply = head
+        else:
+            data_block = json.dumps({k: v for k, v in metals.snapshot().items() if k != "errors"},
+                                    ensure_ascii=False, default=str)[:3000]
+            system = {"role": "system", "content": (AURUM["persona"] + " " + rec.ANTI_HALLUCINATION +
+                                                    f"\n\nDỮ LIỆU REAL-TIME:\n{data_block}")}
+            try:
+                res = ninerouter.chat([system, {"role": "user", "content": text}], None, max_tokens=600)
+                reply = head + "\n\n" + ((res.get("content") or "").strip() or "(không có nội dung)")
+            except httpx.HTTPError:
+                reply = head
+    _save_aurum_msg(db, METALS_CHANNEL_ID, reply)
+    return reply.replace("**", "")  # Telegram plain-text shows literal asterisks
+
+
+@public_router.get("/brief")
+def metals_brief(x_relay_key: str = Header(default="")):
+    """Plain-text gold+silver card for the WSL morning-report script (key-protected)."""
+    if not settings.RELAY_KEY or x_relay_key != settings.RELAY_KEY:
+        raise HTTPException(status_code=401, detail="bad relay key")
+    return PlainTextResponse(metals.headline().replace("**", ""))

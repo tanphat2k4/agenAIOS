@@ -80,6 +80,13 @@ def run_morning_report(db: Session, *, manual: bool = False) -> str:
         via = "9Router in-app (OpenClaw tắt/lỗi)"
         delivered = False
 
+    # gold & silver section (deterministic card — the WSL vn_daily_report adds its own via /metals/brief)
+    try:
+        from app.services import metals
+        reply += "\n\n🥇 vàng & bạc hôm nay:\n" + metals.headline().replace("**", "")
+    except Exception:  # noqa: BLE001
+        pass
+
     report = f"# ☀️ Báo cáo sáng VN — {now_hm()}\n\n{reply}\n\n> Gửi qua {via}. Nghiên cứu, không phải lời khuyên đầu tư."
 
     try:
