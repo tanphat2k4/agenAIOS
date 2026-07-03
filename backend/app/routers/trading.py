@@ -710,6 +710,12 @@ def trading_relay(body: RelayIn, x_relay_key: str = Header(default="")):
     text = (body.text or "").strip()
     if not text:
         return {"reply": ""}
+    # our own morning-report PROMPT must not round-trip through the relay: the OpenClaw agent
+    # relays every message, and classify() would grab the last watchlist ticker (e.g. MWG) and
+    # run a bogus pipeline + Sage post. Empty reply → the agent composes the briefing itself.
+    _low_guard = text.lower()
+    if text.startswith("Viết báo cáo sáng") or ("báo cáo sáng" in _low_guard and "watchlist" in _low_guard):
+        return {"reply": ""}
     db = SessionLocal()
     try:
         # gold/silver questions → the Aurum metals flow (#vang-bac mirror + pipeline) — P3
