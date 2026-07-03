@@ -145,6 +145,47 @@ def _tr(v: float | None) -> str:
     return f"{v / 1e6:,.2f}" if v else "—"
 
 
+def unit_conversion_line(snap: dict | None, asset: str | None, question_lower: str) -> str:
+    """Deterministic unit conversion when the question asks for one — 'bạc 1 lượng bao nhiêu?'
+    → '💡 Bạc 1 lượng (37,5g): ≈ 2.36 – 2.43 tr (mua–bán)'. Empty string when no unit is asked.
+    Silver is quoted per KG, gold per LƯỢNG — everything derives from those.
+    """
+    import re as _re
+
+    q = question_lower
+    for phrase in ("khối lượng", "trọng lượng", "số lượng", "dung lượng", "lưu lượng", "khoi luong", "so luong"):
+        q = q.replace(phrase, " ")  # "lượng" as part of these words is NOT the unit
+    unit = None
+    if _re.search(r"lượng|\bluong\b|\bcây\b|\bcay\b", q):
+        unit = "lượng"
+    elif _re.search(r"(\d+|một|mot|mấy|may|nửa|nua)\s*chỉ|chỉ vàng|/chỉ|\bchi vang\b", q):
+        unit = "chỉ"
+    elif _re.search(r"\bgram\b|\bgam\b|\bgr\b", q):
+        unit = "gram"
+    elif _re.search(r"\boz\b|ounce", q):
+        unit = "oz"
+    elif _re.search(r"\bkg\b|\bký\b|\bky\b|kilo", q):
+        unit = "kg"
+    if not unit:
+        return ""
+    s = snap or snapshot()
+    per_kg = {"lượng": 0.0375, "chỉ": 0.00375, "gram": 0.001, "oz": 0.0311034768, "kg": 1.0}[unit]
+    per_luong = {"lượng": 1.0, "chỉ": 0.1, "gram": 1 / 37.5, "oz": 1 / 1.20565, "kg": 1000 / 37.5}[unit]
+    label = {"lượng": "1 lượng (37,5g)", "chỉ": "1 chỉ (3,75g)", "gram": "1 gram",
+             "oz": "1 oz (31,1g)", "kg": "1 kg"}[unit]
+
+    def fmt(v: float) -> str:
+        return f"{v / 1e6:,.2f} tr" if v >= 1e5 else f"{v / 1e3:,.0f}k"
+
+    out: list[str] = []
+    sil, bar = s.get("silver"), s.get("sjc_bar")
+    if asset in (None, "silver") and sil and sil.get("buy") and unit != "kg":  # kg = native silver unit
+        out.append(f"💡 Bạc {label}: ≈ **{fmt(sil['buy'] * per_kg)} – {fmt(sil['sell'] * per_kg)}** (mua–bán)")
+    if asset in (None, "gold") and bar and bar.get("buy") and unit != "lượng":  # lượng = native gold unit
+        out.append(f"💡 Vàng SJC {label}: ≈ **{fmt(bar['buy'] * per_luong)} – {fmt(bar['sell'] * per_luong)}** (mua–bán)")
+    return "\n".join(out)
+
+
 # ---------------------------------------------------------------- P2: history / indicators / news
 _hist_cache: dict = {}
 

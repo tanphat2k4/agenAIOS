@@ -181,11 +181,15 @@ def metals_chat(body: ChatIn, db: Session = Depends(get_db)):
         return {"messages": [interim], "analyzing": _JOB_KEY}
 
     snap = metals.snapshot()
-    head = metals.headline(snap, _detect_asset(low))  # "giá bạc" → silver-only card, "giá vàng" → gold-only
+    asset = _detect_asset(low)
+    head = metals.headline(snap, asset)  # "giá bạc" → silver-only card, "giá vàng" → gold-only
+    conv = metals.unit_conversion_line(snap, asset, low)  # "1 lượng/chỉ/gram..." → quy đổi máy tính
+    if conv:
+        head = head + "\n" + conv
 
     # bare price question → deterministic card, no LLM (fast + can't hallucinate)
     if any(k in low for k in _PRICE_WORDS) and len(text) <= 60:
-        mp.record_metals_call(db, "get_sjc_gold_price" if _detect_asset(low) != "silver" else "get_btmc_silver_price")
+        mp.record_metals_call(db, "get_sjc_gold_price" if asset != "silver" else "get_btmc_silver_price")
         return {"messages": [_save_aurum_msg(db, cid, head)]}
 
     # anything richer → grounded LLM reply, headline always prepended
@@ -232,7 +236,11 @@ def relay_answer_if_metals(db: Session, text: str) -> str | None:
         final = (by_name.get("Aurum") or "").strip() or "(pipeline không trả kết luận)"
         reply = metals.headline(metals.snapshot(), asset) + "\n\n" + final
     else:
-        head = metals.headline(metals.snapshot(), asset)
+        snap = metals.snapshot()
+        head = metals.headline(snap, asset)
+        conv = metals.unit_conversion_line(snap, asset, low)
+        if conv:
+            head = head + "\n" + conv
         if any(k in low for k in _PRICE_WORDS) and len(text.strip()) <= 60:
             reply = head
         else:
