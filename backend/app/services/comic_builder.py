@@ -187,7 +187,13 @@ def _auto_layout(panels: list) -> list:
 def compose_page(comic, page: dict) -> str:
     """Compose the page from its rendered panels using the script's row layout
     ([[1],[2,3],[4]] → full-width rows and side-by-side pairs, like a real comic page),
-    bubbles drawn at final cell size, paper background + footer → page PNG url."""
+    bubbles drawn at final cell size, paper background + footer → page PNG url.
+
+    Every render writes a NEW versioned file (…-page-2-r142530.png): reusing one
+    filename made every past message show the latest bytes + browsers cached it
+    ('nhấp vào toàn ra ảnh này')."""
+    import time as _t
+
     from app.routers.uploads import UPLOAD_DIR
 
     page_no = page.get("page", 1)
@@ -246,7 +252,7 @@ def compose_page(comic, page: dict) -> str:
         f = ImageFont.load_default()
     footer = f"— Trang {page_no} · {comic.title} —"
     draw.text(((canvas.width - draw.textlength(footer, font=f)) / 2, total_h - 40), footer, font=f, fill=(90, 80, 60))
-    out = f"comic-{comic.id}-page-{page_no}.png"
+    out = f"comic-{comic.id}-page-{page_no}-r{_t.strftime('%H%M%S')}.png"
     canvas.save(UPLOAD_DIR / out, optimize=True)
     return f"/uploads/{out}"
 
