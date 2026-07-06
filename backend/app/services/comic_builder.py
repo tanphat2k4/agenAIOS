@@ -39,7 +39,9 @@ def panel_prompt(style: str, comic_chars: list, panel: dict) -> str:
     parts = [style, shot, panel.get("desc", "")]
     for c in _chars_in_panel(comic_chars, panel):
         parts.append(f"({c.get('name')}: {c.get('look', '')})")
-    parts.append("consistent character design, same face as reference, comic panel")
+    parts.append("consistent character design, same face as reference, comic panel, full head visible")
+    if panel.get("dialogue"):  # reserve breathing room so bubbles don't fight the subject
+        parts.append("subject in lower two thirds of frame, negative space at the top")
     return ", ".join(p for p in parts if p)
 
 
@@ -119,21 +121,52 @@ def _wrap(draw: ImageDraw.ImageDraw, text: str, font, max_w: int) -> list[str]:
     return lines
 
 
+_yunet = None
+_YUNET_PATH = __import__("os").path.join(__import__("os").path.dirname(__file__), "..", "..", "assets", "face_yunet.onnx")
+
+
+def _face_boxes(img: Image.Image) -> list[tuple[int, int, int, int]]:
+    """Detect faces with OpenCV YuNet (cv2 5.x dropped CascadeClassifier; YuNet also
+    handles stylized/cropped faces far better). Empty list on any failure."""
+    global _yunet
+    try:
+        import cv2
+        import numpy as np
+
+        if _yunet is None:
+            _yunet = cv2.FaceDetectorYN_create(_YUNET_PATH, "", (0, 0), score_threshold=0.6)
+        mat = cv2.cvtColor(np.array(img.convert("RGB")), cv2.COLOR_RGB2BGR)
+        _yunet.setInputSize((mat.shape[1], mat.shape[0]))
+        _n, faces = _yunet.detect(mat)
+        return [tuple(map(int, f[:4])) for f in (faces if faces is not None else [])]
+    except Exception:  # noqa: BLE001
+        return []
+
+
+def _overlap(a: tuple, b: tuple) -> int:
+    ax, ay, aw, ah = a
+    bx, by, bw, bh = b
+    return max(0, min(ax + aw, bx + bw) - max(ax, bx)) * max(0, min(ay + ah, by + bh) - max(ay, by))
+
+
 def _draw_bubbles(img: Image.Image, dialogue: list) -> None:
-    """White rounded bubbles with 'Tên: thoại' + a TAIL pointing down into the panel
-    toward the speaker's side — alternating left/right, stacked from the top."""
+    """Face-aware bubble placement: candidate zones are scored by overlap with detected
+    faces + already-placed bubbles (reading order top→bottom preserved), and each tail
+    points toward the NEAREST face. Falls back to top corners when no face is found."""
     if not dialogue:
         return
     draw = ImageDraw.Draw(img)
-    fsize = 24 if img.width >= 700 else 19  # half-width grid cells get a smaller font
+    fsize = 24 if img.width >= 700 else 19
     try:
         font = ImageFont.truetype(_FONT_PATH, fsize)
         bold = ImageFont.truetype(_FONT_BOLD, fsize)
     except Exception:  # noqa: BLE001
         font = bold = ImageFont.load_default()
-    y = 14
     line_h = fsize + 7
-    max_text_w = int(img.width * 0.58)
+    max_text_w = int(img.width * 0.52)
+    faces = _face_boxes(img)
+    placed: list[tuple] = []
+
     for i, d in enumerate(dialogue[:4]):
         name, text = (d.get("char") or "").strip(), (d.get("text") or "").strip()
         if not text:
@@ -141,17 +174,39 @@ def _draw_bubbles(img: Image.Image, dialogue: list) -> None:
         lines = _wrap(draw, text, font, max_text_w)
         pad = 13
         box_w = min(max_text_w, max(int(draw.textlength(x, font=font)) for x in lines) if lines else 50) + pad * 2
-        name_h = (line_h if name else 0)
-        box_h = name_h + line_h * len(lines) + pad * 2
-        left = i % 2 == 0
-        x = 16 if left else img.width - box_w - 16
+        box_h = (line_h if name else 0) + line_h * len(lines) + pad * 2
+
+        # candidate anchors, roughly in reading order (top row first, then middle, bottom)
+        m = 14
+        xs = [m, (img.width - box_w) // 2, img.width - box_w - m]
+        ys = [m, int(img.height * 0.36), img.height - box_h - m - 30]
+        cands = [(x, y) for y in ys for x in xs]
+        best, best_cost = cands[0], None
+        for j, (cx, cy) in enumerate(cands):
+            box = (cx, cy, box_w, box_h)
+            cost = sum(_overlap(box, f) for f in faces) * 4          # NEVER sit on a face
+            cost += sum(_overlap(box, p) for p in placed) * 3        # don't stack on other bubbles
+            cost += j * 900                                          # prefer earlier (top) zones — reading flow
+            cost += 0 if (i % 2 == 0) == (cx <= xs[1]) else 400      # alternate sides as a soft tiebreak
+            if best_cost is None or cost < best_cost:
+                best, best_cost = (cx, cy), cost
+        x, y = best
+        placed.append((x, y, box_w, box_h + 30))
+
         draw.rounded_rectangle([x, y, x + box_w, y + box_h], radius=16, fill=(255, 255, 255, 235), outline=(20, 20, 20), width=3)
-        # tail: triangle from the bubble's bottom edge pointing down-inward (speaker side)
-        tx = x + (box_w * 0.28 if left else box_w * 0.72)
-        tip_dx = 26 if left else -26
-        draw.polygon([(tx - 12, y + box_h - 2), (tx + 12, y + box_h - 2), (tx + tip_dx, y + box_h + 26)],
-                     fill=(255, 255, 255), outline=(20, 20, 20))
-        draw.line([(tx - 11, y + box_h - 2), (tx + 11, y + box_h - 2)], fill=(255, 255, 255), width=4)  # seam
+        # tail points toward the NEAREST face (or down-inward when none detected)
+        if faces:
+            fx, fy, fw, fh = min(faces, key=lambda f: abs((f[0] + f[2] / 2) - (x + box_w / 2)) + abs((f[1] + f[3] / 2) - (y + box_h / 2)))
+            tgt = (fx + fw / 2, fy + fh / 2)
+        else:
+            tgt = (x + box_w / 2 + (40 if i % 2 == 0 else -40), y + box_h + 60)
+        from_bottom = tgt[1] >= y + box_h / 2
+        base_y = (y + box_h - 2) if from_bottom else (y + 2)
+        tx = min(max(tgt[0], x + 24), x + box_w - 24)
+        tip = (tx + (18 if tgt[0] > tx else -18), base_y + (26 if from_bottom else -26))
+        draw.polygon([(tx - 12, base_y), (tx + 12, base_y), tip], fill=(255, 255, 255), outline=(20, 20, 20))
+        draw.line([(tx - 11, base_y), (tx + 11, base_y)], fill=(255, 255, 255), width=4)  # seam
+
         ty = y + pad
         if name:
             draw.text((x + pad, ty), name + ":", font=bold, fill=(160, 60, 10))
@@ -159,7 +214,6 @@ def _draw_bubbles(img: Image.Image, dialogue: list) -> None:
         for ln in lines:
             draw.text((x + pad, ty), ln, font=font, fill=(15, 15, 15))
             ty += line_h
-        y += box_h + 34  # room for the tail before the next bubble
 
 
 def _auto_layout(panels: list) -> list:
