@@ -778,4 +778,13 @@ export const EN: Record<string, string> = {
 
   // ── Channel unread badge ──
   "Tin mới": "New messages",
+
+  // ── Suno variant picker in #am-nhac ──
+  "Chọn bản": "Pick version",
+  "Bản 1": "Version 1",
+  "Bản 2": "Version 2",
+  "Cả 2 bản": "Both",
+  "Bỏ qua": "Skip",
+  "Đã gửi lựa chọn": "Choice sent",
+  "chờ Beat xác nhận…": "waiting for Beat to confirm…",
 }

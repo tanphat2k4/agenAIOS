@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useStore, AUTO_DELETE_OPTIONS, autoDeleteLabel } from '@/store'
 import { useT } from '@/i18n'
-import { assetUrl } from '@/api/client'
+import { api, assetUrl } from '@/api/client'
 import { Hover } from '@/components/ui/Hover'
 import { buildBlocks } from '@/lib/richtext'
 import type { Channel } from '@/types'
@@ -85,6 +85,18 @@ export function Channels() {
 
   // ---- channel options menu (clear history + auto-delete timer) ----
   const [chanMenu, setChanMenu] = useState(false)
+  // ---- Suno variant pick (buttons under audio messages in #am-nhac) ----
+  const [pickSent, setPickSent] = useState<Record<string, string>>({})
+  const sendPick = (slug: string, choice: string, label: string) => {
+    setPickSent((p) => ({ ...p, [slug]: label }))
+    api.post('/music/pick', { slug, choice }).then(() => {
+      const tick = (n: number) => api.get('/music/pick').then((r) => {
+        if (r.status === 'done' || r.status === 'error' || n <= 0) s.selectChannel(active.id)  // refetch → Beat's confirm shows
+        else setTimeout(() => tick(n - 1), 4000)
+      }).catch(() => {})
+      tick(50)
+    }).catch(() => {})
+  }
   // ---- @mention autocomplete (real channel members) ----
   const [mention, setMention] = useState<{ q: string; start: number } | null>(null)
   const mentionMatches = mention ? members.filter((m) => m.name.toLowerCase().includes(mention.q.toLowerCase())).slice(0, 8) : []
@@ -292,6 +304,33 @@ export function Channels() {
                     }
                     return <div key={bi} style={{ display: 'inline-flex', alignItems: 'center', gap: 11, maxWidth: '100%', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, padding: '10px 14px', marginTop: 4 }}><span style={{ fontSize: 20, flex: 'none' }}>{block.icon}</span><div style={{ minWidth: 0 }}><div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{block.name}</div><div style={{ fontSize: 11, color: 'var(--placeholder)' }}>{block.label}</div></div></div>
                   })}
+                  {/* Suno variant picker — mirrors the Telegram inline buttons under generated tracks */}
+                  {mm.isAgent && (() => {
+                    const audio = (mm.raw || []).find((b) => b.kind === 'attach' && (b as { fileKind?: string }).fileKind === 'audio' && (b as { url?: string }).url)
+                    if (!audio) return null
+                    const slugMatch = String((audio as { url?: string }).url || '').match(/\/([a-z0-9-]+)-v\d\.mp3$/i)
+                    if (!slugMatch) return null
+                    const slug = slugMatch[1]
+                    const sent = pickSent[slug]
+                    const pickBtn = (choice: string, label: string, danger?: boolean) => (
+                      <Hover as="button" key={choice} onClick={() => sendPick(slug, choice, label)}
+                        style={{ border: '1px solid var(--line)', background: danger ? '#FBEAE7' : 'var(--jade-soft)', color: danger ? 'var(--danger)' : 'var(--jade-deep)', fontWeight: 700, fontSize: 12, borderRadius: 99, padding: '6px 14px', cursor: 'pointer', fontFamily: 'inherit' }}
+                        hover={{ background: danger ? 'var(--danger)' : 'var(--jade)', color: '#fff' }}>{label}</Hover>
+                    )
+                    return (
+                      <div style={{ display: 'flex', gap: 8, marginTop: 9, flexWrap: 'wrap', alignItems: 'center' }}>
+                        {sent
+                          ? <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--jade-deep)' }}>✓ {t('Đã gửi lựa chọn')}: {sent} — {t('chờ Beat xác nhận…')}</span>
+                          : (<>
+                              <span style={{ fontSize: 11.5, color: 'var(--placeholder)', fontWeight: 600 }}>{t('Chọn bản')}:</span>
+                              {pickBtn('v1', '🎵 ' + t('Bản 1'))}
+                              {pickBtn('v2', '🎵 ' + t('Bản 2'))}
+                              {pickBtn('both', t('Cả 2 bản'))}
+                              {pickBtn('skip', t('Bỏ qua'), true)}
+                            </>)}
+                      </div>
+                    )
+                  })()}
                 </div>
               </div>
               </div>
