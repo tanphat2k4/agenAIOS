@@ -188,7 +188,7 @@ def _script_digest(c: Comic) -> str:
     s = c.script or {}
     pages = s.get("pages", [])
     n_panels = sum(len(p.get("panels", [])) for p in pages)
-    lines = [f"📚 **{c.title}** — kịch bản chương 1 xong: {len(pages)} trang · {n_panels} khung."]
+    lines = [f"📚 **{c.title}** — kịch bản chương {s.get('chapter', 1)} xong: {len(pages)} trang · {n_panels} khung."]
     lines.append(f"🎨 Style: _{(c.style or '')[:120]}_")
     lines.append("👥 Nhân vật: " + " · ".join(f"**{ch['name']}** ({ch.get('role', '')})" for ch in c.characters))
     p1 = pages[0] if pages else {}
@@ -353,6 +353,89 @@ def _bg_regen(comic_id: str, cid: str, page_no: int, panel_no: int) -> None:
         db.close()
 
 
+# ─────────────────────────── P3: publish + next chapter ───────────────────────────
+def _publish(db: Session, cid: str, c: Comic, final: bool = True) -> list:
+    """Export the webtoon strip + PDF and post them into the channel."""
+    try:
+        strip_url, pdf_url, n = comic_builder.export_webtoon(c)
+    except Exception as exc:  # noqa: BLE001
+        return [_save_hoa_msg(db, cid, f"⚠️ Xuất bản lỗi: {str(exc)[:120]}")]
+    atts = [
+        {"kind": "attach", "icon": "📜", "name": f"{c.title} — webtoon dọc ({n} trang)",
+         "label": "1 dải liền mạch · jpg", "url": strip_url, "mime": "image/jpeg", "fileKind": "image"},
+        {"kind": "attach", "icon": "📕", "name": f"{c.title} — bản PDF",
+         "label": f"{n} trang · pdf", "url": pdf_url, "mime": "application/pdf", "fileKind": "file"},
+    ]
+    text = (
+        "📦 **Xuất bản xong** — dải webtoon đăng thẳng lên FB/TikTok, PDF để lưu/in. Gõ **chương tiếp** (kèm hướng nếu muốn, vd `chương tiếp: hai người mở tiệm chung`) để viết chương sau — **giữ nguyên nhân vật**."
+        if final else
+        "📦 **Bản xuất thử** từ các trang hiện tại — xem trước dải webtoon + PDF. Gõ **duyệt** để chốt chương chính thức (rồi mới nối **chương tiếp** được)."
+    )
+    return [_save_hoa_msg(db, cid, text, extra_blocks=atts)]
+
+
+def _bg_script_next(prev_id: str, direction: str, cid: str, user_id: str) -> None:
+    """Write the NEXT chapter: same characters/sheets/picks/style, story continues."""
+    from app.crud import today_ymd
+
+    db = SessionLocal()
+    try:
+        prev = db.get(Comic, prev_id)
+        if not prev:
+            _jobs[_JOB] = {"status": "error"}
+            return
+        base_title = prev.title.split(" — Chương")[0]
+        chapter = int((prev.script or {}).get("chapter", 1)) + 1
+        digest_lines = []
+        for p in (prev.script or {}).get("pages", []):
+            for pn in p.get("panels", []):
+                dlg = " / ".join(f"{d.get('char')}: {d.get('text')}" for d in pn.get("dialogue", []))
+                digest_lines.append(f"[T{p.get('page')}K{pn.get('panel')}] {pn.get('desc', '')[:80]}{(' — ' + dlg) if dlg else ''}")
+        digest = "\n".join(digest_lines)[:2200]
+        chars_json = json.dumps(prev.characters, ensure_ascii=False)
+        system = {"role": "system", "content": (
+            f"Bạn là biên kịch webtoon. Viết CHƯƠNG {chapter} nối tiếp truyện «{base_title}». "
+            f"NHÂN VẬT GIỮ NGUYÊN TUYỆT ĐỐI (tên + look, KHÔNG định nghĩa lại, chép đúng): {chars_json}. "
+            f"TÓM TẮT CHƯƠNG TRƯỚC:\n{digest}\n\n"
+            "TRẢ VỀ DUY NHẤT MỘT JSON object cùng schema chương 1: "
+            '{"title": "tên chương ngắn", "style": "GIỮ NGUYÊN style cũ", "characters": [như trên], '
+            '"pages": [{"page": 1, "layout": [[1],[2,3]], "panels": [{"panel": 1, "desc": "tiếng Anh", "shot": "wide|medium|closeup", '
+            '"dialogue": [{"char": "Tên", "text": "thoại Việt"}]}]}]} — 4-6 trang, mỗi trang 3-4 khung, '
+            "mở chương bằng nhịp nối cảnh cuối chương trước" + (f". HƯỚNG NGƯỜI DÙNG MUỐN: {direction}" if direction else "."))}
+        try:
+            res = ninerouter.chat([system, {"role": "user", "content": f"Viết chương {chapter}."}], temperature=0.6, max_tokens=2600)
+            m = re.search(r"\{.*\}", res.get("content") or "", re.S)
+            data = json.loads(m.group(0))
+            assert data.get("pages"), "thiếu pages"
+        except Exception as exc:  # noqa: BLE001
+            _save_hoa_msg(db, cid, f"Không viết được chương {chapter} ({str(exc)[:100]}) — thử lại nhé.")
+            _jobs[_JOB] = {"status": "error"}
+            return
+        data["chapter"] = chapter
+        data["characters"] = prev.characters  # hard-lock: looks không được trôi
+        nc = Comic(
+            id=uid("cm"), title=f"{base_title} — Chương {chapter}", idea=direction or f"chương {chapter}",
+            style=prev.style, script=data, characters=prev.characters,
+            sheets=prev.sheets, picks=prev.picks,  # ⟵ kế thừa hồ sơ: KHÔNG cần vẽ/chọn lại nhân vật
+            status="awaiting_script_review", stage="awaiting_script_review", channelId=cid, createdBy=user_id,
+            createdAt=_now(), updatedAt=_now(), sort=next_sort(db, Comic),
+        )
+        db.add(nc)
+        db.commit()
+        w = db.get(Workflow, WF_ID)
+        if w:
+            w.runs = [{"time": now_hm(), "date": today_ymd(), "status": "success", "dur": ""}, *(w.runs or [])][:200]
+            w.lastRun = now_hm()
+            w.runs24 = (w.runs24 or 0) + 1
+            db.commit()
+        _save_hoa_msg(db, cid, _script_digest(nc) + "\n\n_(Hồ sơ nhân vật kế thừa chương trước — duyệt kịch bản là vẽ khung luôn, khỏi chọn mặt lại.)_")
+        _jobs[_JOB] = {"status": "done"}
+    except Exception as exc:  # noqa: BLE001
+        _jobs[_JOB] = {"status": "error", "result": str(exc)}
+    finally:
+        db.close()
+
+
 # ─────────────────────────── chat ───────────────────────────
 class ChatIn(BaseModel):
     channel_id: str = COMIC_CHANNEL_ID
@@ -372,7 +455,8 @@ def chat_status():
 def comics_chat(body: ChatIn, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
     cid = body.channel_id or COMIC_CHANNEL_ID
     ensure_comic_channel(db)
-    t = (body.text or "").strip()
+    # NFC-normalize: terminals/clients may send decomposed Vietnamese (ấ = a + dấu rời)
+    t = unicodedata.normalize("NFC", (body.text or "")).strip()
     low = t.lower().replace("@họa", "").replace("@hoa", "").strip()
     c = _active_comic(db, cid)
 
@@ -382,7 +466,8 @@ def comics_chat(body: ChatIn, db: Session = Depends(get_db), current: User = Dep
         vi = {"awaiting_script_review": "chờ DUYỆT kịch bản", "designing": "đang vẽ nhân vật",
               "awaiting_character_review": "chờ CHỌN mặt nhân vật", "ready_p2": "hồ sơ chốt — gõ DUYỆT để sinh khung",
               "generating_pages": "đang sinh khung + ghép trang", "awaiting_page_review": "chờ DUYỆT trang (gen lại khung nếu cần)",
-              "done_p2": "chương HOÀN TẤT 🎉", "scripting": "đang biên kịch", "error": "lỗi"}
+              "done_p2": "chương HOÀN TẤT 🎉", "published": "ĐÃ XUẤT BẢN 📦 — gõ CHƯƠNG TIẾP để nối truyện",
+              "scripting": "đang biên kịch", "error": "lỗi"}
         return {"messages": [_save_hoa_msg(db, cid, f"📚 **{c.title}** — {vi.get(c.status, c.status)}.")], "job": None}
 
     if any(k in low for k in ("hủy", "huy bo", "cancel")) and low in ("hủy", "huy", "cancel", "hủy truyện", "huy truyen"):
@@ -424,6 +509,13 @@ def comics_chat(body: ChatIn, db: Session = Depends(get_db), current: User = Dep
             job = _jobs.get(_JOB)
             if job and job.get("status") == "running":
                 return {"messages": [_save_hoa_msg(db, cid, "Em đang chạy việc trước đó, chờ chút nhé.")], "job": "running"}
+            # series chapter with an inherited cast → skip sheet drawing + face picks
+            if int((c.script or {}).get("chapter", 1)) > 1 and (c.sheets or {}) and (c.picks or {}):
+                c.status = c.stage = "ready_p2"
+                c.updatedAt = _now()
+                db.commit()
+                return {"messages": [_save_hoa_msg(db, cid,
+                    "✅ Kịch bản chốt. Nhân vật **kế thừa chương trước** (khỏi vẽ/chọn lại) — gõ **duyệt** lần nữa để sinh khung + ghép trang.")], "job": None}
             c.status = c.stage = "designing"
             c.updatedAt = _now()
             db.commit()
@@ -465,19 +557,45 @@ def comics_chat(body: ChatIn, db: Session = Depends(get_db), current: User = Dep
         if c and c.status == "awaiting_page_review":
             from app.crud import today_ymd
 
-            c.status = c.stage = "done_p2"
+            c.status = c.stage = "published"
             c.updatedAt = _now()
             db.commit()
             w = db.get(Workflow, WF_ID)
             if w:
-                w.steps = [{**s, "status": ("done" if i <= 3 else "idle")} for i, s in enumerate(w.steps or [])]
+                w.steps = [{**s, "status": "done"} for s in (w.steps or [])]
                 w.runs = [{"time": now_hm(), "date": today_ymd(), "status": "success", "dur": ""}, *(w.runs or [])][:200]
                 w.lastRun = now_hm()
                 w.runs24 = (w.runs24 or 0) + 1
                 w.runState = "idle"
                 db.commit()
-            return {"messages": [_save_hoa_msg(db, cid, f"🎉 **{c.title} — chương 1 HOÀN TẤT!** Toàn bộ trang đã chốt. (P3 sẽ xuất webtoon dọc/PDF + đăng kênh.)")], "job": None}
+            msgs = [_save_hoa_msg(db, cid, f"🎉 **{c.title} — chương {(c.script or {}).get('chapter', 1)} HOÀN TẤT!** Đang xuất bản…")]
+            msgs += _publish(db, cid, c)
+            return {"messages": msgs, "job": None}
         return {"messages": [_save_hoa_msg(db, cid, "Hiện không có cổng nào chờ duyệt.")], "job": None}
+
+    # export on demand: "xuất bản" / "xuất webtoon"
+    if any(k in low for k in ("xuất bản", "xuat ban", "xuất webtoon", "xuat webtoon", "xuất pdf", "xuat pdf")):
+        if c and c.status in ("awaiting_page_review", "published", "done_p2"):
+            return {"messages": _publish(db, cid, c, final=c.status != "awaiting_page_review"), "job": None}
+        return {"messages": [_save_hoa_msg(db, cid, "Chưa có chương nào đủ trang để xuất — hoàn tất các cổng trước nhé.")], "job": None}
+
+    # next chapter: "chương tiếp ..." / "chương 2: hướng đi"
+    nxt = re.match(r"(?:chương tiếp|chuong tiep|viết chương|viet chuong|chương \d+)[:\s—-]*(.*)$", low)
+    if nxt:
+        prev = db.scalars(select(Comic).where(Comic.channelId == cid, Comic.status == "published")
+                          .order_by(Comic.sort.desc()).limit(1)).first() or \
+               (c if c and c.status in ("done_p2", "published") else None)
+        if not prev:
+            return {"messages": [_save_hoa_msg(db, cid, "Chưa có chương nào hoàn tất để nối — xuất bản chương hiện tại trước đã.")], "job": None}
+        job = _jobs.get(_JOB)
+        if job and job.get("status") == "running":
+            return {"messages": [_save_hoa_msg(db, cid, "Em đang bận việc trước, chờ chút nhé.")], "job": "running"}
+        _jobs[_JOB] = {"status": "running"}
+        direction = t[nxt.start(1):].strip() if nxt.group(1) else ""
+        cast = " & ".join(ch.get("name", "?") for ch in (prev.characters or [])[:3])
+        interim = _save_hoa_msg(db, cid, f"📖 Viết **chương tiếp theo** của *{prev.title.split(' — Chương')[0]}* (giữ nguyên {cast}){' — hướng: ' + direction if direction else ''}, ~30 giây…")
+        threading.Thread(target=_bg_script_next, args=(prev.id, direction, cid, current.id), daemon=True).start()
+        return {"messages": [interim], "job": "running"}
 
     # new comic from an idea
     if len(t) >= 8:

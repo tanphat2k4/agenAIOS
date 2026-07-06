@@ -324,3 +324,49 @@ def regen_nonce(comic, page_no: int, panel_no: int) -> int:
 
 def get_nonce(comic, page_no: int, panel_no: int) -> int:
     return int((comic.script or {}).get("_regen", {}).get(f"{page_no}-{panel_no}", 0))
+
+
+# ───────────────────────── P3: xuất bản ─────────────────────────
+def _latest_pages(comic) -> list[tuple[int, str]]:
+    """Newest rendered file per page number (versioned names win by mtime)."""
+    import glob
+    import os
+    import re as _re
+
+    from app.routers.uploads import UPLOAD_DIR
+
+    per: dict[int, tuple[float, str]] = {}
+    for f in glob.glob(str(UPLOAD_DIR / f"comic-{comic.id}-page-*.png")):
+        m = _re.search(r"page-(\d+)", os.path.basename(f))
+        if not m:
+            continue
+        no, mt = int(m.group(1)), os.path.getmtime(f)
+        if no not in per or mt > per[no][0]:
+            per[no] = (mt, f)
+    return [(no, per[no][1]) for no in sorted(per)]
+
+
+def export_webtoon(comic) -> tuple[str, str, int]:
+    """Join the latest render of every page into ONE vertical webtoon strip (JPEG)
+    + a PDF of the pages. Returns (strip_url, pdf_url, n_pages)."""
+    import time as _t
+
+    from app.routers.uploads import UPLOAD_DIR
+
+    pages = _latest_pages(comic)
+    if not pages:
+        raise RuntimeError("chưa có trang nào được render")
+    imgs = [Image.open(p).convert("RGB") for _no, p in pages]
+    width = max(im.width for im in imgs)
+    imgs = [im if im.width == width else im.resize((width, int(im.height * width / im.width))) for im in imgs]
+    strip = Image.new("RGB", (width, sum(im.height for im in imgs)), (245, 240, 228))
+    y = 0
+    for im in imgs:
+        strip.paste(im, (0, y))
+        y += im.height
+    ts = _t.strftime("%H%M%S")
+    strip_name = f"comic-{comic.id}-webtoon-r{ts}.jpg"
+    strip.save(UPLOAD_DIR / strip_name, quality=90, optimize=True)
+    pdf_name = f"comic-{comic.id}-chuong-r{ts}.pdf"
+    imgs[0].save(UPLOAD_DIR / pdf_name, save_all=True, append_images=imgs[1:], format="PDF")
+    return f"/uploads/{strip_name}", f"/uploads/{pdf_name}", len(pages)
