@@ -162,6 +162,28 @@ def _draw_bubbles(img: Image.Image, dialogue: list) -> None:
         y += box_h + 34  # room for the tail before the next bubble
 
 
+def _auto_layout(panels: list) -> list:
+    """Old scripts have no layout field — build comic-like rows automatically:
+    wide shots get a full row, consecutive non-wide panels pair up side by side."""
+    rows: list[list[int]] = []
+    buf: list[int] = []
+    for pn in panels:
+        no = pn.get("panel", 0)
+        if pn.get("shot") == "wide":
+            if buf:
+                rows.append(buf)
+                buf = []
+            rows.append([no])
+        else:
+            buf.append(no)
+            if len(buf) == 2:
+                rows.append(buf)
+                buf = []
+    if buf:
+        rows.append(buf)
+    return rows or [[pn.get("panel", 0)] for pn in panels]
+
+
 def compose_page(comic, page: dict) -> str:
     """Compose the page from its rendered panels using the script's row layout
     ([[1],[2,3],[4]] → full-width rows and side-by-side pairs, like a real comic page),
@@ -179,7 +201,7 @@ def compose_page(comic, page: dict) -> str:
     if not loaded:
         raise RuntimeError(f"trang {page_no} chưa có khung nào")
 
-    layout = page.get("layout") or [[no] for no in sorted(loaded)]
+    layout = page.get("layout") or _auto_layout(panels)
     rows: list[list[int]] = [[n for n in (row if isinstance(row, list) else [row]) if n in loaded] for row in layout]
     rows = [r for r in rows if r]
     placed = {n for r in rows for n in r}
