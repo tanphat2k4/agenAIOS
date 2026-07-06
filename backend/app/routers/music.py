@@ -71,8 +71,10 @@ def music_chat(body: ChatIn):
 
         db = SessionLocal()
         try:
-            reply, _delivered = openclaw.send_agent(body.text, agent=music.MUSIC_AGENT, deliver=False, timeout=600)
-            text = reply or "(Beat chưa phản hồi — có thể đang bận chạy pipeline, thử lại sau giây lát.)"
+            # 1200s: a full batch turn runs ~11-15' — a shorter timeout KILLS Beat's turn mid-pipeline
+            # (the 600s one cut a batch right after Research), it doesn't just drop the reply.
+            reply, _delivered = openclaw.send_agent(body.text, agent=music.MUSIC_AGENT, deliver=False, timeout=1200)
+            text = reply or "(Beat chạy quá 20 phút chưa trả lời — kiểm tra Telegram @NhacBatTrendBot hoặc gõ 'trạng thái batch' sau ít phút.)"
             m = Message(
                 id=uid("m"), channel_id=music.CHANNEL_ID, authorName=_BOT[0], time=now_hm(),
                 avatarInitial=_BOT[1], avatarColor=_BOT[2], isAgent=True, raw=rec.md_to_blocks(text),
