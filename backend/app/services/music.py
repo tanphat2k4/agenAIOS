@@ -233,7 +233,28 @@ def run_batch(db: Session, *, prompt: str = "Chạy batch nhạc tuần này") -
     delivers to Telegram; mirror the reply in-app. Long-running (pipeline ~15')."""
     from app.services import openclaw
 
-    reply, delivered = openclaw.send_agent(prompt, agent=MUSIC_AGENT, deliver=True, timeout=1200)
+    # show the run LIVE: the workflow card turns RUNNING while Beat works (15'+ of
+    # silence otherwise — "agent workflow cũng không chạy")
+    try:
+        w = ensure_music_workflow(db)
+        w.runState = "running"
+        w.steps = [{**s, "status": ("running" if i == 0 else "idle")} for i, s in enumerate(w.steps or [])]
+        db.commit()
+    except Exception:  # noqa: BLE001
+        db.rollback()
+
+    try:
+        reply, delivered = openclaw.send_agent(prompt, agent=MUSIC_AGENT, deliver=True, timeout=1200)
+    except Exception as exc:  # noqa: BLE001
+        try:  # never leave the card stuck on RUNNING
+            w = ensure_music_workflow(db)
+            w.runState = "idle"
+            w.steps = [{**s, "status": "idle"} for s in (w.steps or [])]
+            w.runs = [{"time": now_hm(), "date": today_ymd(), "status": "failed", "dur": ""}, *(w.runs or [])][:200]
+            db.commit()
+        except Exception:  # noqa: BLE001
+            db.rollback()
+        raise exc
     via = "OpenClaw → Telegram ✓" if delivered else "OpenClaw (Telegram chưa gửi được)"
     body = reply or "(Beat đang chạy pipeline nền — kết quả sẽ tới Telegram khi xong.)"
     report = f"# 🎵 Batch nhạc tuần — {now_hm()}\n\n{body}\n\n> Gửi qua {via}."
@@ -260,6 +281,8 @@ def run_batch(db: Session, *, prompt: str = "Chạy batch nhạc tuần này") -
         w.runs = [{"time": now_hm(), "date": today_ymd(), "status": "success", "dur": ""}, *(w.runs or [])][:200]
         w.lastRun = now_hm()
         w.runs24 = (w.runs24 or 0) + 1
+        w.runState = "idle"
+        w.steps = [{**s, "status": "done"} for s in (w.steps or [])]
         db.commit()
     except Exception:  # noqa: BLE001
         db.rollback()
