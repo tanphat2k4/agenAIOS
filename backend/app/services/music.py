@@ -287,3 +287,159 @@ def run_batch(db: Session, *, prompt: str = "Chạy batch nhạc tuần này") -
     except Exception:  # noqa: BLE001
         db.rollback()
     return report
+
+
+# ----------------------- Telegram ↔ #am-nhac sync (2 chiều) -----------------------
+# Chiều đi đã có (/music/chat). Chiều VỀ: poller đọc transcript session của Beat
+# (read-only qua wsl cat) → mirror tin Telegram của chủ + trả lời của Beat vào kênh,
+# và kéo mp3 đã generate từ Suno-bot (PC-B) về backend/uploads làm tin nghe được.
+import os as _os
+import time as _time
+
+_SESS_DIR = "/root/.openclaw/agents/music-orchestrator/sessions"
+_SYNC_STATE = _os.path.join(_os.path.dirname(__file__), "..", "..", ".music_sync.json")
+_SUNO_BOT = "http://192.168.1.3:1243"
+_sync_guard = {"t": 0.0}
+
+
+def _load_sync_state() -> dict:
+    try:
+        with open(_SYNC_STATE, encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:  # noqa: BLE001
+        return {}
+
+
+def _save_sync_state(st: dict) -> None:
+    try:
+        with open(_SYNC_STATE, "w", encoding="utf-8") as f:
+            json.dump(st, f)
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _recent_channel_texts(db: Session, n: int = 30) -> set:
+    out = set()
+    for m in db.scalars(select(Message).where(Message.channel_id == CHANNEL_ID).order_by(Message.sort.desc()).limit(n)):
+        txt = " ".join(s.get("v", "") for b in (m.raw or []) for s in b.get("rich", []) if isinstance(s, dict))
+        out.add(txt.strip()[:120])
+    return out
+
+
+def _session_entries() -> tuple[str, list]:
+    """Newest Beat session file + its parsed message entries (id, role, text)."""
+    ls = subprocess.run(["wsl.exe", "-e", "bash", "-lc", f"ls -t {_SESS_DIR}/*.jsonl 2>/dev/null | head -1"],
+                        capture_output=True, text=True, timeout=15)
+    path = (ls.stdout or "").strip()
+    if not path:
+        return "", []
+    raw = _wsl_cat(path)
+    out = []
+    for line in raw.split("\n"):
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            d = json.loads(line)
+        except Exception:  # noqa: BLE001
+            continue
+        if d.get("type") != "message":
+            continue
+        m = d.get("message") or {}
+        role = m.get("role")
+        if role not in ("user", "assistant"):
+            continue
+        c = m.get("content")
+        if isinstance(c, list):
+            text = " ".join(x.get("text", "") for x in c if isinstance(x, dict) and x.get("type") == "text").strip()
+        else:
+            text = str(c or "").strip()
+        if text:
+            out.append({"id": d.get("id"), "role": role, "text": text})
+    return path, out
+
+
+def sync_telegram(db: Session) -> dict:
+    """One sync tick (throttled 20s): mirror new Telegram exchange + pull new mp3s."""
+    if _time.time() - _sync_guard["t"] < 20:
+        return {"skipped": "throttled"}
+    _sync_guard["t"] = _time.time()
+    ensure_music_channel(db)
+    st = _load_sync_state()
+    path, entries = _session_entries()
+    added = 0
+    if entries:
+        if st.get("path") != path:
+            # new session file: don't backfill history — start from its tail
+            st = {"path": path, "last_id": entries[-1]["id"], "boot": True}
+            _save_sync_state(st)
+        else:
+            seen = {e["id"]: i for i, e in enumerate(entries)}
+            start = seen.get(st.get("last_id"), -1) + 1
+            recent = _recent_channel_texts(db)
+            owner = db.scalar(select(User).where(User.role == "owner")) or db.scalar(select(User))
+            for e in entries[start:]:
+                txt = e["text"]
+                if txt.strip()[:120] in recent:  # already in the channel (sent from the app)
+                    continue
+                if e["role"] == "user" and any(k in txt for k in ("Viết báo cáo sáng", "TÓM TẮT batch week")):
+                    continue  # our own outbound prompts, not the user's Telegram words
+                if e["role"] == "user" and owner:
+                    db.add(Message(id=uid("m"), channel_id=CHANNEL_ID, authorName=owner.name, time=now_hm(),
+                                   avatarInitial=owner.initial, avatarColor=owner.color, isAgent=False,
+                                   raw=[{"kind": "para", "rich": [{"v": txt, "isText": True}]}],
+                                   sort=next_sort(db, Message)))
+                    added += 1
+                elif e["role"] == "assistant":
+                    db.add(Message(id=uid("m"), channel_id=CHANNEL_ID, authorName=_BOT[0], time=now_hm(),
+                                   avatarInitial=_BOT[1], avatarColor=_BOT[2], isAgent=True,
+                                   raw=rec.md_to_blocks(txt), sort=next_sort(db, Message)))
+                    added += 1
+            if added:
+                db.commit()
+            st = {"path": path, "last_id": entries[-1]["id"]}
+            _save_sync_state(st)
+    tracks = sync_generated_tracks(db)
+    return {"mirrored": added, **tracks}
+
+
+def sync_generated_tracks(db: Session) -> dict:
+    """Pull <slug>-v1/v2.mp3 for generated songs from the Suno-bot into backend/uploads
+    and post them into #am-nhac as playable attachments. Dedupe = file already saved."""
+    import httpx
+
+    from app.routers.uploads import UPLOAD_DIR
+
+    fetched: list[str] = []
+    try:
+        batch = read_batch()
+    except Exception:  # noqa: BLE001
+        return {"tracks": 0}
+    for s in batch.get("songs", []):
+        slug = s.get("slug")
+        if not slug or not s.get("generated"):
+            continue
+        atts = []
+        for v in (1, 2):
+            fname = f"{slug}-v{v}.mp3"
+            dest = UPLOAD_DIR / fname
+            if dest.exists():
+                continue
+            try:
+                r = httpx.get(f"{_SUNO_BOT}/api/v1/suno/file", params={"name": fname}, timeout=90)
+                if r.status_code != 200 or not r.content:
+                    continue
+                dest.write_bytes(r.content)
+                atts.append({"kind": "attach", "icon": "🎵", "name": f"{s.get('title', slug)} — bản {v}",
+                             "label": f"{len(r.content) / 1e6:.1f} MB · mp3", "url": f"/uploads/{fname}",
+                             "mime": "audio/mpeg", "fileKind": "audio"})
+                fetched.append(fname)
+            except Exception:  # noqa: BLE001
+                continue
+        if atts:
+            raw = [{"kind": "para", "rich": [{"v": f"🎧 {s.get('title', slug)} — bản nghe thử từ Suno:", "isText": True}]}, *atts]
+            db.add(Message(id=uid("m"), channel_id=CHANNEL_ID, authorName=_BOT[0], time=now_hm(),
+                           avatarInitial=_BOT[1], avatarColor=_BOT[2], isAgent=True, raw=raw,
+                           sort=next_sort(db, Message)))
+            db.commit()
+    return {"tracks": len(fetched)}

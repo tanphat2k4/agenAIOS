@@ -119,11 +119,28 @@ def _tick() -> None:
         db.close()
 
 
+def _music_sync_tick() -> None:
+    """Mirror the Telegram ↔ Beat conversation + freshly generated mp3s into #am-nhac."""
+    db = SessionLocal()
+    try:
+        from app.services import music
+
+        music.sync_telegram(db)
+    except Exception:  # noqa: BLE001
+        pass
+    finally:
+        db.close()
+
+
 def start_scheduler() -> None:
     def loop() -> None:
         while True:
             try:
                 _tick()  # run immediately on startup (catch-up), then every 30s
+            except Exception:  # noqa: BLE001
+                pass
+            try:
+                _music_sync_tick()  # self-throttled (20s) inside
             except Exception:  # noqa: BLE001
                 pass
             time.sleep(30)
