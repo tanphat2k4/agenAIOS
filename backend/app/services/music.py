@@ -400,7 +400,8 @@ def sync_telegram(db: Session) -> dict:
             st = {"path": path, "last_id": entries[-1]["id"]}
             _save_sync_state(st)
     tracks = sync_generated_tracks(db)
-    return {"mirrored": added, **tracks}
+    clips = sync_clips(db)
+    return {"mirrored": added, **tracks, **clips}
 
 
 def sync_generated_tracks(db: Session) -> dict:
@@ -443,3 +444,61 @@ def sync_generated_tracks(db: Session) -> dict:
                            sort=next_sort(db, Message)))
             db.commit()
     return {"tracks": len(fetched)}
+
+
+def sync_clips(db: Session) -> dict:
+    """Mirror finished Clipmaker videos (<batch>/clips/*.mp4) into #am-nhac as playable
+    attachments — the pipeline only pushes them to Telegram. Skips speed-variant files
+    (-1.2x/-0.8x) and anything already copied into backend/uploads."""
+    from app.routers.uploads import UPLOAD_DIR
+
+    batch_dir = (_wsl_cat(f"{_MUSIC_WS}/output/.active_batch") or "").strip().split("\n")[0].strip()
+    if not batch_dir:
+        return {"clips": 0}
+    try:
+        ls = subprocess.run(["wsl.exe", "-e", "bash", "-lc", f"ls {shlex.quote(batch_dir)}/clips/*.mp4 2>/dev/null"],
+                            capture_output=True, text=True, timeout=20)
+        paths = [p.strip() for p in (ls.stdout or "").split("\n") if p.strip()]
+    except Exception:  # noqa: BLE001
+        return {"clips": 0}
+    titles = {}
+    try:
+        for s in read_batch().get("songs", []):
+            if s.get("slug"):
+                titles[s["slug"]] = s.get("title", s["slug"])
+    except Exception:  # noqa: BLE001
+        pass
+    by_slug: dict[str, list] = {}
+    copied = 0
+    for path in paths:
+        fname = path.rsplit("/", 1)[-1]
+        if re.search(r"-\d(?:\.\d)?x\.mp4$", fname):  # -1.2x / -0.8x speed variants
+            continue
+        dest = UPLOAD_DIR / fname
+        if dest.exists():
+            continue
+        try:  # binary-safe copy out of WSL
+            proc = subprocess.run(["wsl.exe", "-e", "bash", "-lc", f"cat {shlex.quote(path)}"],
+                                  capture_output=True, timeout=120)
+            data = proc.stdout or b""
+            if len(data) < 10_000:
+                continue
+            dest.write_bytes(data)
+        except Exception:  # noqa: BLE001
+            continue
+        copied += 1
+        m = re.match(r"(.+?)-(yt|canvas|clip\d+)\.mp4$", fname)
+        slug, kind = (m.group(1), m.group(2)) if m else (fname[:-4], "clip")
+        label = {"yt": "bản YouTube", "canvas": "canvas loop"}.get(kind, f"TikTok {kind}")
+        by_slug.setdefault(slug, []).append({
+            "kind": "attach", "icon": "🎬", "name": f"{titles.get(slug, slug)} — {label}",
+            "label": f"{len(data) / 1e6:.1f} MB · mp4", "url": f"/uploads/{fname}",
+            "mime": "video/mp4", "fileKind": "video",
+        })
+    for slug, atts in by_slug.items():
+        raw = [{"kind": "para", "rich": [{"v": f"🎬 {titles.get(slug, slug)} — clip từ Clipmaker:", "isText": True}]}, *atts]
+        db.add(Message(id=uid("m"), channel_id=CHANNEL_ID, authorName=_BOT[0], time=now_hm(),
+                       avatarInitial=_BOT[1], avatarColor=_BOT[2], isAgent=True, raw=raw,
+                       sort=next_sort(db, Message)))
+        db.commit()
+    return {"clips": copied}

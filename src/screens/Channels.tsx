@@ -281,7 +281,21 @@ export function Channels() {
                       </div>
                     )
                     if ('isTask' in block) return <div key={bi} style={{ display: 'inline-flex', alignItems: 'center', gap: 9, maxWidth: '100%', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, padding: '8px 13px', marginTop: 2, boxShadow: '0 1px 2px rgba(22,32,28,.04)' }}><span style={{ fontFamily: 'var(--mono)', fontSize: 11.5, fontWeight: 700, color: 'var(--jade-deep)', background: 'var(--jade-soft)', padding: '2px 8px', borderRadius: 7, flex: 'none' }}>{block.code}</span><span style={{ fontSize: 12.5, color: 'var(--ink-2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{block.text}</span></div>
-                    // attach block: image → preview, audio → player, file → download link, record → reference card
+                    // attach block: image → preview, audio/video → player, file → download link, record → reference card
+                    if (block.fileKind === 'video' && block.url) {
+                      return (
+                        <div key={bi} style={{ maxWidth: 380, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, padding: '10px 14px', marginTop: 4 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 7 }}>
+                            <span style={{ fontSize: 17 }}>{block.icon || '🎬'}</span>
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{block.name}</div>
+                              <div style={{ fontSize: 11, color: 'var(--placeholder)' }}>{block.label}</div>
+                            </div>
+                          </div>
+                          <video controls preload="metadata" src={assetUrl(block.url)} style={{ width: '100%', maxHeight: 300, borderRadius: 8, background: '#000' }} />
+                        </div>
+                      )
+                    }
                     if (block.fileKind === 'audio' && block.url) {
                       return (
                         <div key={bi} style={{ maxWidth: 380, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, padding: '10px 14px', marginTop: 4 }}>
