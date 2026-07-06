@@ -10,14 +10,29 @@ import subprocess
 from app.core.config import settings
 
 
-def send_agent(prompt: str, *, agent: str | None = None, deliver: bool = True, timeout: int = 300) -> tuple[str, bool]:
+# Outbound deliveries MUST pin the right bot: without --reply-account the gateway
+# falls back to the DEFAULT telegram account (@Anna_Kute_bot) — a music batch once
+# landed in Diamond's chat (and strays hit the trading bot) because of this.
+_ACCOUNT_OF = {
+    "trading": "trading",
+    "music-orchestrator": "music",
+    "content-orchestrator": "content",
+    "metals": "metals",
+}
+
+
+def send_agent(prompt: str, *, agent: str | None = None, deliver: bool = True, timeout: int = 300,
+               account: str | None = None) -> tuple[str, bool]:
     """Run one OpenClaw agent turn (via WSL), optionally delivering the reply to
-    Telegram. `agent` defaults to settings.OPENCLAW_AGENT. Returns (reply_text, delivered)."""
+    Telegram. `agent` defaults to settings.OPENCLAW_AGENT; the delivery account is
+    derived from the agent (see _ACCOUNT_OF) unless given. Returns (reply_text, delivered)."""
     if not settings.OPENCLAW_ENABLED:
         return "", False
+    agent_name = agent or settings.OPENCLAW_AGENT
+    account = account or _ACCOUNT_OF.get(agent_name)
     parts = [
         "openclaw agent",
-        f"--agent {shlex.quote(agent or settings.OPENCLAW_AGENT)}",
+        f"--agent {shlex.quote(agent_name)}",
         "--channel telegram",
         f"--to {shlex.quote(settings.OPENCLAW_TELEGRAM_CHAT)}",
         f"-m {shlex.quote(prompt)}",
@@ -26,6 +41,8 @@ def send_agent(prompt: str, *, agent: str | None = None, deliver: bool = True, t
     ]
     if deliver:
         parts.append("--deliver")
+        if account:
+            parts.append(f"--reply-account {shlex.quote(account)}")
     cmd = ["wsl.exe", "-e", "bash", "-lc", " ".join(parts) + " 2>/dev/null"]
     try:
         proc = subprocess.run(
