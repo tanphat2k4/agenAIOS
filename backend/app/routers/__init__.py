@@ -6,6 +6,7 @@ from app.routers import (
     auth,
     billing,
     channels,
+    comics,
     cron,
     devices,
     films,
@@ -51,5 +52,6 @@ api_router.include_router(trading.relay_router)
 api_router.include_router(music.router)
 api_router.include_router(metals.router)
 api_router.include_router(metals.public_router)
+api_router.include_router(comics.router)
 api_router.include_router(uploads.router)
 api_router.include_router(ai.router)

@@ -21,6 +21,10 @@ class Settings(BaseSettings):
     CORS_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173"
     LOG_RETENTION_DAYS: int = 7  # workflow runs + session/audit/activity logs auto-expire after this
 
+    # ComfyUI on PC-A (RTX 5090) — comic character sheets (P1) + panels (P2)
+    COMFYUI_URL: str = "http://192.168.1.4:8188"
+    COMFY_CKPT: str = "Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors"
+
     # 9Router LLM gateway (OpenAI-compatible). Loopback needs no key; set one if remote.
     NINEROUTER_BASE_URL: str = "http://localhost:20128/v1"
     NINEROUTER_API_KEY: str = ""

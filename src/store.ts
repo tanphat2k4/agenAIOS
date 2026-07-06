@@ -511,6 +511,7 @@ export interface AppActions {
   sendMessage: () => void
   pollTradingAnalyze: (channelId: string, ticker: string) => void
   pollMetalsAnalyze: (channelId: string) => void
+  pollComicsChat: (channelId: string) => void
   pollMusicChat: (channelId: string) => void
   pollReel: (channelId: string, filmId: string) => void
   refreshTradingOps: () => void
@@ -651,6 +652,7 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
       api.post('/music/ensure').catch(() => {}),
       api.post('/films/channel/ensure').catch(() => {}),
       api.post('/metals/ensure').catch(() => {}),
+      api.post('/comics/ensure').catch(() => {}),
     ])
     const [channels, agents, mcp, workflows, cron, tasks, devices, sessions, audit, knowledge, rooms, roles, users, invites, signups, notifs, bill, profile, activity, settings] = await Promise.all([
       api.get('/channels'), api.get('/agents'), api.get('/mcp'), api.get('/workflows'), api.get('/cron'),
@@ -1106,6 +1108,14 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
         if (id === 'am-nhac' && text) {
           return api.post('/music/chat', { text }).then(() => get().pollMusicChat(id))
         }
+        // Comics channel: Họa — script gate + character sheets run async
+        if (id === 'truyen-tranh' && text) {
+          return api.post('/comics/chat', { channel_id: id, text }).then((res) => {
+            const replies = (res && res.messages) || []
+            set((s) => ({ messages: { ...s.messages, [id]: [...(s.messages[id] || []), ...replies] } }))
+            if (res && res.job === 'running') get().pollComicsChat(id)
+          })
+        }
         // Metals channel: Aurum — price card sync, advice runs the async pipeline
         if (id === 'vang-bac' && text) {
           return api.post('/metals/chat', { channel_id: id, text }).then((res) => {
@@ -1150,6 +1160,19 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
         if (r.status === 'done' || r.status === 'error') {
           api.get(`/channels/${channelId}/messages`).then((msgs) => set((s) => ({ messages: { ...s.messages, [channelId]: msgs } }))).catch(() => {})
           get().pollWorkflows()  // the wf-metals card just recorded a run
+        } else {
+          setTimeout(tick, 4000)
+        }
+      }).catch(() => {})
+    }
+    setTimeout(tick, 4000)
+  },
+  pollComicsChat: (channelId) => {
+    const tick = () => {
+      api.get('/comics/chat').then((r) => {
+        if (r.status === 'done' || r.status === 'error') {
+          api.get(`/channels/${channelId}/messages`).then((msgs) => set((s) => ({ messages: { ...s.messages, [channelId]: msgs } }))).catch(() => {})
+          get().pollWorkflows()
         } else {
           setTimeout(tick, 4000)
         }
