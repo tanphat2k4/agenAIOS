@@ -8,6 +8,7 @@ a dedicated "phim" channel + POST /films/chat + a background watcher that posts
 gate/done prompts back into the channel.
 """
 import os
+import re
 import threading
 from datetime import datetime
 
@@ -27,7 +28,7 @@ from app.models.comms import Channel, Message, Room
 from app.models.film import Film
 from app.models.user import User
 from app.serialize import row_to_dict, rows_to_list
-from app.services import arcreel_client
+from app.services import arcreel_client, film_trends, ninerouter
 from app.services import trading_record as rec
 from app.services.arcreel_client import ArcReelError
 
@@ -332,7 +333,29 @@ def ensure_film_chat_channel(db: Session = Depends(get_db), current: User = Depe
     add_channel_member(db, ch.id, name=REEL["name"], initial=REEL["initial"], color=REEL["color"], role="Agent", isAgent=True)
     ensure_film_workflow(db)
     ensure_film_room(db)
+    film_trends.ensure_film_cron(db)  # weekly trend survey (T2 08:30)
     return _channel_dict(db, ch)
+
+
+def _write_story(idea: str) -> tuple[str, str]:
+    """Idea → (title, full story ~700-1000 chữ) via 9Router — cảnh/nhân vật rõ để ArcReel dựng."""
+    system = {"role": "system", "content": (
+        "Bạn là biên kịch phim ngắn dọc 9:16 (1-3 phút, dựng bằng AI). Viết TRUYỆN HOÀN CHỈNH từ ý tưởng: "
+        "700-1000 chữ tiếng Việt, cấu trúc 3 hồi (mở nhanh 10 giây đầu phải có hook, thắt nút, twist/chốt cảm xúc), "
+        "2-3 nhân vật có TÊN + đặc điểm ngoại hình rõ (để vẽ), bối cảnh cụ thể, hành động thị giác (show không tell), "
+        "hội thoại ngắn tự nhiên. DÒNG ĐẦU TIÊN: 'TÊN PHIM: <tên ngắn>' rồi xuống dòng viết truyện.")}
+    res = ninerouter.chat([system, {"role": "user", "content": f"Ý tưởng: {idea}"}], temperature=0.7, max_tokens=1600)
+    text = (res.get("content") or "").strip()
+    title, story = "", text
+    m = re.match(r"TÊN PHIM:\s*(.+)", text)
+    if m:
+        title = m.group(1).strip()[:60]
+        story = text[m.end():].strip()
+    return (title or idea[:50], story or text)
+
+
+_CMD_SURVEY = ("khảo sát trend", "khao sat trend", "trend tuần", "trend tuan")
+_IDEA_PREFIX = ("ý tưởng", "y tuong", "làm phim về", "lam phim ve", "tạo phim về", "tao phim ve")
 
 
 @router.post("/chat")
@@ -378,11 +401,17 @@ def film_chat(body: FilmChatIn, db: Session = Depends(get_db), current: User = D
             return {"messages": [_save_reel_msg(db, cid, f"Đã hủy phim **{f.title}**.")], "filmId": f.id}
         return {"messages": [_save_reel_msg(db, cid, "Không có phim nào đang chạy để hủy.")], "filmId": f.id if f else None}
 
-    # make a film from a story (needs enough text)
-    if len(t) >= 40:
-        title = t.splitlines()[0][:60]
+    # weekly trend survey on demand
+    if any(k in low for k in _CMD_SURVEY):
+        text = film_trends.run_survey(db)
+        if text.startswith("🎬"):  # run_survey already posted the survey message — return it to the client
+            last = db.scalars(select(Message).where(Message.channel_id == cid).order_by(Message.sort.desc()).limit(1)).first()
+            return {"messages": [row_to_dict(last, exclude={"channel_id"})] if last else [], "filmId": f.id if f else None}
+        return {"messages": [_save_reel_msg(db, cid, text)], "filmId": f.id if f else None}
+
+    def _start_film(story: str, title: str, prologue: str = "") -> dict:
         payload = {
-            "novel_text": t, "title": title, "content_mode": "narration", "aspect_ratio": "9:16",
+            "novel_text": story, "title": title, "content_mode": "narration", "aspect_ratio": "9:16",
             "review_before_storyboard": True, "review_before_video": True, "review_before_compose": True,
             **_DEFAULTS,
         }
@@ -399,11 +428,48 @@ def film_chat(body: FilmChatIn, db: Session = Depends(get_db), current: User = D
         db.add(nf)
         db.commit()
         threading.Thread(target=_bg_reel_watch, args=(cid, nf.id), daemon=True).start()
-        interim = _save_reel_msg(db, cid, f"🎬 Đã nhận **{title}** · mã `{nf.id}` — đang chạy pipeline. Em sẽ báo khi tới cổng cần anh **duyệt**. (Gõ **trạng thái** để xem tiến độ.)")
-        return {"messages": [interim], "filmId": nf.id}
+        msgs = []
+        if prologue:
+            msgs.append(_save_reel_msg(db, cid, prologue))
+        msgs.append(_save_reel_msg(db, cid, f"🎬 Đã nhận **{title}** · mã `{nf.id}` — đang chạy pipeline. Em sẽ báo khi tới cổng cần anh **duyệt**. (Gõ **trạng thái** để xem tiến độ.)"))
+        return {"messages": msgs, "filmId": nf.id}
+
+    # pick an idea from this week's trend survey: "làm phim 2" / "chọn 3"
+    pick = re.search(r"(?:làm phim|lam phim|chọn|chon)\s*(?:số|so)?\s*(\d)", low)
+    if pick:
+        ideas = (film_trends.load_ideas() or {}).get("ideas", [])
+        n = int(pick.group(1))
+        if not ideas:
+            return {"messages": [_save_reel_msg(db, cid, "Chưa có khảo sát trend tuần này — gõ **khảo sát trend** để em chạy trước.")], "filmId": f.id if f else None}
+        if not 1 <= n <= len(ideas):
+            return {"messages": [_save_reel_msg(db, cid, f"Chỉ có {len(ideas)} ý tưởng trong khảo sát — chọn từ 1 đến {len(ideas)} nhé.")], "filmId": f.id if f else None}
+        it = ideas[n - 1]
+        idea_text = f"{it.get('title', '')} — {it.get('logline', '')} (vibe: {it.get('vibe', '')})"
+        try:
+            title, story = _write_story(idea_text)
+        except Exception as exc:  # noqa: BLE001
+            return {"messages": [_save_reel_msg(db, cid, f"Không viết được truyện (9Router: {exc}) — thử lại nhé.")], "filmId": None}
+        return _start_film(story, title, prologue=f"✍️ Em viết truyện từ ý tưởng **#{n} {it.get('title', '')}**:\n\n{story}")
+
+    # SHORT text = an IDEA → Reel writes the story itself, then builds (end-to-end)
+    if 8 <= len(t) < 120 or any(low.startswith(p) for p in _IDEA_PREFIX):
+        idea = t
+        for p in _IDEA_PREFIX:
+            if low.startswith(p):
+                idea = t[len(p):].lstrip(" :—-") or t
+                break
+        try:
+            title, story = _write_story(idea)
+        except Exception as exc:  # noqa: BLE001
+            return {"messages": [_save_reel_msg(db, cid, f"Không viết được truyện (9Router: {exc}) — thử lại nhé.")], "filmId": None}
+        return _start_film(story, title, prologue=f"✍️ Em viết truyện từ ý tưởng của anh:\n\n{story}")
+
+    # long paste = a full story → build directly (như cũ)
+    if len(t) >= 120:
+        return _start_film(t, t.splitlines()[0][:60])
 
     # too short / general
-    return {"messages": [_save_reel_msg(db, cid, "Dán **nội dung truyện** (vài câu trở lên) để em dựng phim. Lệnh: **duyệt** · **trạng thái** · **hủy**.")], "filmId": f.id if f else None}
+    return {"messages": [_save_reel_msg(db, cid, "Gõ **Ý TƯỞNG** (1-2 câu) — em tự viết truyện rồi dựng; hoặc dán **nguyên truyện**; **làm phim <số>** để chọn từ khảo sát trend; **khảo sát trend** xem gợi ý tuần. Lệnh: **duyệt** · **trạng thái** · **hủy**.")], "filmId": f.id if f else None}
 
 
 # ───────────────────────── Phase 3: gate review (assets + variants) ─────────────────────────

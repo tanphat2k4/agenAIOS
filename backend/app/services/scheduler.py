@@ -97,10 +97,24 @@ def _run_music_batch() -> None:
         db.close()
 
 
+def _run_film_survey() -> None:
+    """Weekly film trend survey — Reel posts 5 pickable ideas into #phim."""
+    db = SessionLocal()
+    try:
+        from app.services import film_trends
+
+        film_trends.run_survey(db)
+    except Exception:  # noqa: BLE001
+        pass
+    finally:
+        db.close()
+
+
 # cron id → action. Rows not listed here are display/Run-now only.
 _RUNNABLE = {
     morning_report.CRON_ID: _run_morning,
     "cron-music-weekly": _run_music_batch,
+    "cron-film-weekly": _run_film_survey,
 }
 
 
