@@ -787,4 +787,8 @@ export const EN: Record<string, string> = {
   "Bỏ qua": "Skip",
   "Đã gửi lựa chọn": "Choice sent",
   "chờ Beat xác nhận…": "waiting for Beat to confirm…",
+
+  // ── Image lightbox ──
+  "Bấm để xem": "Click to view",
+  "Tải về": "Download",
 }

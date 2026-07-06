@@ -87,6 +87,21 @@ export function Channels() {
   const [chanMenu, setChanMenu] = useState(false)
   // ---- Suno variant pick (buttons under audio messages in #am-nhac) ----
   const [pickSent, setPickSent] = useState<Record<string, string>>({})
+  // ---- in-chat image lightbox (bấm ảnh xem ngay, không mở tab mới) ----
+  const [lightbox, setLightbox] = useState<number | null>(null)
+  const galleryUrls = allMsgs.flatMap((mm) => (mm.raw || [])
+    .filter((b) => b.kind === 'attach' && (b as { fileKind?: string }).fileKind === 'image' && (b as { url?: string }).url)
+    .map((b) => (b as { url?: string }).url as string))
+  useEffect(() => {
+    if (lightbox === null) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setLightbox(null)
+      if (e.key === 'ArrowLeft') setLightbox((i) => (i === null ? i : Math.max(0, i - 1)))
+      if (e.key === 'ArrowRight') setLightbox((i) => (i === null ? i : Math.min(galleryUrls.length - 1, i + 1)))
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [lightbox, galleryUrls.length])
   const sendPick = (slug: string, choice: string, label: string) => {
     setPickSent((p) => ({ ...p, [slug]: label }))
     api.post('/music/pick', { slug, choice }).then(() => {
@@ -311,7 +326,8 @@ export function Channels() {
                       )
                     }
                     if (block.fileKind === 'image' && block.url) {
-                      return <a key={bi} href={assetUrl(block.url)} target="_blank" rel="noreferrer" style={{ display: 'block', marginTop: 4 }}><img src={assetUrl(block.url)} alt={block.name} style={{ maxWidth: 340, maxHeight: 260, borderRadius: 12, border: '1px solid var(--line)', display: 'block' }} /></a>
+                      const u = block.url
+                      return <img key={bi} src={assetUrl(u)} alt={block.name} title={t('Bấm để xem')} onClick={() => setLightbox(galleryUrls.indexOf(u))} style={{ maxWidth: 340, maxHeight: 260, borderRadius: 12, border: '1px solid var(--line)', display: 'block', marginTop: 4, cursor: 'zoom-in' }} />
                     }
                     if (block.url) {
                       return <a key={bi} href={assetUrl(block.url)} target="_blank" rel="noreferrer" download={block.name} style={{ display: 'inline-flex', alignItems: 'center', gap: 11, maxWidth: '100%', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, padding: '10px 14px', marginTop: 4, textDecoration: 'none', color: 'inherit' }}><span style={{ fontSize: 20, flex: 'none' }}>{block.icon}</span><div style={{ minWidth: 0 }}><div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{block.name}</div><div style={{ fontSize: 11, color: 'var(--placeholder)' }}>{block.label}</div></div><span style={{ fontSize: 14, color: 'var(--jade-deep)', marginLeft: 6 }}>↓</span></a>
@@ -486,6 +502,24 @@ export function Channels() {
       )}
 
       <ChannelModals active={active} memberCount={memberCount} />
+
+      {/* ── image lightbox ── */}
+      {lightbox !== null && galleryUrls[lightbox] && (
+        <div onClick={() => setLightbox(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(10, 12, 11, .88)', zIndex: 90, display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'fadeIn .12s ease' }}>
+          <img src={assetUrl(galleryUrls[lightbox])} onClick={(e) => e.stopPropagation()} alt="" style={{ maxWidth: '92vw', maxHeight: '90vh', borderRadius: 10, boxShadow: '0 18px 60px rgba(0,0,0,.55)' }} />
+          <button onClick={(e) => { e.stopPropagation(); setLightbox(null) }} title="Esc" style={{ position: 'fixed', top: 16, right: 20, width: 40, height: 40, borderRadius: 99, border: 'none', background: 'rgba(255,255,255,.14)', color: '#fff', fontSize: 17, cursor: 'pointer' }}>✕</button>
+          {lightbox > 0 && (
+            <button onClick={(e) => { e.stopPropagation(); setLightbox(lightbox - 1) }} style={{ position: 'fixed', left: 18, top: '50%', transform: 'translateY(-50%)', width: 44, height: 44, borderRadius: 99, border: 'none', background: 'rgba(255,255,255,.14)', color: '#fff', fontSize: 20, cursor: 'pointer' }}>‹</button>
+          )}
+          {lightbox < galleryUrls.length - 1 && (
+            <button onClick={(e) => { e.stopPropagation(); setLightbox(lightbox + 1) }} style={{ position: 'fixed', right: 18, top: '50%', transform: 'translateY(-50%)', width: 44, height: 44, borderRadius: 99, border: 'none', background: 'rgba(255,255,255,.14)', color: '#fff', fontSize: 20, cursor: 'pointer' }}>›</button>
+          )}
+          <div onClick={(e) => e.stopPropagation()} style={{ position: 'fixed', bottom: 16, left: '50%', transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', gap: 14 }}>
+            <span style={{ color: 'rgba(255,255,255,.75)', fontSize: 12.5 }}>{lightbox + 1} / {galleryUrls.length}</span>
+            <a href={assetUrl(galleryUrls[lightbox])} download style={{ color: '#fff', background: 'rgba(255,255,255,.14)', borderRadius: 99, padding: '7px 16px', fontSize: 12.5, fontWeight: 600, textDecoration: 'none' }}>⬇ {t('Tải về')}</a>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
