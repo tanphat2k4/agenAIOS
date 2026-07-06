@@ -148,7 +148,7 @@ def run_morning_report(db: Session, *, manual: bool = False) -> str:
         from app.services import metals
 
         ensure_metals_channel(db)
-        _save_aurum_msg(db, METALS_CHANNEL_ID, "☀️ **Vàng & bạc sáng nay**\n\n" + metals.headline())
+        _save_aurum_msg(db, METALS_CHANNEL_ID, "☀️ **Vàng & bạc sáng nay**\n\n" + metals.morning_card())
     except Exception:  # noqa: BLE001
         db.rollback()
     return report

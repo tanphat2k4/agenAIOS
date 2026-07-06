@@ -94,6 +94,7 @@ def _world() -> dict:
 
 
 _cache: dict = {}
+_LAST_SILVER: dict = {}  # last silver row seen — the BTMC feed is intermittent about silver
 
 
 def snapshot(max_age: float = 60.0) -> dict:
@@ -111,10 +112,21 @@ def snapshot(max_age: float = 60.0) -> dict:
     silver_rows = dom.get("silver") or []
     silver = next((r for r in silver_rows if "1 KG" in r["name"].upper() or "1KG" in r["name"].upper()),
                   silver_rows[0] if silver_rows else None)
+    # the BTMC feed drops its silver rows on and off — keep the last good quote (it carries
+    # its own BTMC timestamp in row["time"]) and flag it stale so the card can say so
+    silver_stale = False
+    if silver:
+        _LAST_SILVER["row"] = silver
+    elif _LAST_SILVER.get("row"):
+        silver, silver_stale = _LAST_SILVER["row"], True
 
     gold_usd = (wld.get("gold_usd") or {}).get("price")
     silver_usd = (wld.get("silver_usd") or {}).get("price")
     usd_vnd = (wld.get("usd_vnd") or {}).get("price")
+
+    def _chg(key: str) -> float | None:
+        cur, prev = (wld.get(key) or {}).get("price"), (wld.get(key) or {}).get("prev")
+        return round((cur - prev) / prev * 100, 2) if cur and prev else None
 
     world_luong_vnd = gold_usd * usd_vnd * OZ_PER_LUONG if gold_usd and usd_vnd else None
     premium_pct = None
@@ -130,9 +142,11 @@ def snapshot(max_age: float = 60.0) -> dict:
         "sjc_bar": bar, "sjc_ring": ring, "silver": silver,
         "btmc_gold": (dom.get("btmc_gold") or [])[:4],
         "gold_usd": gold_usd, "silver_usd": silver_usd, "usd_vnd": usd_vnd,
+        "gold_chg_pct": _chg("gold_usd"), "silver_chg_pct": _chg("silver_usd"),
         "dxy": (wld.get("dxy") or {}).get("price"), "us10y": (wld.get("us10y") or {}).get("price"),
         "world_luong_vnd": world_luong_vnd, "premium_pct": premium_pct,
         "silver_world_kg_vnd": silver_world_kg_vnd, "silver_premium_pct": silver_premium_pct,
+        "silver_stale": silver_stale,
         "gold_silver_ratio": round(gold_usd / silver_usd, 1) if gold_usd and silver_usd else None,
         "errors": {k: v for k, v in dom.items() if k.endswith("_err")},
     }
@@ -179,8 +193,11 @@ def unit_conversion_line(snap: dict | None, asset: str | None, question_lower: s
 
     out: list[str] = []
     sil, bar = s.get("silver"), s.get("sjc_bar")
-    if asset in (None, "silver") and sil and sil.get("buy") and unit != "kg":  # kg = native silver unit
-        out.append(f"💡 Bạc {label}: ≈ **{fmt(sil['buy'] * per_kg)} – {fmt(sil['sell'] * per_kg)}** (mua–bán)")
+    if asset in (None, "silver") and unit != "kg":  # kg = native silver unit
+        if sil and sil.get("buy"):
+            out.append(f"💡 Bạc {label}: ≈ **{fmt(sil['buy'] * per_kg)} – {fmt(sil['sell'] * per_kg)}** (mua–bán)")
+        elif s.get("silver_world_kg_vnd"):
+            out.append(f"💡 Bạc {label}: ≈ **{fmt(s['silver_world_kg_vnd'] * per_kg)}** (theo giá TG quy đổi)")
     if asset in (None, "gold") and bar and bar.get("buy") and unit != "lượng":  # lượng = native gold unit
         out.append(f"💡 Vàng SJC {label}: ≈ **{fmt(bar['buy'] * per_luong)} – {fmt(bar['sell'] * per_luong)}** (mua–bán)")
     return "\n".join(out)
@@ -260,6 +277,53 @@ def tech_text() -> str:
     return "\n".join(parts)
 
 
+def trend_outlook() -> str:
+    """Deterministic short-term trend read for gold + silver — scored from real
+    indicators (SMA50/200, RSI, MACD), NOT an LLM guess. Empty string if no data."""
+    lines: list[str] = []
+    for sym, label in (("GC=F", "Vàng"), ("SI=F", "Bạc")):
+        i = indicators(sym)
+        if not i:
+            continue
+        score = 0
+        why: list[str] = []
+        if i.get("sma50"):
+            above = i["price"] > i["sma50"]
+            score += 1 if above else -1
+            why.append(("trên" if above else "dưới") + f" SMA50 ({i['sma50']:,.0f})")
+        if i.get("sma200"):
+            score += 1 if i["price"] > i["sma200"] else -1
+        if i.get("rsi") is not None:
+            if i["rsi"] >= 55:
+                score += 1
+            elif i["rsi"] <= 45:
+                score -= 1
+            why.append(f"RSI {i['rsi']:.0f}")
+        if i.get("macd") is not None and i.get("macd_sig") is not None:
+            up = i["macd"] > i["macd_sig"]
+            score += 1 if up else -1
+            why.append("MACD " + ("cải thiện" if up else "yếu"))
+        verdict = "📈 TĂNG" if score >= 2 else ("📉 GIẢM" if score <= -2 else "➡️ ĐI NGANG")
+        lines.append(f"• {label}: **{verdict}** ngắn hạn — giá {why[0]} · {' · '.join(why[1:])}")
+    return ("🧭 **Xu hướng** (chấm điểm từ chỉ báo, không phải dự đoán LLM):\n" + "\n".join(lines)) if lines else ""
+
+
+def morning_card() -> str:
+    """The daily '☀️ Vàng & bạc sáng nay' card: prices + silver-per-lượng + trend read."""
+    s = snapshot()
+    parts = [headline(s)]
+    sil = s.get("silver")
+    if sil and sil.get("buy"):
+        parts.append(f"💡 Bạc 1 lượng (37,5g) ≈ **{sil['buy'] * 0.0375 / 1e6:,.2f} – {sil['sell'] * 0.0375 / 1e6:,.2f} tr** (mua–bán)")
+    elif s.get("silver_world_kg_vnd"):
+        parts.append(f"💡 Bạc 1 lượng (37,5g) ≈ **{s['silver_world_kg_vnd'] * 0.0375 / 1e6:,.2f} tr** (theo giá TG quy đổi)")
+    trend = trend_outlook()
+    if trend:
+        parts.append("")
+        parts.append(trend)
+    return "\n".join(parts)
+
+
 def backtest_sma50(symbol: str = "GC=F") -> str:
     """Deterministic SMA50-cross backtest on ~1y of daily closes (long above SMA50)."""
     closes = history(symbol)
@@ -325,15 +389,19 @@ def headline(snap: dict | None = None, asset: str | None = None) -> str:
         lines.append(f"💍 Nhẫn 99,99: {_tr(rb)} – {_tr(rs)} tr/lượng")
     if show_gold and s.get("gold_usd"):
         w = f" ≈ {_tr(s['world_luong_vnd'])} tr/lượng" if s.get("world_luong_vnd") else ""
-        lines.append(f"🌍 Vàng TG **{s['gold_usd']:,.0f} $/oz**{w}")
-    if show_silver and sil:
-        up = sil["name"].upper()
-        brand = "Phú Quý" if "PHÚ QUÝ" in up else ("Rồng Thăng Long" if "RỒNG" in up else "miếng")
-        sp = f" · **premium {s['silver_premium_pct']:+.1f}%** vs TG" if s.get("silver_premium_pct") is not None else ""
-        lines.append(f"🥈 Bạc {brand} **{_tr(sil['buy'])} – {_tr(sil['sell'])} tr/kg**{sp}")
-        if s.get("silver_usd"):
+        c = f" ({s['gold_chg_pct']:+.1f}% hôm nay)" if s.get("gold_chg_pct") is not None else ""
+        lines.append(f"🌍 Vàng TG **{s['gold_usd']:,.0f} $/oz**{w}{c}")
+    if show_silver:
+        if sil:
+            up = sil["name"].upper()
+            brand = "Phú Quý" if "PHÚ QUÝ" in up else ("Rồng Thăng Long" if "RỒNG" in up else "miếng")
+            sp = f" · **premium {s['silver_premium_pct']:+.1f}%** vs TG" if s.get("silver_premium_pct") is not None else ""
+            stale = f" (BTMC lúc {sil['time'][-5:]})" if s.get("silver_stale") and sil.get("time") else ""
+            lines.append(f"🥈 Bạc {brand} **{_tr(sil['buy'])} – {_tr(sil['sell'])} tr/kg**{sp}{stale}")
+        if s.get("silver_usd"):  # world silver prints on its own — even when the BTMC feed drops silver
             w = f" ≈ {_tr(s['silver_world_kg_vnd'])} tr/kg" if s.get("silver_world_kg_vnd") else ""
-            lines.append(f"🌍 Bạc TG **{s['silver_usd']:,.2f} $/oz**{w}")
+            c = f" ({s['silver_chg_pct']:+.1f}% hôm nay)" if s.get("silver_chg_pct") is not None else ""
+            lines.append(f"🌍 Bạc TG **{s['silver_usd']:,.2f} $/oz**{w}{c}")
     macro = []
     if s.get("gold_silver_ratio"):
         macro.append(f"Gold/Silver {s['gold_silver_ratio']}")
