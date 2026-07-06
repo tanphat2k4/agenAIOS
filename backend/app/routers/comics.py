@@ -24,7 +24,7 @@ from app.models.comic import Comic
 from app.models.comms import Channel, Message, Room
 from app.models.user import User
 from app.serialize import row_to_dict
-from app.services import comfy_client, ninerouter
+from app.services import comfy_client, comic_builder, ninerouter
 from app.services import trading_record as rec
 
 router = APIRouter(prefix="/comics", tags=["comics"], dependencies=[Depends(get_current_user)])
@@ -283,6 +283,74 @@ def _bg_script(idea: str, cid: str, user_id: str) -> None:
         db.close()
 
 
+# ─────────────────────────── stage 3 (P2): panels + pages ───────────────────────────
+def _post_page(db: Session, cid: str, comic, page: dict, tag: str = "") -> None:
+    url = comic_builder.compose_page(comic, page)
+    att = [{"kind": "attach", "icon": "🖼", "name": f"Trang {page.get('page')} — {comic.title}",
+            "label": f"{len(page.get('panels', []))} khung · png", "url": url,
+            "mime": "image/png", "fileKind": "image"}]
+    _save_hoa_msg(db, cid, f"🖼 **Trang {page.get('page')}**{tag}", extra_blocks=att)
+
+
+def _bg_pages(comic_id: str, cid: str) -> None:
+    db = SessionLocal()
+    try:
+        c = db.get(Comic, comic_id)
+        if not c:
+            return
+        pages = (c.script or {}).get("pages", [])
+        total = len(pages)
+        for i, page in enumerate(pages, 1):
+            for pn in page.get("panels", []):
+                nonce = comic_builder.get_nonce(c, page.get("page", i), pn.get("panel", 0))
+                try:
+                    comic_builder.gen_panel(c, page.get("page", i), pn, nonce)
+                except comfy_client.ComfyError as exc:
+                    _save_hoa_msg(db, cid, f"⚠️ Khung {pn.get('panel')} trang {page.get('page')} lỗi ComfyUI: {exc}")
+            try:
+                _post_page(db, cid, c, page, tag=f" ({i}/{total})")
+            except Exception as exc:  # noqa: BLE001
+                _save_hoa_msg(db, cid, f"⚠️ Không ghép được trang {page.get('page')}: {str(exc)[:100]}")
+        c.status = c.stage = "awaiting_page_review"
+        c.updatedAt = _now()
+        db.commit()
+        _save_hoa_msg(db, cid, "👉 Xem từng trang: khung nào lệch gõ **gen lại trang <số> khung <số>** — ưng hết gõ **duyệt** để chốt chương.")
+        w = db.get(Workflow, WF_ID)
+        if w:
+            w.steps = [{**s, "status": ("done" if i2 <= 3 else "idle")} for i2, s in enumerate(w.steps or [])]
+            w.runState = "idle"
+            db.commit()
+        _jobs[_JOB] = {"status": "done"}
+    except Exception as exc:  # noqa: BLE001
+        _jobs[_JOB] = {"status": "error", "result": str(exc)}
+    finally:
+        db.close()
+
+
+def _bg_regen(comic_id: str, cid: str, page_no: int, panel_no: int) -> None:
+    db = SessionLocal()
+    try:
+        c = db.get(Comic, comic_id)
+        if not c:
+            return
+        page = next((p for p in (c.script or {}).get("pages", []) if p.get("page") == page_no), None)
+        pn = next((k for k in (page or {}).get("panels", []) if k.get("panel") == panel_no), None)
+        if not page or not pn:
+            _save_hoa_msg(db, cid, f"Không thấy trang {page_no} khung {panel_no}.")
+            _jobs[_JOB] = {"status": "done"}
+            return
+        nonce = comic_builder.regen_nonce(c, page_no, panel_no)
+        db.commit()
+        comic_builder.gen_panel(c, page_no, pn, nonce)
+        _post_page(db, cid, c, page, tag=f" — đã vẽ lại khung {panel_no}")
+        _jobs[_JOB] = {"status": "done"}
+    except Exception as exc:  # noqa: BLE001
+        _save_hoa_msg(db, cid, f"⚠️ Gen lại lỗi: {str(exc)[:120]}")
+        _jobs[_JOB] = {"status": "error", "result": str(exc)}
+    finally:
+        db.close()
+
+
 # ─────────────────────────── chat ───────────────────────────
 class ChatIn(BaseModel):
     channel_id: str = COMIC_CHANNEL_ID
@@ -310,8 +378,9 @@ def comics_chat(body: ChatIn, db: Session = Depends(get_db), current: User = Dep
         if not c:
             return {"messages": [_save_hoa_msg(db, cid, "Chưa có truyện nào — gõ ý tưởng để em bắt đầu.")], "job": None}
         vi = {"awaiting_script_review": "chờ DUYỆT kịch bản", "designing": "đang vẽ nhân vật",
-              "awaiting_character_review": "chờ CHỌN mặt nhân vật", "ready_p2": "hồ sơ chốt — chờ P2 sinh khung",
-              "scripting": "đang biên kịch", "error": "lỗi"}
+              "awaiting_character_review": "chờ CHỌN mặt nhân vật", "ready_p2": "hồ sơ chốt — gõ DUYỆT để sinh khung",
+              "generating_pages": "đang sinh khung + ghép trang", "awaiting_page_review": "chờ DUYỆT trang (gen lại khung nếu cần)",
+              "done_p2": "chương HOÀN TẤT 🎉", "scripting": "đang biên kịch", "error": "lỗi"}
         return {"messages": [_save_hoa_msg(db, cid, f"📚 **{c.title}** — {vi.get(c.status, c.status)}.")], "job": None}
 
     if any(k in low for k in ("hủy", "huy bo", "cancel")) and low in ("hủy", "huy", "cancel", "hủy truyện", "huy truyen"):
@@ -335,6 +404,17 @@ def comics_chat(body: ChatIn, db: Session = Depends(get_db), current: User = Dep
         c.updatedAt = _now()
         db.commit()
         return {"messages": [_save_hoa_msg(db, cid, f"✅ **{target}** → bản {v}. ({len(c.picks)}/{len(c.characters)} đã chọn — gõ **duyệt** khi xong.)")], "job": None}
+
+    # regen one panel: "gen lại trang 2 khung 3"
+    rg = re.search(r"(?:gen lại|gen lai|làm lại|lam lai|vẽ lại|ve lai)\s*trang\s*(\d+)\s*khung\s*(\d+)", low)
+    if rg and c and c.status == "awaiting_page_review":
+        job = _jobs.get(_JOB)
+        if job and job.get("status") == "running":
+            return {"messages": [_save_hoa_msg(db, cid, "Em đang vẽ dở, chờ chút nhé.")], "job": "running"}
+        _jobs[_JOB] = {"status": "running"}
+        interim = _save_hoa_msg(db, cid, f"🖌 Vẽ lại trang {rg.group(1)} khung {rg.group(2)} (seed mới, ~15 giây)…")
+        threading.Thread(target=_bg_regen, args=(c.id, cid, int(rg.group(1)), int(rg.group(2))), daemon=True).start()
+        return {"messages": [interim], "job": "running"}
 
     # gates
     if low in ("duyệt", "duyet", "ok", "approve"):
@@ -362,7 +442,39 @@ def comics_chat(body: ChatIn, db: Session = Depends(get_db), current: User = Dep
             c.updatedAt = _now()
             db.commit()
             chosen = " · ".join(f"{k}: bản {v}" for k, v in picks.items())
-            return {"messages": [_save_hoa_msg(db, cid, f"🎉 **Hồ sơ nhân vật chốt** ({chosen}). P1 hoàn tất — P2 sẽ sinh khung toàn truyện từ hồ sơ này.")], "job": None}
+            return {"messages": [_save_hoa_msg(db, cid, f"✅ **Hồ sơ nhân vật chốt** ({chosen}). Gõ **duyệt** lần nữa để em sinh khung + ghép trang toàn chương (~3-5 phút).")], "job": None}
+        if c and c.status == "ready_p2":
+            job = _jobs.get(_JOB)
+            if job and job.get("status") == "running":
+                return {"messages": [_save_hoa_msg(db, cid, "Em đang chạy việc trước, chờ chút nhé.")], "job": "running"}
+            n_panels = sum(len(p.get("panels", [])) for p in (c.script or {}).get("pages", []))
+            c.status = c.stage = "generating_pages"
+            c.updatedAt = _now()
+            db.commit()
+            w = db.get(Workflow, WF_ID)
+            if w:
+                w.runState = "running"
+                w.steps = [{**s, "status": ("done" if i <= 1 else ("running" if i == 2 else "idle"))} for i, s in enumerate(w.steps or [])]
+                db.commit()
+            _jobs[_JOB] = {"status": "running"}
+            interim = _save_hoa_msg(db, cid, f"🖌 Bắt đầu sinh **{n_panels} khung** trên RTX 5090 (~{max(1, n_panels * 15 // 60)}-{max(2, n_panels * 20 // 60)} phút) — xong trang nào em đăng trang đó.")
+            threading.Thread(target=_bg_pages, args=(c.id, cid), daemon=True).start()
+            return {"messages": [interim], "job": "running"}
+        if c and c.status == "awaiting_page_review":
+            from app.crud import today_ymd
+
+            c.status = c.stage = "done_p2"
+            c.updatedAt = _now()
+            db.commit()
+            w = db.get(Workflow, WF_ID)
+            if w:
+                w.steps = [{**s, "status": ("done" if i <= 3 else "idle")} for i, s in enumerate(w.steps or [])]
+                w.runs = [{"time": now_hm(), "date": today_ymd(), "status": "success", "dur": ""}, *(w.runs or [])][:200]
+                w.lastRun = now_hm()
+                w.runs24 = (w.runs24 or 0) + 1
+                w.runState = "idle"
+                db.commit()
+            return {"messages": [_save_hoa_msg(db, cid, f"🎉 **{c.title} — chương 1 HOÀN TẤT!** Toàn bộ trang đã chốt. (P3 sẽ xuất webtoon dọc/PDF + đăng kênh.)")], "job": None}
         return {"messages": [_save_hoa_msg(db, cid, "Hiện không có cổng nào chờ duyệt.")], "job": None}
 
     # new comic from an idea
