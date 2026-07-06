@@ -1,4 +1,6 @@
+import re
 import threading
+import unicodedata
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
@@ -59,11 +61,46 @@ class ChatIn(BaseModel):
     text: str
 
 
+_LYRIC_KW = ("coi lời", "xem lời", "lời bài", "cho lời", "đọc lời", "lyric", "loi bai", "xem loi", "coi loi")
+
+
+def _norm(s: str) -> str:
+    """Lowercase + strip accents/punctuation — tolerant song-title matching."""
+    s = unicodedata.normalize("NFD", (s or "").lower())
+    s = "".join(c for c in s if unicodedata.category(c) != "Mn")
+    return re.sub(r"[^a-z0-9 ]", " ", s)
+
+
 @router.post("/chat")
 def music_chat(body: ChatIn):
     """Forward a #am-nhac message to Beat (music-orchestrator) and save its reply
-    in the channel. Background — Beat's OpenClaw turn can take a while."""
+    in the channel. Background — Beat's OpenClaw turn can take a while.
+
+    Lyric requests are answered VERBATIM from lyrics.md instead (Beat retypes lyrics
+    from memory and drops the [Intro]/[Chorus] section lines — 'không show hết lời')."""
     key = "music|chat"
+    low = (body.text or "").lower()
+    if any(k in low for k in _LYRIC_KW):
+        try:
+            batch = music.read_batch()
+            qn = _norm(low)
+            hit = next((s for s in batch.get("songs", []) if s.get("lyrics") and _norm(s["title"]).strip() and _norm(s["title"]).strip() in qn), None)
+            if hit:
+                db = SessionLocal()
+                try:
+                    text = f"🎼 **{hit['title']}** — nguyên văn từ lyrics.md ({batch.get('week', '')}):\n\n{hit['lyrics']}"
+                    db.add(Message(
+                        id=uid("m"), channel_id=music.CHANNEL_ID, authorName=_BOT[0], time=now_hm(),
+                        avatarInitial=_BOT[1], avatarColor=_BOT[2], isAgent=True, raw=rec.md_to_blocks(text),
+                        sort=next_sort(db, Message),
+                    ))
+                    db.commit()
+                finally:
+                    db.close()
+                _jobs[key] = {"status": "done", "result": "lyrics"}
+                return {"status": "done"}
+        except Exception:  # noqa: BLE001
+            pass  # fall through — Beat can still answer
     _jobs[key] = {"status": "running", "result": None}
 
     def work() -> None:
