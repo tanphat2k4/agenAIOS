@@ -164,13 +164,15 @@ def ensure(db: Session = Depends(get_db), current: User = Depends(get_current_us
 def _write_script(idea: str) -> dict:
     """Idea → strict-JSON comic script: characters (looks for drawing) + pages/panels + style."""
     system = {"role": "system", "content": (
-        "Bạn là biên kịch truyện tranh webtoon dọc 9:16 tiếng Việt. Từ ý tưởng, viết kịch bản chương 1 "
-        "NGẮN (thử nghiệm): 3-4 trang, mỗi trang 3-4 khung. TRẢ VỀ DUY NHẤT MỘT JSON object: "
+        "Bạn là biên kịch truyện tranh webtoon dọc 9:16 tiếng Việt. Từ ý tưởng, viết kịch bản chương 1: "
+        "4-6 trang, mỗi trang 3-4 khung. TRẢ VỀ DUY NHẤT MỘT JSON object: "
         '{"title": "tên truyện", "style": "mô tả style vẽ bằng tiếng Anh cho Stable Diffusion (vd: vintage sepia engraving...)", '
-        '"characters": [{"name": "Tên", "role": "vai", "look": "mô tả ngoại hình CHI TIẾT bằng tiếng Anh để vẽ: tuổi, tóc, mặt, trang phục, vóc dáng"}] (tối đa 3 nhân vật), '
-        '"pages": [{"page": 1, "panels": [{"panel": 1, "desc": "mô tả hình bằng tiếng Anh (cảnh, hành động, nhân vật nào)", '
+        '"characters": [{"name": "Tên", "role": "vai", "look": "mô tả ngoại hình CHI TIẾT bằng tiếng Anh để vẽ: tuổi, tóc, mặt, trang phục, vóc dáng"}] (tối đa 5 nhân vật), '
+        '"pages": [{"page": 1, "layout": [[1],[2,3],[4]], "panels": [{"panel": 1, "desc": "mô tả hình bằng tiếng Anh (cảnh, hành động, nhân vật nào)", '
         '"shot": "wide|medium|closeup", "dialogue": [{"char": "Tên", "text": "thoại tiếng Việt NGẮN"}]}]}]. '
-        "Thoại tự nhiên, mỗi khung tối đa 2 câu thoại. Hook mạnh ở trang 1 khung 1.")}
+        '"layout" = các HÀNG của trang: hàng 1 khung = khung to full-width, hàng 2 khung = 2 khung đứng cạnh nhau '
+        "(dùng xen kẽ cho nhịp trang đẹp như truyện thật; khung wide nên full-width, closeup có thể ghép đôi). "
+        "Thoại tự nhiên, mỗi khung tối đa 4 câu thoại ngắn. Hook mạnh ở trang 1 khung 1.")}
     res = ninerouter.chat([system, {"role": "user", "content": f"Ý tưởng: {idea}"}], temperature=0.6, max_tokens=2400)
     text = res.get("content") or ""
     m = re.search(r"\{.*\}", text, re.S)
@@ -212,7 +214,7 @@ def _bg_sheets(comic_id: str, cid: str) -> None:
             return
         style = c.style or _STYLE_DEFAULT
         sheets: dict = {}
-        for ch in (c.characters or [])[:3]:
+        for ch in (c.characters or [])[:5]:
             name = ch.get("name", "NV")
             urls, atts = [], []
             for v in (1, 2):

@@ -17,9 +17,12 @@ class ComfyError(RuntimeError):
     pass
 
 
-def _graph(prompt: str, negative: str, width: int, height: int, steps: int, cfg: float, seed: int) -> dict:
-    """Standard 7-node SDXL txt2img graph."""
-    return {
+def _graph(prompt: str, negative: str, width: int, height: int, steps: int, cfg: float, seed: int,
+           ref_image: str | None = None, ref_weight: float = 0.6) -> dict:
+    """SDXL txt2img graph; with `ref_image` (a ComfyUI input-dir filename) the model is
+    wrapped by `easy ipadapterApply` PLUS preset → panels inherit the character sheet's
+    identity/outfit (the ipadapter model auto-downloads on PC-A on first use — user-approved)."""
+    g = {
         "1": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": settings.COMFY_CKPT}},
         "2": {"class_type": "CLIPTextEncode", "inputs": {"clip": ["1", 1], "text": prompt}},
         "3": {"class_type": "CLIPTextEncode", "inputs": {"clip": ["1", 1], "text": negative}},
@@ -31,14 +34,39 @@ def _graph(prompt: str, negative: str, width: int, height: int, steps: int, cfg:
         "6": {"class_type": "VAEDecode", "inputs": {"samples": ["5", 0], "vae": ["1", 2]}},
         "7": {"class_type": "SaveImage", "inputs": {"images": ["6", 0], "filename_prefix": "agentaios-comic"}},
     }
+    if ref_image:
+        g["10"] = {"class_type": "LoadImage", "inputs": {"image": ref_image}}
+        g["11"] = {"class_type": "easy ipadapterApply", "inputs": {
+            "model": ["1", 0], "image": ["10", 0], "preset": "PLUS (high strength)",
+            "lora_strength": 0.6, "provider": "CUDA", "weight": ref_weight, "weight_faceidv2": 1.0,
+            "start_at": 0.0, "end_at": 1.0, "cache_mode": "all", "use_tiled": False,
+        }}
+        g["5"]["inputs"]["model"] = ["11", 0]
+    return g
+
+
+def upload_image(data: bytes, name: str) -> str:
+    """Push a reference image into ComfyUI's input dir (overwrite) → stored filename."""
+    base = settings.COMFYUI_URL.rstrip("/")
+    try:
+        with httpx.Client(timeout=60) as client:
+            r = client.post(f"{base}/upload/image",
+                            files={"image": (name, data, "image/png")},
+                            data={"overwrite": "true", "type": "input"})
+            r.raise_for_status()
+            return r.json().get("name", name)
+    except httpx.HTTPError as exc:
+        raise ComfyError(f"upload ảnh tham chiếu lỗi: {exc}") from exc
 
 
 def txt2img(prompt: str, *, negative: str = "", width: int = 832, height: int = 1216,
-            steps: int = 28, cfg: float = 6.0, seed: int | None = None, timeout: float = 180.0) -> bytes:
+            steps: int = 28, cfg: float = 6.0, seed: int | None = None, timeout: float = 180.0,
+            ref_image: str | None = None, ref_weight: float = 0.6) -> bytes:
     """Generate one image; blocks until done (RTX 5090: ~6-12s). Raises ComfyError."""
     base = settings.COMFYUI_URL.rstrip("/")
     seed = seed if seed is not None else int(uuid.uuid4().int % 2**31)
-    graph = _graph(prompt, negative or _NEG_DEFAULT, width, height, steps, cfg, seed)
+    graph = _graph(prompt, negative or _NEG_DEFAULT, width, height, steps, cfg, seed,
+                   ref_image=ref_image, ref_weight=ref_weight)
     try:
         with httpx.Client(timeout=30) as client:
             r = client.post(f"{base}/prompt", json={"prompt": graph, "client_id": uuid.uuid4().hex})
