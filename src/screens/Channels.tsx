@@ -6,6 +6,15 @@ import { Hover } from '@/components/ui/Hover'
 import { buildBlocks } from '@/lib/richtext'
 import type { Channel } from '@/types'
 import { ChannelModals } from './channels/ChannelModals'
+import { BubbleEditor } from './channels/BubbleEditor'
+
+// A comic page image url (comic-<id>-page-<n>-r<ts>.png) → its (comicId, pageNo) so we can
+// open the speech-bubble editor on it; null for any other image.
+const parseComicPage = (u: string): { comicId: string; pageNo: number } | null => {
+  // matches both the versioned name (…-page-2-r103042.png) and the old fixed name (…-page-2.png)
+  const m = u.match(/comic-([a-z0-9]+)-page-(\d+)(?:-r\d+)?\.png/i)
+  return m ? { comicId: m[1], pageNo: parseInt(m[2], 10) } : null
+}
 
 function ChannelRow({ c, kind }: { c: Channel; kind: 'public' | 'private' | 'direct' }) {
   const t = useT()
@@ -89,6 +98,8 @@ export function Channels() {
   const [pickSent, setPickSent] = useState<Record<string, string>>({})
   // ---- in-chat image lightbox (bấm ảnh xem ngay, không mở tab mới) ----
   const [lightbox, setLightbox] = useState<number | null>(null)
+  // ---- visual speech-bubble editor (Cách B: kéo-thả chỉnh bóng thoại trên trang truyện) ----
+  const [bubbleEdit, setBubbleEdit] = useState<{ comicId: string; pageNo: number } | null>(null)
   const galleryUrls = allMsgs.flatMap((mm) => (mm.raw || [])
     .filter((b) => b.kind === 'attach' && (b as { fileKind?: string }).fileKind === 'image' && (b as { url?: string }).url)
     .map((b) => (b as { url?: string }).url as string))
@@ -327,7 +338,17 @@ export function Channels() {
                     }
                     if (block.fileKind === 'image' && block.url) {
                       const u = block.url
-                      return <img key={bi} src={assetUrl(u)} alt={block.name} title={t('Bấm để xem')} onClick={() => setLightbox(galleryUrls.indexOf(u))} style={{ maxWidth: 340, maxHeight: 260, borderRadius: 12, border: '1px solid var(--line)', display: 'block', marginTop: 4, cursor: 'zoom-in' }} />
+                      const cp = parseComicPage(u)  // comic page → offer the bubble editor
+                      const img = <img src={assetUrl(u)} alt={block.name} title={t('Bấm để xem')} onClick={() => setLightbox(galleryUrls.indexOf(u))} style={{ maxWidth: 340, maxHeight: 260, borderRadius: 12, border: '1px solid var(--line)', display: 'block', marginTop: 4, cursor: 'zoom-in' }} />
+                      if (!cp) return <span key={bi}>{img}</span>
+                      return (
+                        <div key={bi} style={{ position: 'relative', display: 'inline-block', marginTop: 4 }}>
+                          {img}
+                          <Hover as="button" title={t('Chỉnh bóng thoại')} onClick={(e: React.MouseEvent) => { e.stopPropagation(); setBubbleEdit(cp) }}
+                            style={{ position: 'absolute', right: 8, bottom: 8, display: 'inline-flex', alignItems: 'center', gap: 5, border: 'none', borderRadius: 8, background: 'rgba(20,20,20,.72)', color: '#fff', padding: '5px 10px', font: 'inherit', fontSize: 11.5, fontWeight: 600, cursor: 'pointer', backdropFilter: 'blur(2px)' }}
+                            hover={{ background: 'var(--jade)' }}>✎ {t('Sửa bóng')}</Hover>
+                        </div>
+                      )
                     }
                     if (block.url) {
                       return <a key={bi} href={assetUrl(block.url)} target="_blank" rel="noreferrer" download={block.name} style={{ display: 'inline-flex', alignItems: 'center', gap: 11, maxWidth: '100%', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, padding: '10px 14px', marginTop: 4, textDecoration: 'none', color: 'inherit' }}><span style={{ fontSize: 20, flex: 'none' }}>{block.icon}</span><div style={{ minWidth: 0 }}><div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{block.name}</div><div style={{ fontSize: 11, color: 'var(--placeholder)' }}>{block.label}</div></div><span style={{ fontSize: 14, color: 'var(--jade-deep)', marginLeft: 6 }}>↓</span></a>
@@ -519,6 +540,13 @@ export function Channels() {
             <a href={assetUrl(galleryUrls[lightbox])} download style={{ color: '#fff', background: 'rgba(255,255,255,.14)', borderRadius: 99, padding: '7px 16px', fontSize: 12.5, fontWeight: 600, textDecoration: 'none' }}>⬇ {t('Tải về')}</a>
           </div>
         </div>
+      )}
+
+      {/* ── visual speech-bubble editor ── */}
+      {bubbleEdit && (
+        <BubbleEditor comicId={bubbleEdit.comicId} pageNo={bubbleEdit.pageNo}
+          onClose={() => setBubbleEdit(null)}
+          onSaved={() => { if (active?.id) s.selectChannel(active.id) }} />
       )}
     </div>
   )

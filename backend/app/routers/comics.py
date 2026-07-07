@@ -11,7 +11,7 @@ import threading
 import unicodedata
 from datetime import datetime
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -434,6 +434,90 @@ def _bg_script_next(prev_id: str, direction: str, cid: str, user_id: str) -> Non
         _jobs[_JOB] = {"status": "error", "result": str(exc)}
     finally:
         db.close()
+
+
+# ─────────────────────── visual bubble editor (Cách B) ───────────────────────
+def _page_of(c: Comic, page_no: int) -> dict:
+    page = next((p for p in (c.script or {}).get("pages", []) if p.get("page") == page_no), None)
+    if not page:
+        raise HTTPException(404, f"Trang {page_no} không tồn tại")
+    return page
+
+
+def _is_page_url(u: str, comic_id: str, page_no: int) -> bool:
+    """True for this page's composite image — versioned (…-page-2-r103042.png) or the
+    old fixed name (…-page-2.png); the transient …-editbg-… never matches."""
+    base = f"comic-{comic_id}-page-{page_no}"
+    return f"{base}-r" in u or u.endswith(f"{base}.png")
+
+
+def _update_page_message(db: Session, cid: str, comic_id: str, page_no: int, url: str) -> bool:
+    """Point the existing page message at the freshly re-composed image (so editing a
+    bubble refreshes that message in place instead of spamming a new one)."""
+    msgs = db.scalars(select(Message).where(Message.channel_id == cid).order_by(Message.sort.desc()).limit(80)).all()
+    for m in msgs:
+        raw = m.raw or []
+        if any(b.get("kind") == "attach" and _is_page_url(b.get("url") or "", comic_id, page_no) for b in raw):
+            m.raw = [({**b, "url": url} if (b.get("kind") == "attach" and _is_page_url(b.get("url") or "", comic_id, page_no)) else b) for b in raw]
+            return True
+    return False
+
+
+class BubbleItem(BaseModel):
+    panelNo: int
+    i: int
+    nx: float
+    ny: float
+    tnx: float | None = None
+    tny: float | None = None
+    text: str | None = None
+
+
+class BubbleSave(BaseModel):
+    bubbles: list[BubbleItem] = []
+    reset: bool = False
+
+
+@router.get("/page/{comic_id}/{page_no}/edit")
+def page_edit(comic_id: str, page_no: int, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
+    """Editor payload: bubble-less page background + every bubble's box/tail in page px."""
+    c = db.get(Comic, comic_id)
+    if not c:
+        raise HTTPException(404, "Không tìm thấy truyện")
+    page = _page_of(c, page_no)
+    try:
+        return comic_builder.page_edit_data(c, page)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(400, str(exc)[:200])
+
+
+@router.post("/page/{comic_id}/{page_no}/bubbles")
+def page_bubbles(comic_id: str, page_no: int, body: BubbleSave,
+                 db: Session = Depends(get_db), current: User = Depends(get_current_user)):
+    """Save manual bubble positions (or reset to auto), re-compose the page, and refresh
+    its channel message. Returns the new page image url."""
+    c = db.get(Comic, comic_id)
+    if not c:
+        raise HTTPException(404, "Không tìm thấy truyện")
+    page = _page_of(c, page_no)
+    if body.reset:
+        comic_builder.clear_bubble_overrides(c, page_no)
+    else:
+        panel_map: dict[int, list] = {}
+        for it in sorted(body.bubbles, key=lambda z: (z.panelNo, z.i)):
+            panel_map.setdefault(it.panelNo, []).append(
+                {"nx": it.nx, "ny": it.ny, "tnx": it.tnx, "tny": it.tny, "text": it.text})
+        comic_builder.set_bubble_overrides(c, page_no, panel_map)
+    c.updatedAt = _now()
+    db.commit()
+    try:
+        url = comic_builder.compose_page(c, page)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(400, str(exc)[:200])
+    if not _update_page_message(db, c.channelId, comic_id, page_no, url):
+        _post_page(db, c.channelId, c, page, tag=" — đã chỉnh bóng thoại")
+    db.commit()
+    return {"url": url}
 
 
 # ─────────────────────────── chat ───────────────────────────
