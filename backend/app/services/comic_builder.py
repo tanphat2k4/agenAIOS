@@ -163,7 +163,7 @@ def _fonts(fsize: int):
 
 
 def _bubble_layout(draw: ImageDraw.ImageDraw, cell_w: int, cell_h: int, dialogue: list,
-                   faces: list, override: list | None = None) -> list[dict]:
+                   faces: list, override: list | None = None, include_hidden: bool = False) -> list[dict]:
     """Compute each bubble's box + tail target in CELL coordinates. Shared by the
     renderer and the visual editor. `override[i]` (aligned to dialogue[i]) may carry
     `nx/ny` (normalized top-left → manual position), `tnx/tny` (tail target), and
@@ -181,6 +181,9 @@ def _bubble_layout(draw: ImageDraw.ImageDraw, cell_w: int, cell_h: int, dialogue
 
     for i, d in enumerate(dialogue[:4]):
         o = ov[i] if i < len(ov) and isinstance(ov[i], dict) else {}
+        hidden = bool(o.get("hidden"))
+        if hidden and not include_hidden:  # deleted in the editor → skip when composing
+            continue
         name = (d.get("char") or "").strip()
         text = (o["text"] if o.get("text") is not None else (d.get("text") or "")).strip()
         if not text:
@@ -210,7 +213,8 @@ def _bubble_layout(draw: ImageDraw.ImageDraw, cell_w: int, cell_h: int, dialogue
                 if best_cost is None or cost < best_cost:
                     best, best_cost = (cx, cy), cost
             x, y = best
-        placed.append((x, y, box_w, box_h + 30))
+        if not hidden:  # hidden bubbles don't push visible ones around
+            placed.append((x, y, box_w, box_h + 30))
 
         if o.get("tnx") is not None:  # manual tail target
             tgt = (o["tnx"] * cell_w, o["tny"] * cell_h)
@@ -220,7 +224,7 @@ def _bubble_layout(draw: ImageDraw.ImageDraw, cell_w: int, cell_h: int, dialogue
         else:
             tgt = (x + box_w / 2 + (40 if i % 2 == 0 else -40), y + box_h + 60)
 
-        out.append({"name": name, "text": text, "lines": lines, "fsize": fsize,
+        out.append({"i": i, "name": name, "text": text, "lines": lines, "fsize": fsize, "hidden": hidden,
                     "x": x, "y": y, "w": box_w, "h": box_h, "tail": (tgt[0], tgt[1])})
     return out
 
@@ -401,9 +405,9 @@ def page_edit_data(comic, page: dict) -> dict:
         canvas.paste(c["img"], (c["x"], c["y"]))  # clean background — no bubbles baked in
         ov = _bubble_override(comic, lay["page_no"], c["panel_no"])
         faces = _face_boxes(c["img"])
-        for i, b in enumerate(_bubble_layout(scratch, c["w"], c["h"], c["panel"].get("dialogue", []), faces, ov)):
+        for b in _bubble_layout(scratch, c["w"], c["h"], c["panel"].get("dialogue", []), faces, ov, include_hidden=True):
             bubbles.append({
-                "panelNo": c["panel_no"], "i": i, "name": b["name"], "text": b["text"],
+                "panelNo": c["panel_no"], "i": b["i"], "name": b["name"], "text": b["text"], "hidden": b["hidden"],
                 "x": c["x"] + b["x"], "y": c["y"] + b["y"], "w": b["w"], "h": b["h"],
                 "tailX": c["x"] + b["tail"][0], "tailY": c["y"] + b["tail"][1],
                 "cellX": c["x"], "cellY": c["y"], "cellW": c["w"], "cellH": c["h"],
@@ -411,14 +415,18 @@ def page_edit_data(comic, page: dict) -> dict:
     _footer(canvas, lay["page_no"], comic.title)
     import glob as _glob
     import os as _os
-    for stale in _glob.glob(str(UPLOAD_DIR / f"comic-{comic.id}-page-{lay['page_no']}-editbg-r*.png")):
+    # STABLE filename + atomic replace: StrictMode double-fetches /edit; a versioned name let the
+    # 2nd request delete the file the 1st response still pointed at → broken image. One name, always valid.
+    bg = f"comic-{comic.id}-page-{lay['page_no']}-editbg.png"
+    tmp = UPLOAD_DIR / f".{bg}.{_os.getpid()}.tmp"
+    canvas.save(tmp, format="PNG", optimize=True)  # explicit format — .tmp ext can't be sniffed
+    _os.replace(tmp, UPLOAD_DIR / bg)  # atomic on the same filesystem
+    for old in _glob.glob(str(UPLOAD_DIR / f"comic-{comic.id}-page-{lay['page_no']}-editbg-r*.png")):
         try:
-            _os.remove(stale)  # transient editor backgrounds — keep only the newest
+            _os.remove(old)  # sweep the old versioned editbg files
         except OSError:
             pass
-    bg = f"comic-{comic.id}-page-{lay['page_no']}-editbg-r{_t.strftime('%H%M%S')}.png"
-    canvas.save(UPLOAD_DIR / bg, optimize=True)
-    return {"bgUrl": f"/uploads/{bg}", "pageW": lay["canvas_w"], "pageH": lay["canvas_h"], "bubbles": bubbles}
+    return {"bgUrl": f"/uploads/{bg}?v={_t.strftime('%H%M%S')}", "pageW": lay["canvas_w"], "pageH": lay["canvas_h"], "bubbles": bubbles}
 
 
 def regen_nonce(comic, page_no: int, panel_no: int) -> int:

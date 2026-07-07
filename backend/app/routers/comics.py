@@ -471,6 +471,7 @@ class BubbleItem(BaseModel):
     tnx: float | None = None
     tny: float | None = None
     text: str | None = None
+    hidden: bool = False
 
 
 class BubbleSave(BaseModel):
@@ -503,10 +504,13 @@ def page_bubbles(comic_id: str, page_no: int, body: BubbleSave,
     if body.reset:
         comic_builder.clear_bubble_overrides(c, page_no)
     else:
-        panel_map: dict[int, list] = {}
-        for it in sorted(body.bubbles, key=lambda z: (z.panelNo, z.i)):
-            panel_map.setdefault(it.panelNo, []).append(
-                {"nx": it.nx, "ny": it.ny, "tnx": it.tnx, "tny": it.tny, "text": it.text})
+        # place each item at its exact dialogue index i (gaps = {} → auto), so overrides never misalign
+        maxi: dict[int, int] = {}
+        for it in body.bubbles:
+            maxi[it.panelNo] = max(maxi.get(it.panelNo, -1), it.i)
+        panel_map: dict[int, list] = {p: [{} for _ in range(n + 1)] for p, n in maxi.items()}
+        for it in body.bubbles:
+            panel_map[it.panelNo][it.i] = {"nx": it.nx, "ny": it.ny, "tnx": it.tnx, "tny": it.tny, "text": it.text, "hidden": it.hidden}
         comic_builder.set_bubble_overrides(c, page_no, panel_map)
     c.updatedAt = _now()
     db.commit()
