@@ -58,9 +58,11 @@ export function Notifs() {
     return n.type === f
   }
   const filtered = N.filter(matchFilter)
-  const groupOrder = [t('Hôm nay'), t('Hôm qua'), t('Trước đó')]
+  // match on the raw Vietnamese group key (how the backend stores n.group);
+  // translate only for display — else in EN mode `n.group === t(...)` never matches → blank list.
+  const groupOrder = ['Hôm nay', 'Hôm qua', 'Trước đó']
   const notifGroups = groupOrder.map((g) => ({
-    label: g,
+    label: t(g),
     items: filtered.filter((n: Notif) => n.group === g).map((n: Notif) => {
       const ts = notifTypeStyle[n.type] ?? notifTypeStyle['system']
       return {

@@ -30,7 +30,8 @@ _INFRA = [
     {"id": "dev-openclaw", "name": "OpenClaw", "port": 18789, "host": "localhost", "icon": "🤖", "addr": "localhost:18789",
      "role": "Agent Gateway (Telegram)", "os": "WSL", "router": False},
     {"id": "dev-comfyui", "name": "ComfyUI", "port": 8188, "host": "192.168.1.4", "icon": "🎨", "addr": "192.168.1.4:8188",
-     "role": "Tạo ảnh/clip (GPU)", "os": "PC-B", "router": False},
+     "role": "Tạo ảnh/clip/voice (RTX 5090)", "os": "PC-A", "router": False,
+     "stats_url": "http://192.168.1.4:9998/stats"},  # stats agent deployed on PC-A (D:\agentaios\stats_agent.py)
     {"id": "dev-sunobot", "name": "Bot PC", "port": 1243, "host": "192.168.1.3", "ports": [3389, 1243], "icon": "🖥", "addr": "192.168.1.3",
      "role": "Suno (nhạc) + làm phim · PC-B", "os": "PC-B", "router": False,
      "stats_url": "http://192.168.1.3:9998/stats"},  # run tools/bot-pc-agent/stats_agent.py on that PC
