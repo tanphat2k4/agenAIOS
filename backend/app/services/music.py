@@ -195,11 +195,33 @@ def _wsl_mtime(path: str) -> float:
         return 0.0
 
 
-def _count_done_stages(since: float) -> int:
+def _resolve_batch_dir() -> str:
+    """Dir of the batch CURRENTLY being written. `.active_batch` only flips at the END
+    of a pipeline run (by design — generate targets the last COMPLETED batch), so while
+    a new weekly run is mid-flight the pointer still names the previous batch. Pick,
+    between the pointer and this ISO week's dir, whichever has the newest research.md."""
+    import datetime as _dt
+
+    cands = []
+    ptr = (_wsl_cat(f"{_MUSIC_WS}/output/.active_batch") or "").strip().split("\n")[0].strip()
+    if ptr:
+        cands.append(ptr)
+    week = f"{_MUSIC_WS}/output/week-{_dt.date.today().isocalendar()[1]:02d}"
+    if week not in cands:
+        cands.append(week)
+    best, best_m = "", 0.0
+    for d in cands:
+        m = _wsl_mtime(f"{d}/{_STAGE_FILES[0]}")
+        if m > best_m:
+            best, best_m = d, m
+    return best
+
+
+def _count_done_stages(since: float, batch_dir: str = "") -> int:
     """How many pipeline stages have finished THIS run: stage output files in the
-    active batch dir with a fresh mtime (>= run start), counted in order (stages
-    are sequential → stop at the first not-yet-written)."""
-    batch_dir = (_wsl_cat(f"{_MUSIC_WS}/output/.active_batch") or "").strip().split("\n")[0].strip()
+    batch dir with a fresh mtime (>= run start), counted in order (stages are
+    sequential → stop at the first not-yet-written)."""
+    batch_dir = batch_dir or _resolve_batch_dir()
     if not batch_dir:
         return 0
     done = 0
@@ -253,20 +275,22 @@ def _finalize_watch(done: int) -> None:
         db3.close()
 
 
-def _watch_stages(since: float) -> None:
+def _watch_stages(since: float, batch_dir: str = "") -> None:
     """Drive the workflow card in realtime by watching WSL stage files until the
     batch finishes (revise.md) or times out. Owns w.steps + runState for the run.
     Polls FILES (not the agent), so it works whether Beat blocks ~15' or spawns
-    the pipeline async and replies immediately — and for both the button + chat."""
+    the pipeline async and replies immediately — and for both the button + chat.
+    batch_dir is resolved ONCE per run (no mid-run flips when the pointer moves)."""
     import time as _t
 
+    batch_dir = batch_dir or _resolve_batch_dir()
     start = _t.time()
     last = 0
     idle_since = start
     try:
         while _t.time() - start < 1800:  # 30-min hard cap
             try:
-                done = max(last, _count_done_stages(since))
+                done = max(last, _count_done_stages(since, batch_dir))
             except Exception:  # noqa: BLE001
                 done = last
             if done != last:
@@ -280,14 +304,14 @@ def _watch_stages(since: float) -> None:
             _t.sleep(8)
     finally:
         try:
-            final = max(last, _count_done_stages(since))
+            final = max(last, _count_done_stages(since, batch_dir))
         except Exception:  # noqa: BLE001
             final = last
         _finalize_watch(final)
         _watcher_active["on"] = False
 
 
-def start_stage_watcher(since: float | None = None) -> None:
+def start_stage_watcher(since: float | None = None, batch_dir: str = "") -> None:
     """Begin realtime per-stage tracking of a batch (idempotent — one watcher at a
     time). Marks the card RUNNING now, then a daemon thread advances it as WSL
     stage files appear. Call from run_batch AND the chat trigger; the reconciler
@@ -303,7 +327,8 @@ def start_stage_watcher(since: float | None = None) -> None:
     except Exception:  # noqa: BLE001
         pass
     # default: 15' ago so an already-in-progress run (files just written) is caught up.
-    threading.Thread(target=_watch_stages, args=(since if since is not None else _t.time() - 900,),
+    threading.Thread(target=_watch_stages,
+                     args=(since if since is not None else _t.time() - 900, batch_dir),
                      daemon=True).start()
 
 
@@ -327,7 +352,7 @@ def maybe_resume_watcher() -> None:
 
     def _check() -> None:
         try:
-            batch_dir = (_wsl_cat(f"{_MUSIC_WS}/output/.active_batch") or "").strip().split("\n")[0].strip()
+            batch_dir = _resolve_batch_dir()  # NOT the raw pointer — it lags a full run behind
             if not batch_dir:
                 return
             first = _wsl_mtime(f"{batch_dir}/{_STAGE_FILES[0]}")
@@ -342,7 +367,7 @@ def maybe_resume_watcher() -> None:
                 return  # run already complete — watcher would only re-finalize (double-count risk)
             if _t.time() - newest > 900:
                 return  # no recent activity → not an active run
-            start_stage_watcher(since=first - 60)
+            start_stage_watcher(since=first - 60, batch_dir=batch_dir)
         except Exception:  # noqa: BLE001
             pass
 
