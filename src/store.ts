@@ -143,6 +143,7 @@ export interface AppState {
   deviceDrawer: string | null
   showAddDevice: boolean
   devDeleteConfirm: boolean
+  devPowerConfirm: 'reboot' | 'shutdown' | null
   devForm: { name: string; type: string; addr: string; role: string }
   devicesData: Device[]
 
@@ -310,6 +311,9 @@ export interface AppActions {
   pollUnread: () => void
   refreshDevices: () => void
   toggleDevicePower: () => void
+  askDevPower: (action: 'reboot' | 'shutdown') => void
+  powerAction: (action: 'start' | 'reboot' | 'shutdown') => void
+  cleanVram: () => void
   openDevSsh: () => void
   askDeleteDevice: () => void
   confirmDeleteDevice: () => void
@@ -574,7 +578,7 @@ const initial: AppState = {
   showAssignMember: false, assignForm: { name: '', sub: '' },
   rolePerms: seed.initialRolePerms, rolesData: seed.rolesData as RoleDef[],
   logsTab: 'sessions', activeSession: 'session_0171', sessionsData: seed.sessionsData as SessionLog[], auditLog: seed.auditLog,
-  devicesFilter: 'all', devicesQuery: '', deviceDrawer: null, showAddDevice: false, devDeleteConfirm: false,
+  devicesFilter: 'all', devicesQuery: '', deviceDrawer: null, showAddDevice: false, devDeleteConfirm: false, devPowerConfirm: null,
   devForm: { name: '', type: 'server', addr: '', role: '' }, devicesData: seed.devicesData as Device[],
   tasksRoom: 'all', tasksQuery: '', taskDrawer: null,
   taskForm: { title: '', desc: '', assignee: '', room: 'Zy Novel', priority: 'med', status: 'queued' },
@@ -819,6 +823,30 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
   },
   refreshDevices: () => { persist(api.post('/devices/refresh')); set((s) => ({ devicesData: s.devicesData.map((d) => { if (d.status !== 'online') return d; const j = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v + Math.round((Math.random() - 0.5) * 16))); return { ...d, cpuPct: j(d.cpuPct, 4, 97), ramPct: j(d.ramPct, 20, 95), gpuPct: d.gpu === '—' ? 0 : j(d.gpuPct, 5, 96), lastSeen: 'vừa xong' } }) })); get().fireToast('Đã làm mới trạng thái thiết bị') },
   toggleDevicePower: () => { const id = get().deviceDrawer; if (id) persist(api.post(`/devices/${id}/power`)); set((s) => ({ devicesData: s.devicesData.map((d) => { if (d.id !== id) return d; const on = d.status === 'online'; return on ? { ...d, status: 'offline' as const, cpuPct: 0, ramPct: 0, gpuPct: 0, uptime: '—', lastSeen: 'vừa xong' } : { ...d, status: 'online' as const, cpuPct: 18, ramPct: 42, gpuPct: d.gpu === '—' ? 0 : 20, uptime: 'vừa bật', lastSeen: 'vừa xong' } }) })); const dd = get().devicesData.find((d) => d.id === id); get().fireToast(dd && dd.status === 'online' ? 'Đã đánh thức ' + dd.name : 'Đã tắt ' + (dd ? dd.name : 'thiết bị')) },
+  askDevPower: (action) => set({ devPowerConfirm: action }),
+  powerAction: async (action) => {
+    const id = get().deviceDrawer
+    set({ devPowerConfirm: null })
+    if (!id) return
+    const label = action === 'start' ? 'Bật máy (Wake-on-LAN)' : action === 'reboot' ? 'Khởi động lại' : 'Tắt máy'
+    try {
+      const r = await api.post(`/devices/${id}/power/${action}`)
+      get().fireToast('✓ ' + ((r && r.detail) || (label + ' — đã gửi lệnh')))
+    } catch (e) {
+      get().fireToast('✕ ' + label + ' lỗi: ' + ((e && (e as { message?: string }).message) || 'không gọi được máy'))
+    }
+  },
+  cleanVram: async () => {
+    const id = get().deviceDrawer
+    if (!id) return
+    get().fireToast('🧹 Đang dọn VRAM…')
+    try {
+      const r = await api.post(`/devices/${id}/vram/clean`)
+      get().fireToast('✓ ' + ((r && r.detail) || 'Đã dọn VRAM'))
+    } catch (e) {
+      get().fireToast('✕ Dọn VRAM lỗi: ' + ((e && (e as { message?: string }).message) || 'không gọi được máy'))
+    }
+  },
   openDevSsh: () => { const dd = get().devicesData.find((d) => d.id === get().deviceDrawer); get().fireToast('Đang mở phiên SSH tới ' + (dd ? dd.name : 'thiết bị') + '…') },
   askDeleteDevice: () => set({ devDeleteConfirm: true }),
   confirmDeleteDevice: () => { const id = get().deviceDrawer; const dd = get().devicesData.find((d) => d.id === id); if (id) persist(api.del('/devices/' + id)); set((s) => ({ devicesData: s.devicesData.filter((d) => d.id !== id), deviceDrawer: null, devDeleteConfirm: false })); get().fireToast('Đã xóa thiết bị ' + (dd ? dd.name : '')) },
@@ -893,7 +921,7 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
   revokeSession: (id) => { persist(api.del('/profile/sessions/' + id)); set((s) => ({ profileSessions: s.profileSessions.filter((x) => x.id !== id) })); get().fireToast('Đã đăng xuất thiết bị') },
   revokeAllSessions: () => { persist(api.post('/profile/sessions/revoke-others')); set((s) => ({ profileSessions: s.profileSessions.filter((x) => x.current) })); get().fireToast('Đã đăng xuất tất cả thiết bị khác') },
   askLogout: () => set({ overlay: 'logout' }),
-  doLogout: () => { setToken(null); set({ overlay: null, authed: false }); get().fireToast('Đã đăng xuất khỏi AgentAIOS') },
+  doLogout: () => { setToken(null); set({ overlay: null, authed: false }); get().fireToast('Đã đăng xuất khỏi PHT Entertainment') },
 
   // ---------- users ----------
   setUsersTab: (t) => set({ usersTab: t }),

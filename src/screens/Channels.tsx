@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useStore, AUTO_DELETE_OPTIONS, autoDeleteLabel } from '@/store'
 import { useT } from '@/i18n'
 import { api, assetUrl } from '@/api/client'
@@ -7,6 +7,17 @@ import { buildBlocks } from '@/lib/richtext'
 import type { Channel } from '@/types'
 import { ChannelModals } from './channels/ChannelModals'
 import { BubbleEditor } from './channels/BubbleEditor'
+
+// Render a markdown table cell: **bold** → <strong>, drop stray single * markers.
+// md_to_blocks stores table cells as raw strings (paragraphs are pre-parsed), so
+// bold inside cells must be rendered here — otherwise it shows literal "**10**".
+function cellNodes(text: string): ReactNode {
+  return String(text).split(/(\*\*[^*]+\*\*)/g).map((p, i) =>
+    p.startsWith('**') && p.endsWith('**')
+      ? <strong key={i}>{p.slice(2, -2)}</strong>
+      : p.replace(/\*/g, ''),
+  )
+}
 
 // A comic page image url (comic-<id>-page-<n>-r<ts>.png) → its (comicId, pageNo) so we can
 // open the speech-bubble editor on it; null for any other image.
@@ -298,8 +309,8 @@ export function Channels() {
                             {block.rows.map((row, ri) => (
                               <tr key={ri}>
                                 {row.map((cell, ci) => ri === 0
-                                  ? <th key={ci} style={{ border: '1px solid var(--line)', padding: '5px 12px', textAlign: ci === 0 ? 'left' : 'right', fontWeight: 700, color: 'var(--ink)', background: 'var(--bg)', whiteSpace: 'nowrap' }}>{cell}</th>
-                                  : <td key={ci} style={{ border: '1px solid var(--line)', padding: '5px 12px', textAlign: ci === 0 ? 'left' : 'right', color: 'var(--ink-2)', whiteSpace: 'nowrap' }}>{cell}</td>)}
+                                  ? <th key={ci} style={{ border: '1px solid var(--line)', padding: '5px 12px', textAlign: ci === 0 ? 'left' : 'right', fontWeight: 700, color: 'var(--ink)', background: 'var(--bg)', whiteSpace: 'nowrap' }}>{cellNodes(cell)}</th>
+                                  : <td key={ci} style={{ border: '1px solid var(--line)', padding: '5px 12px', textAlign: ci === 0 ? 'left' : 'right', color: 'var(--ink-2)', whiteSpace: 'nowrap' }}>{cellNodes(cell)}</td>)}
                               </tr>
                             ))}
                           </tbody>

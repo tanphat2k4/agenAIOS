@@ -61,6 +61,13 @@ body {
 .chrow:hover .delbtn { opacity: .85; }
 .chrow .delbtn:hover { opacity: 1; }
 
+/* Workflow list cards: subtle hover lift via native CSS :hover. The browser clears
+   it the moment the pointer leaves — unlike the JS-state hover it replaced, which
+   could keep a dark border on cards you'd moused over (missed mouse-leave during
+   the 8s live refresh). */
+.wfcard { transition: box-shadow .15s ease; }
+.wfcard:hover { box-shadow: 0 3px 12px rgba(22, 32, 28, .10); }
+
 /* button resets */
 button { font: inherit; }
 input, textarea, select { font: inherit; }

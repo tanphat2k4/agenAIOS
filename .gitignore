@@ -7,3 +7,4 @@ dist-ssr
 *.log
 .claude/
 *.tsbuildinfo
+__pycache__/

@@ -15,10 +15,27 @@ type HoverProps = {
 export function Hover({ as, style, hover, children, ...rest }: HoverProps) {
   const Tag = (as || 'div') as ElementType
   const [h, setH] = useState(false)
+  // On pointer-leave, blank out hover-only keys (keys not already in `style`) so
+  // React CLEARS them rather than leaving a stale value. Without this, a hover
+  // `borderColor` on top of a base `border` shorthand leaves a sticky (dark)
+  // border after you mouse away — React can't cleanly drop the longhand while the
+  // shorthand stays. Blanking to '' forces the revert. Applies app-wide.
+  let merged: CSSProperties | undefined = style
+  if (hover) {
+    if (h) {
+      merged = { ...style, ...hover }
+    } else {
+      const cleared: Record<string, string> = {}
+      for (const k of Object.keys(hover)) {
+        if (!style || !(k in style)) cleared[k] = ''
+      }
+      merged = { ...style, ...cleared } as CSSProperties
+    }
+  }
   return (
     <Tag
       {...rest}
-      style={{ ...style, ...(h && hover ? hover : null) }}
+      style={merged}
       onMouseEnter={(e: React.MouseEvent) => {
         setH(true)
         ;(rest.onMouseEnter as ((e: React.MouseEvent) => void) | undefined)?.(e)

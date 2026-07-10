@@ -103,7 +103,7 @@ export function NavRail() {
             <circle cx="18" cy="17" r="1.9" fill="#fff" />
           </svg>
         </div>
-        {!collapsed && <div style={{ fontWeight: 800, fontSize: 18, letterSpacing: '-.3px', color: '#fff' }}>AgentAIOS</div>}
+        {!collapsed && <div style={{ fontWeight: 800, fontSize: 18, letterSpacing: '-.3px', color: '#fff' }}>PHT Entertainment</div>}
       </Hover>
 
       <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: collapsed ? '14px 6px 8px' : '14px 10px 8px' }}>

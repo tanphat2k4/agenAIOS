@@ -93,6 +93,30 @@ def _world() -> dict:
     return out
 
 
+def _phuquy_silver() -> dict | None:
+    """Official Phú Quý silver quote scraped from giabac.phuquygroup.vn (server-rendered
+    table). Returns the 1-KILO bar row in the same shape as a BTMC row — buy/sell in
+    VND per KG — or None on any failure (caller falls back to the BTMC feed)."""
+    import html as _html
+    import re as _re
+    try:
+        with httpx.Client(timeout=8, headers={"User-Agent": "Mozilla/5.0"}, follow_redirects=True) as client:
+            page = client.get("https://giabac.phuquygroup.vn/").text
+        rows = _re.findall(
+            r'col-product"\s*>\s*(.*?)\s*</td>\s*<td[^>]*col-unit-value[^>]*>(.*?)</td>'
+            r'\s*<td[^>]*col-buy-cell[^>]*>([\d,]+)</td>\s*<td[^>]*col-buy-cell[^>]*>([\d,._]+)</td>',
+            page, _re.S)
+        for name, unit, buy, sell in rows:
+            name = _html.unescape(_re.sub(r"\s+", " ", name)).strip()
+            if "KG" not in unit.upper() or "PHÚ QUÝ" not in name.upper():
+                continue  # want the per-kg Phú Quý bar (per-lượng rows derive from it exactly)
+            return {"name": name, "buy": float(buy.replace(",", "")), "sell": float(sell.replace(",", "")),
+                    "time": _t.strftime("%d/%m/%Y %H:%M")}
+    except Exception:  # noqa: BLE001
+        return None
+    return None
+
+
 _cache: dict = {}
 _LAST_SILVER: dict = {}  # last silver row seen — the BTMC feed is intermittent about silver
 
@@ -109,11 +133,13 @@ def snapshot(max_age: float = 60.0) -> dict:
     # the SJC feed sometimes only carries bar rows — fall back to BTMC's ring row
     ring = next((r for r in sjc_rows if "NHẪN" in r["name"].upper()), None) \
         or next((r for r in btmc_rows if "NHẪN" in r["name"].upper()), None)
+    # silver: official Phú Quý page first (giabac.phuquygroup.vn — the price users ask
+    # about), BTMC feed as fallback (it drops silver rows on and off)
     silver_rows = dom.get("silver") or []
-    silver = next((r for r in silver_rows if "1 KG" in r["name"].upper() or "1KG" in r["name"].upper()),
-                  silver_rows[0] if silver_rows else None)
-    # the BTMC feed drops its silver rows on and off — keep the last good quote (it carries
-    # its own BTMC timestamp in row["time"]) and flag it stale so the card can say so
+    silver = _phuquy_silver() \
+        or next((r for r in silver_rows if "1 KG" in r["name"].upper() or "1KG" in r["name"].upper()),
+                silver_rows[0] if silver_rows else None)
+    # keep the last good quote (row carries its own timestamp) and flag it stale so the card can say so
     silver_stale = False
     if silver:
         _LAST_SILVER["row"] = silver

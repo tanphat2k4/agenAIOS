@@ -147,7 +147,7 @@ export function Overview() {
   const exportReport = () => {
     const esc = (v: string | number) => '"' + String(v).replace(/"/g, '""') + '"'
     const rows: string[] = []
-    rows.push(esc(t('Báo cáo Tổng quan') + ' — AgentAIOS'))
+    rows.push(esc(t('Báo cáo Tổng quan') + ' — PHT Entertainment'))
     rows.push([esc(t('Người dùng')), esc(userName)].join(','))
     rows.push([esc(t('Khoảng thời gian')), esc(rangeLabel)].join(','))
     rows.push([esc(t('Xuất lúc')), esc(`${ovDate} ${('0' + now.getHours()).slice(-2)}:${('0' + now.getMinutes()).slice(-2)}`)].join(','))

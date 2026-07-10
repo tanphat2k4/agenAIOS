@@ -36,8 +36,9 @@ _PIPELINE = [
     {"id": "agent-mu-arrangement", "name": "Arrangement", "role": "Sound brief + style Suno", "initial": "Ar", "color": "#0EA5A0", "io": "Style prompt + cover + release pack"},
     {"id": "agent-mu-reviewer", "name": "Reviewer", "role": "QC nguyên gốc/prosody", "initial": "Rv", "color": "#9A6A1B", "io": "Red-line đạo nhạc/lời"},
     {"id": "agent-mu-scorer", "name": "Scorer", "role": "Chấm hit-potential", "initial": "Sc", "color": "#8B5CF6", "io": "8 tiêu chí /100 + JSON"},
-    {"id": "agent-mu-producer", "name": "Producer", "role": "Gọi Suno generate", "initial": "Pr", "color": "#3B82C4", "io": "Payload → Suno (~6'/bài)"},
-    {"id": "agent-mu-clipmaker", "name": "Clipmaker", "role": "Audio → video clip", "initial": "Cl", "color": "#C0392B", "io": "YT / TikTok / Canvas (ffmpeg + ComfyUI)"},
+    {"id": "agent-mu-reviser", "name": "Reviser", "role": "Áp sửa QC vào lời", "initial": "Rs", "color": "#DB2777", "io": "Sửa từ/cụm QC flag (câu cũ→mới)"},
+    {"id": "agent-mu-producer", "name": "Producer", "role": "Gọi Suno generate", "initial": "Pr", "color": "#3B82C4", "io": "Payload → Suno (~6'/bài)", "manual": True},
+    {"id": "agent-mu-clipmaker", "name": "Clipmaker", "role": "Audio → video clip", "initial": "Cl", "color": "#C0392B", "io": "YT / TikTok / Canvas (ffmpeg + ComfyUI)", "manual": True},
 ]
 
 
@@ -104,21 +105,30 @@ def ensure_music_room(db: Session) -> Room:
     return r
 
 
+_WF_DESC = ("Pipeline 10 khâu: Research → Strategy → Songwriter → Fact-check → Arrangement → "
+            "Reviewer → Scorer → Reviser → Producer → Clipmaker.")
+
+
 def ensure_music_workflow(db: Session) -> Workflow:
-    steps = [{"agent": a["name"], "initial": a["initial"], "color": a["color"], "title": a["role"], "io": a["io"], "status": "idle", "dur": ""} for a in _PIPELINE]
+    steps = [{"agent": a["name"], "initial": a["initial"], "color": a["color"], "title": a["role"], "io": a["io"], "status": "idle", "dur": "", "manual": a.get("manual", False)} for a in _PIPELINE]
     w = db.get(Workflow, WF_ID)
     if not w:
         w = Workflow(
             id=WF_ID, name="Làm nhạc bắt trend (Beat)",
-            desc="Pipeline 9 khâu: Research → Strategy → Songwriter → Fact-check → Arrangement → Reviewer → Scorer → Producer → Clipmaker.",
+            desc=_WF_DESC,
             trigger="manual", triggerLabel="Khi chạy batch tuần", enabled=True, lastRun="", runs24=0,
             success=100, steps=steps, runs=[], runState="idle", sort=-2,
         )
         db.add(w)
         db.commit()
         return w
-    if not w.steps or w.steps[0].get("agent") != steps[0]["agent"]:
-        w.steps = steps
+    if not w.steps or len(w.steps) != len(steps) or w.steps[0].get("agent") != steps[0]["agent"]:
+        w.steps = steps            # rebuild when the pipeline shape changes (e.g. Reviser added: 9→10 steps)
+        w.desc = _WF_DESC
+        db.commit()
+    elif any("manual" not in (s or {}) for s in w.steps):
+        # migrate old rows: add the `manual` flag without disturbing live statuses
+        w.steps = [{**s, "manual": steps[i].get("manual", False)} for i, s in enumerate(w.steps)]
         db.commit()
     return w
 
@@ -162,6 +172,137 @@ def _wsl_cat(path: str) -> str:
         return proc.stdout or ""
     except Exception:  # noqa: BLE001
         return ""
+
+
+# Automatic batch = Research→Reviser (8 stages). Each writes one file into the
+# active batch dir, in pipeline order. Producer/Clipmaker are on-demand (Suno is
+# never auto-fired), so they have no file here and stay idle during a batch run.
+_STAGE_FILES = [
+    "research.md", "strategy.md", "lyrics.md", "factcheck.md",
+    "arrangement.md", "review.md", "score.md", "revise.md",
+]
+
+
+def _wsl_mtime(path: str) -> float:
+    """mtime (epoch secs) of a WSL file, or 0.0 if it doesn't exist."""
+    try:
+        proc = subprocess.run(
+            ["wsl.exe", "-e", "bash", "-lc", f"stat -c %Y {shlex.quote(path)} 2>/dev/null || echo 0"],
+            capture_output=True, text=True, timeout=10,
+        )
+        return float((proc.stdout or "0").strip() or 0)
+    except Exception:  # noqa: BLE001
+        return 0.0
+
+
+def _count_done_stages(since: float) -> int:
+    """How many pipeline stages have finished THIS run: stage output files in the
+    active batch dir with a fresh mtime (>= run start), counted in order (stages
+    are sequential → stop at the first not-yet-written)."""
+    batch_dir = (_wsl_cat(f"{_MUSIC_WS}/output/.active_batch") or "").strip().split("\n")[0].strip()
+    if not batch_dir:
+        return 0
+    done = 0
+    for f in _STAGE_FILES:
+        if _wsl_mtime(f"{batch_dir}/{f}") >= since - 30:
+            done += 1
+        else:
+            break
+    return done
+
+
+_watcher_active = {"on": False}
+
+
+def _apply_steps(done: int, run_state: str | None = None) -> None:
+    """Set workflow steps (own session): 0..done-1 = done, `done` = running, rest idle."""
+    from app.core.database import SessionLocal
+
+    db2 = SessionLocal()
+    try:
+        w = db2.get(Workflow, WF_ID)
+        if w and w.steps:
+            w.steps = [
+                {**s, "status": ("done" if i < done
+                                 else "running" if i == done and i < len(_STAGE_FILES)
+                                 else "idle")}
+                for i, s in enumerate(w.steps)
+            ]
+            if run_state is not None:
+                w.runState = run_state
+            db2.commit()
+    finally:
+        db2.close()
+
+
+def _finalize_watch(done: int) -> None:
+    from app.core.database import SessionLocal
+
+    db3 = SessionLocal()
+    try:
+        w = db3.get(Workflow, WF_ID)
+        if w and w.steps:
+            w.steps = [{**s, "status": ("done" if i < done else "idle")} for i, s in enumerate(w.steps)]
+            w.runState = "idle"
+            if done >= len(_STAGE_FILES):
+                w.lastRun = now_hm()
+                w.runs24 = (w.runs24 or 0) + 1
+                w.runs = [{"time": now_hm(), "date": today_ymd(), "status": "success", "dur": ""}, *(w.runs or [])][:200]
+            db3.commit()
+    finally:
+        db3.close()
+
+
+def _watch_stages(since: float) -> None:
+    """Drive the workflow card in realtime by watching WSL stage files until the
+    batch finishes (revise.md) or times out. Owns w.steps + runState for the run.
+    Polls FILES (not the agent), so it works whether Beat blocks ~15' or spawns
+    the pipeline async and replies immediately — and for both the button + chat."""
+    import time as _t
+
+    start = _t.time()
+    last = 0
+    idle_since = start
+    try:
+        while _t.time() - start < 1800:  # 30-min hard cap
+            try:
+                done = max(last, _count_done_stages(since))
+            except Exception:  # noqa: BLE001
+                done = last
+            if done != last:
+                last = done
+                idle_since = _t.time()
+                _apply_steps(done, run_state="running")
+            if done >= len(_STAGE_FILES):
+                break  # all 8 batch stages done (revise.md present)
+            if _t.time() - idle_since > 900:
+                break  # 15-min with no new stage → stop tracking (stalled/done)
+            _t.sleep(8)
+    finally:
+        try:
+            final = max(last, _count_done_stages(since))
+        except Exception:  # noqa: BLE001
+            final = last
+        _finalize_watch(final)
+        _watcher_active["on"] = False
+
+
+def start_stage_watcher() -> None:
+    """Begin realtime per-stage tracking of a batch (idempotent — one watcher at a
+    time). Marks the card RUNNING now, then a daemon thread advances it as WSL
+    stage files appear. Call from run_batch AND the chat trigger."""
+    import threading
+    import time as _t
+
+    if _watcher_active["on"]:
+        return
+    _watcher_active["on"] = True
+    try:
+        _apply_steps(0, run_state="running")
+    except Exception:  # noqa: BLE001
+        pass
+    # since = 15' ago so an already-in-progress run (files just written) is caught up.
+    threading.Thread(target=_watch_stages, args=(_t.time() - 900,), daemon=True).start()
 
 
 def _parse_lyrics(md: str) -> list:
@@ -233,28 +374,12 @@ def run_batch(db: Session, *, prompt: str = "Chạy batch nhạc tuần này") -
     delivers to Telegram; mirror the reply in-app. Long-running (pipeline ~15')."""
     from app.services import openclaw
 
-    # show the run LIVE: the workflow card turns RUNNING while Beat works (15'+ of
-    # silence otherwise — "agent workflow cũng không chạy")
-    try:
-        w = ensure_music_workflow(db)
-        w.runState = "running"
-        w.steps = [{**s, "status": ("running" if i == 0 else "idle")} for i, s in enumerate(w.steps or [])]
-        db.commit()
-    except Exception:  # noqa: BLE001
-        db.rollback()
+    # Realtime per-stage card: a background watcher advances the workflow as WSL
+    # stage files appear — works whether Beat blocks ~15' or spawns async & replies
+    # immediately. It owns w.steps / runState / runs for the run.
+    start_stage_watcher()
 
-    try:
-        reply, delivered = openclaw.send_agent(prompt, agent=MUSIC_AGENT, deliver=True, timeout=1200)
-    except Exception as exc:  # noqa: BLE001
-        try:  # never leave the card stuck on RUNNING
-            w = ensure_music_workflow(db)
-            w.runState = "idle"
-            w.steps = [{**s, "status": "idle"} for s in (w.steps or [])]
-            w.runs = [{"time": now_hm(), "date": today_ymd(), "status": "failed", "dur": ""}, *(w.runs or [])][:200]
-            db.commit()
-        except Exception:  # noqa: BLE001
-            db.rollback()
-        raise exc
+    reply, delivered = openclaw.send_agent(prompt, agent=MUSIC_AGENT, deliver=True, timeout=1200)
     via = "OpenClaw → Telegram ✓" if delivered else "OpenClaw (Telegram chưa gửi được)"
     body = reply or "(Beat đang chạy pipeline nền — kết quả sẽ tới Telegram khi xong.)"
     report = f"# 🎵 Batch nhạc tuần — {now_hm()}\n\n{body}\n\n> Gửi qua {via}."
@@ -277,13 +402,7 @@ def run_batch(db: Session, *, prompt: str = "Chạy batch nhạc tuần này") -
                 time="vừa xong", private=False, avatars=[{"i": _BOT[1], "c": _BOT[2]}], content=report,
                 sort=rec._top_sort(db, KnowledgeEntry),
             ))
-        w = ensure_music_workflow(db)
-        w.runs = [{"time": now_hm(), "date": today_ymd(), "status": "success", "dur": ""}, *(w.runs or [])][:200]
-        w.lastRun = now_hm()
-        w.runs24 = (w.runs24 or 0) + 1
-        w.runState = "idle"
-        w.steps = [{**s, "status": "done"} for s in (w.steps or [])]
-        db.commit()
+        db.commit()  # workflow card (steps / runState / runs) is owned by the stage watcher
     except Exception:  # noqa: BLE001
         db.rollback()
     return report

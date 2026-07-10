@@ -122,7 +122,7 @@ export function Language() {
           {/* === display language === */}
           <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, padding: '20px 22px', marginBottom: 18 }}>
             <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: '-.2px', marginBottom: 3 }}>{t('Ngôn ngữ hiển thị')}</div>
-            <div style={{ fontSize: 12, color: 'var(--ink-2)', marginBottom: 16 }}>{t('Áp dụng cho giao diện AgentAIOS trên thiết bị này')}</div>
+            <div style={{ fontSize: 12, color: 'var(--ink-2)', marginBottom: 16 }}>{t('Áp dụng cho giao diện PHT Entertainment trên thiết bị này')}</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 10 }}>
               {langCards.map((l) => (
                 <Hover

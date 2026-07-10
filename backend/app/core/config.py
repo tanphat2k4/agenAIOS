@@ -51,6 +51,10 @@ class Settings(BaseSettings):
     ARCREEL_API_KEY: str = ""
     ARCREEL_DIR: str = r"D:\ArcReel"  # same-host disk path → stream the finished mp4 directly
 
+    # Bot PC (PC-B) remote power control — shared secret with tools/bot-pc-agent's
+    # POST /power on that machine. Blank = reboot/shutdown disabled (fail-safe).
+    AGENTAIOS_POWER_TOKEN: str = ""
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]

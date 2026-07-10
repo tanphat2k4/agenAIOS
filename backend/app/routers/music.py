@@ -62,6 +62,7 @@ class ChatIn(BaseModel):
 
 
 _LYRIC_KW = ("coi lời", "xem lời", "lời bài", "cho lời", "đọc lời", "lyric", "loi bai", "xem loi", "coi loi")
+_BATCH_KW = ("chạy batch", "batch tuần", "làm nhạc", "chạy nhạc", "chạy nhac", "batch nhạc", "chay batch", "lam nhac")
 
 
 def _norm(s: str) -> str:
@@ -102,6 +103,16 @@ def music_chat(body: ChatIn):
         except Exception:  # noqa: BLE001
             pass  # fall through — Beat can still answer
     _jobs[key] = {"status": "running", "result": None}
+
+    # A batch-run request → drive the realtime workflow card. Beat spawns the
+    # pipeline (async) and it writes WSL stage files as each stage completes; the
+    # watcher polls those files, so the card advances even though this chat turn
+    # just forwards the message to Beat.
+    if any(k in low for k in _BATCH_KW):
+        try:
+            music.start_stage_watcher()
+        except Exception:  # noqa: BLE001
+            pass
 
     def work() -> None:
         from app.services import openclaw

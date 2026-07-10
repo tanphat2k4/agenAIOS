@@ -408,7 +408,7 @@ export function Profile() {
           >
             <div style={{ padding: '24px 24px 18px', textAlign: 'center' }}>
               <div style={{ width: 52, height: 52, borderRadius: 99, background: '#FBEAE7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, margin: '0 auto 14px' }}>⏻</div>
-              <div style={{ fontSize: 17, fontWeight: 800, letterSpacing: '-.3px' }}>{t('Đăng xuất khỏi AgentAIOS?')}</div>
+              <div style={{ fontSize: 17, fontWeight: 800, letterSpacing: '-.3px' }}>{t('Đăng xuất khỏi PHT Entertainment?')}</div>
               <div style={{ fontSize: 13, color: 'var(--ink-2)', marginTop: 6, lineHeight: 1.5 }}>{t('Bạn sẽ cần đăng nhập lại để tiếp tục sử dụng workspace.')}</div>
             </div>
             <div style={{ padding: '14px 24px 20px', display: 'flex', gap: 10 }}>

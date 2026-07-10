@@ -10,6 +10,8 @@ Then on the Bot PC allow inbound TCP 9998 (LAN) so AgentAIOS can reach it.
 """
 import http.server
 import json
+import os
+import platform
 import socketserver
 import subprocess
 import sys
@@ -25,6 +27,25 @@ except ImportError:
 
 PORT = 9998
 _stats = {"cpu": None, "ram": None, "gpu": None}
+
+# --- remote power control (reboot / shutdown) --------------------------------
+# Guarded: only works when AGENTAIOS_POWER_TOKEN is set AND the caller sends the
+# same token in the X-Power-Token header. Empty token = power endpoint disabled
+# (fail-safe). Set AGENTAIOS_ALLOW_POWER=0 as a hard kill-switch. "start" is NOT
+# handled here (an off machine can't start itself — the backend uses Wake-on-LAN).
+_POWER_TOKEN = os.environ.get("AGENTAIOS_POWER_TOKEN", "")
+_ALLOW_POWER = os.environ.get("AGENTAIOS_ALLOW_POWER", "1") != "0"
+
+
+def _do_power(action: str) -> None:
+    """Reboot/shutdown THIS machine after a short delay (so the HTTP reply is
+    sent first). Windows uses shutdown.exe; POSIX uses shutdown too."""
+    if platform.system() == "Windows":
+        flag = "/r" if action == "reboot" else "/s"
+        subprocess.Popen(["shutdown", flag, "/t", "5", "/c", f"AgentAIOS remote {action}"])
+    else:
+        flag = "-r" if action == "reboot" else "-h"
+        subprocess.Popen(["shutdown", flag, "+1", f"AgentAIOS remote {action}"])
 
 
 def _gpu():
@@ -54,17 +75,44 @@ def _loop():
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
+    def _json(self, code: int, obj: dict) -> None:
+        body = json.dumps(obj).encode()
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
     def do_GET(self):
         if self.path.startswith("/stats"):
-            body = json.dumps(_stats).encode()
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json")
-            self.send_header("Content-Length", str(len(body)))
-            self.end_headers()
-            self.wfile.write(body)
+            self._json(200, _stats)
         else:
             self.send_response(404)
             self.end_headers()
+
+    def do_POST(self):
+        # POST /power {"action":"reboot"|"shutdown"} with header X-Power-Token
+        if not self.path.startswith("/power"):
+            self.send_response(404)
+            self.end_headers()
+            return
+        if not _ALLOW_POWER:
+            return self._json(403, {"error": "power control disabled (AGENTAIOS_ALLOW_POWER=0)"})
+        if not _POWER_TOKEN or self.headers.get("X-Power-Token", "") != _POWER_TOKEN:
+            return self._json(403, {"error": "bad or missing X-Power-Token"})
+        try:
+            n = int(self.headers.get("Content-Length", 0) or 0)
+            body = json.loads(self.rfile.read(n) or b"{}")
+        except Exception:
+            body = {}
+        action = (body.get("action") or "").strip()
+        if action not in ("reboot", "shutdown"):
+            return self._json(400, {"error": "action must be reboot|shutdown"})
+        try:
+            _do_power(action)
+        except Exception as e:  # noqa: BLE001
+            return self._json(500, {"error": str(e)})
+        return self._json(200, {"detail": f"{action} scheduled (t-5s)"})
 
     def log_message(self, *a):  # quiet
         pass
@@ -75,5 +123,6 @@ if __name__ == "__main__":
     time.sleep(2.5)  # let the first sample populate before serving
     socketserver.TCPServer.allow_reuse_address = True
     with socketserver.TCPServer(("0.0.0.0", PORT), Handler) as srv:
-        print(f"AgentAIOS stats agent listening on 0.0.0.0:{PORT} (GET /stats)")
+        _pwr = "ON" if (_ALLOW_POWER and _POWER_TOKEN) else "OFF (set AGENTAIOS_POWER_TOKEN)"
+        print(f"AgentAIOS agent on 0.0.0.0:{PORT} — GET /stats | POST /power [{_pwr}]")
         srv.serve_forever()

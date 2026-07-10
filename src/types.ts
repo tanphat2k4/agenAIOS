@@ -56,6 +56,8 @@ export interface Device {
   lastSeen: string
   role: string
   models: { name: string; vram: string }[]
+  canPower?: boolean // real remote power control (start via WoL, reboot/shutdown via agent)
+  canCleanVram?: boolean // GPU host (PC-A) — reclaim VRAM: unload ollama LLM + ComfyUI free
 }
 
 export interface Film {
@@ -105,6 +107,7 @@ export interface WorkflowStep {
   io: string
   status: 'done' | 'running' | 'idle' | 'paused'
   dur: string
+  manual?: boolean // on-demand step (e.g. Suno generate) — doesn't auto-run; user triggers it
 }
 export interface WorkflowRun {
   time: string

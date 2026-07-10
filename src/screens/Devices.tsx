@@ -144,6 +144,34 @@ function DeviceDrawer({ dd }: { dd: Device }) {
             ))}
           </div>
 
+          {dd.canPower && (
+            <>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.7px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 10 }}>{t('Điều khiển nguồn từ xa')}</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 8 }}>
+                <Hover as="button" onClick={() => s.powerAction('start')}
+                  style={{ border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--jade-deep)', borderRadius: 11, padding: '11px 6px', font: 'inherit', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                  hover={{ borderColor: 'var(--jade)', background: 'var(--jade-soft)' }}>🔌 {t('Bật máy')}</Hover>
+                <Hover as="button" onClick={() => s.askDevPower('reboot')}
+                  style={{ border: '1px solid var(--line)', background: 'var(--surface)', color: '#9A6A1B', borderRadius: 11, padding: '11px 6px', font: 'inherit', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                  hover={{ borderColor: '#E8A33D', background: '#FBF1DE' }}>⟳ {t('Khởi động lại')}</Hover>
+                <Hover as="button" onClick={() => s.askDevPower('shutdown')}
+                  style={{ border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--danger)', borderRadius: 11, padding: '11px 6px', font: 'inherit', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                  hover={{ borderColor: 'var(--danger)', background: '#FBEAE7' }}>⏻ {t('Tắt máy')}</Hover>
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--placeholder)', marginBottom: 22, lineHeight: 1.5 }}>{t('Bật máy qua Wake-on-LAN (cần BIOS bật WoL). Khởi động lại / Tắt máy gửi lệnh tới agent trên máy.')}</div>
+            </>
+          )}
+
+          {dd.canCleanVram && (
+            <>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.7px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 10 }}>{t('GPU / VRAM')}</div>
+              <Hover as="button" onClick={s.cleanVram}
+                style={{ width: '100%', border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--jade-deep)', borderRadius: 11, padding: '11px 14px', font: 'inherit', fontSize: 13, fontWeight: 700, cursor: 'pointer', marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                hover={{ borderColor: 'var(--jade)', background: 'var(--jade-soft)' }}>🧹 {t('Dọn VRAM')}</Hover>
+              <div style={{ fontSize: 11, color: 'var(--placeholder)', marginBottom: 22, lineHeight: 1.5 }}>{t('Thu hồi VRAM: unload model LLM (ollama) đang giữ + ComfyUI free bộ nhớ. Dùng khi GPU đầy.')}</div>
+            </>
+          )}
+
           {dd.models.length > 0 && (
             <>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.7px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 10 }}>{t('Model đang nạp')}</div>
@@ -294,6 +322,37 @@ function DeleteDeviceConfirm({ deviceName }: { deviceName: string }) {
             style={{ fontSize: 13.5, fontWeight: 700, color: '#fff', background: 'var(--danger)', border: 'none', borderRadius: 99, padding: '11px 26px', cursor: 'pointer', fontFamily: 'inherit' }}
             hover={{ background: '#A63E2E' }}
           >{t('Xóa thiết bị')}</Hover>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function DevPowerConfirm({ action, deviceName }: { action: 'reboot' | 'shutdown'; deviceName: string }) {
+  const s = useStore()
+  const t = useT()
+  const dismiss = () => s.set({ devPowerConfirm: null })
+  const isShut = action === 'shutdown'
+  return (
+    <div
+      onClick={dismiss}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(22,32,28,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 70, animation: 'fadeIn .15s ease' }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{ width: 420, maxWidth: '92vw', background: 'var(--surface)', borderRadius: 20, padding: 26, boxShadow: '0 24px 60px rgba(22,32,28,.28)', animation: 'pop .2s ease both' }}
+      >
+        <div style={{ width: 48, height: 48, borderRadius: 14, background: isShut ? '#FBEAE7' : '#FBF1DE', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, marginBottom: 16 }}>{isShut ? '⏻' : '⟳'}</div>
+        <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.3px', marginBottom: 8 }}>{(isShut ? t('Tắt máy') : t('Khởi động lại')) + ' ' + deviceName}?</div>
+        <div style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.55, marginBottom: 24 }}>{isShut ? t('Máy sẽ tắt nguồn. Muốn bật lại phải dùng Wake-on-LAN (nếu BIOS hỗ trợ) hoặc bật tay tại máy.') : t('Máy sẽ khởi động lại. Các tiến trình đang chạy (Suno, làm phim…) sẽ dừng.')}</div>
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+          <Hover as="button" onClick={dismiss} style={ghostBtn} hover={{ background: 'var(--line)' }}>{t('Hủy')}</Hover>
+          <Hover
+            as="button"
+            onClick={() => s.powerAction(action)}
+            style={{ fontSize: 13.5, fontWeight: 700, color: '#fff', background: isShut ? 'var(--danger)' : '#E8A33D', border: 'none', borderRadius: 99, padding: '11px 26px', cursor: 'pointer', fontFamily: 'inherit' }}
+            hover={{ background: isShut ? '#A63E2E' : '#C98A2E' }}
+          >{isShut ? t('Tắt máy') : t('Khởi động lại')}</Hover>
         </div>
       </div>
     </div>
@@ -486,6 +545,9 @@ export function Devices() {
 
       {/* ===== DELETE CONFIRM ===== */}
       {s.devDeleteConfirm && <DeleteDeviceConfirm deviceName={devDeleteName} />}
+
+      {/* ===== POWER CONFIRM (reboot / shutdown) ===== */}
+      {s.devPowerConfirm && dd && <DevPowerConfirm action={s.devPowerConfirm} deviceName={dd.name} />}
     </div>
   )
 }

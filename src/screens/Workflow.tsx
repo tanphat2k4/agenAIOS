@@ -12,13 +12,16 @@ const trigStyle: Record<string, { fg: string; bg: string; icon: string; label: s
 }
 
 // ── step status style ─────────────────────────────────────────────────────────
-function stepStyle(status: WorkflowStep['status'], idx: number) {
+function stepStyle(status: WorkflowStep['status'], idx: number, manual = false) {
   if (status === 'done')
     return { node: '#0A7B52', fg: '#fff', content: '✓', sLabel: 'Hoàn tất', sFg: '#0A7B52', sBg: '#E2F3EC' }
   if (status === 'running')
     return { node: 'var(--jade)', fg: '#fff', content: String(idx + 1), sLabel: 'Đang chạy', sFg: 'var(--jade-deep)', sBg: 'var(--jade-soft)' }
   if (status === 'paused')
     return { node: '#E8A33D', fg: '#fff', content: '❚❚', sLabel: 'Tạm dừng', sFg: '#9A6A1B', sBg: '#FBF1DE' }
+  if (manual)
+    // idle + on-demand: doesn't auto-run (user triggers it, e.g. Suno generate) — not "queued".
+    return { node: 'var(--surface)', fg: '#9A6A1B', content: '✋', sLabel: 'Thủ công', sFg: '#9A6A1B', sBg: '#FBF1DE' }
   return { node: 'var(--surface)', fg: '#9AA8A1', content: String(idx + 1), sLabel: 'Chờ', sFg: '#5A6B64', sBg: '#EEF2F0' }
 }
 
@@ -82,6 +85,7 @@ export function WorkflowView() {
       bg: sel ? 'var(--jade-soft)' : 'var(--surface)',
       border: sel ? 'var(--jade)' : 'var(--line)',
       nameColor: sel ? 'var(--jade-deep)' : 'var(--ink)',
+      selected: sel,
       trigIcon: tg.icon, trigLabel: tg.label, trigFg: tg.fg, trigBg: tg.bg,
       stepCount: w.steps.length + ' ' + t('bước'),
       lastRun: w.lastRun,
@@ -101,7 +105,7 @@ export function WorkflowView() {
 
   const awSteps = (aw?.steps || []).map((st, ix) => {
     const isLast = ix === (aw?.steps || []).length - 1
-    const ss = stepStyle(st.status, ix)
+    const ss = stepStyle(st.status, ix, st.manual)
     return {
       ...st,
       nodeBg: ss.node, nodeFg: ss.fg, nodeContent: ss.content,
@@ -219,15 +223,14 @@ export function WorkflowView() {
           {/* ── WORKFLOW LIST ─────────────────────────────────────────────── */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
             {wfList.map((w) => (
-              <Hover key={w.id} onClick={() => s.selectWorkflow(w.id)}
-                style={{ background: w.bg, border: `1.5px solid ${w.border}`, borderRadius: 16, padding: '15px 16px', cursor: 'pointer' }}
-                hover={{ borderColor: 'var(--jade)' }}>
+              <Hover key={w.id} className="wfcard" onClick={() => s.selectWorkflow(w.id)}
+                style={{ background: w.bg, border: `1.5px solid ${w.border}`, borderRadius: 16, padding: '15px 16px', cursor: 'pointer', ...(w.selected ? { boxShadow: '0 4px 16px rgba(22,32,28,.13)' } : null) }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 8 }}>
                   <span style={{ fontSize: 14, fontWeight: 700, color: w.nameColor, lineHeight: 1.35 }}>{w.name}</span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 'none', marginTop: 1 }}>
                     <Hover as="button" onClick={(e: MouseEvent) => { e.stopPropagation(); s.reloadWorkflows() }} title={t('Tải lại dữ liệu workflow')}
                       style={{ width: 24, height: 24, borderRadius: 99, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink-2)', fontSize: 13, lineHeight: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
-                      hover={{ borderColor: 'var(--jade)', color: 'var(--jade-deep)' }}>⟳</Hover>
+                      hover={{ border: '1px solid var(--jade)', color: 'var(--jade-deep)' }}>⟳</Hover>
                     <span style={{ width: 9, height: 9, borderRadius: 99, background: w.dotColor, flex: 'none', animation: w.dotPulse }}></span>
                   </div>
                 </div>

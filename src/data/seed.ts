@@ -431,7 +431,7 @@ export const profileData: ProfileData = {
   email: 'giang@zytech.vn',
   phone: '+84 90 123 4567',
   title: 'Founder / Owner',
-  bio: 'Điều hành workspace AgentAIOS — quản lý đội ngũ agent AI cho Zy Novel & Zy Page.',
+  bio: 'Điều hành workspace PHT Entertainment — quản lý đội ngũ agent AI cho Zy Novel & Zy Page.',
   location: 'Hồ Chí Minh, Việt Nam',
 }
 

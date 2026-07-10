@@ -91,7 +91,7 @@ export function Auth() {
           <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(255,255,255,.18)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg viewBox="0 0 24 24" width="24" height="24" fill="none"><path d="M12 12 L12 5 M12 12 L6 17 M12 12 L18 17" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" /><circle cx="12" cy="12" r="2.7" fill="#fff" /><circle cx="12" cy="5" r="1.9" fill="#fff" /><circle cx="6" cy="17" r="1.9" fill="#fff" /><circle cx="18" cy="17" r="1.9" fill="#fff" /></svg>
           </div>
-          <div style={{ fontWeight: 800, fontSize: 22, letterSpacing: '-.4px' }}>AgentAIOS</div>
+          <div style={{ fontWeight: 800, fontSize: 22, letterSpacing: '-.4px' }}>PHT Entertainment</div>
         </div>
         <div style={{ position: 'relative', marginTop: 'auto', marginBottom: 'auto', maxWidth: 420 }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: 'rgba(255,255,255,.14)', border: '1px solid rgba(255,255,255,.2)', padding: '6px 13px', borderRadius: 99, fontSize: 12, fontWeight: 600, marginBottom: 22 }}>✨ {t('Nền tảng điều phối Agent AI')}</div>
@@ -181,7 +181,7 @@ export function Auth() {
               {isRegister && (
                 <label style={{ display: 'flex', alignItems: 'flex-start', gap: 9, cursor: 'pointer', userSelect: 'none', fontSize: 12, color: '#5A6B64', lineHeight: 1.5, marginTop: -2 }}>
                   <span onClick={() => setTerms((v) => !v)} style={{ width: 19, height: 19, marginTop: 1, borderRadius: 6, border: `1.5px solid ${terms ? '#3B5BDB' : '#CFDAD4'}`, background: terms ? '#3B5BDB' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none', transition: 'all .15s' }}><span className="material-symbols-rounded" style={{ fontSize: 15, color: '#fff', opacity: terms ? 1 : 0 }}>check</span></span>
-                  <span>{t('Tôi đồng ý với')} <a style={{ color: '#3B5BDB', fontWeight: 600, textDecoration: 'none' }}>{t('Điều khoản dịch vụ')}</a> {t('và')} <a style={{ color: '#3B5BDB', fontWeight: 600, textDecoration: 'none' }}>{t('Chính sách bảo mật')}</a> {t('của AgentAIOS.')}</span>
+                  <span>{t('Tôi đồng ý với')} <a style={{ color: '#3B5BDB', fontWeight: 600, textDecoration: 'none' }}>{t('Điều khoản dịch vụ')}</a> {t('và')} <a style={{ color: '#3B5BDB', fontWeight: 600, textDecoration: 'none' }}>{t('Chính sách bảo mật')}</a> {t('của PHT Entertainment.')}</span>
                 </label>
               )}
 
@@ -197,7 +197,7 @@ export function Auth() {
         </div>
 
         <div style={{ marginTop: 38, fontSize: 11.5, color: '#9AA8A1', display: 'flex', alignItems: 'center', gap: 16 }}>
-          <span>© 2026 AgentAIOS</span><span>·</span><a style={{ color: '#9AA8A1', textDecoration: 'none' }}>{t('Bảo mật')}</a><span>·</span><a style={{ color: '#9AA8A1', textDecoration: 'none' }}>{t('Hỗ trợ')}</a>
+          <span>© 2026 PHT Entertainment</span><span>·</span><a style={{ color: '#9AA8A1', textDecoration: 'none' }}>{t('Bảo mật')}</a><span>·</span><a style={{ color: '#9AA8A1', textDecoration: 'none' }}>{t('Hỗ trợ')}</a>
         </div>
       </div>
 
