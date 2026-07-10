@@ -566,6 +566,48 @@ def _is_internal_noise(role: str, txt: str) -> bool:
     return False
 
 
+# OpenClaw prefixes inbound Telegram text with "[Fri 2026-07-10 10:52 GMT+7] " in the session
+# transcript — strip it so the mirror doesn't post a timestamped DUPLICATE of the user's words.
+_TS_PREFIX = re.compile(r"^\[[^\]\n]{3,60}GMT[+-]\d{1,2}\]\s*")
+
+# Script-sent Telegram messages (delivery, chấm điểm, heartbeat, cổng variant, clip) never pass
+# through Beat's session — scripts log them to outbound.jsonl (via scripts/tg.py) and we mirror
+# that file here, so the app channel carries EVERYTHING Telegram gets (owner's requirement 10/07).
+_OUT_LOG = f"{_MUSIC_WS}/logs/outbound.jsonl"
+
+
+def _mirror_outbound(db: Session, st: dict) -> int:
+    pos = int(st.get("out_pos") or 0)
+    raw = _wsl_cat(_OUT_LOG)
+    lines = [ln for ln in raw.split("\n") if ln.strip()]
+    if pos > len(lines):
+        pos = 0  # file was rotated/truncated
+    new = lines[pos:]
+    st["out_pos"] = len(lines)
+    if not new:
+        return 0
+    recent = _recent_channel_texts(db, 60)
+    added = 0
+    for ln in new[:30]:  # flood guard per tick
+        try:
+            d = json.loads(ln)
+        except Exception:  # noqa: BLE001
+            continue
+        txt = (d.get("text") or "").strip()
+        if d.get("media") and not txt:
+            txt = "📎 " + str(d["media"])
+        if not txt or txt[:120] in recent:
+            continue
+        db.add(Message(id=uid("m"), channel_id=CHANNEL_ID, authorName=_BOT[0], time=now_hm(),
+                       avatarInitial=_BOT[1], avatarColor=_BOT[2], isAgent=True,
+                       raw=rec.md_to_blocks(txt), sort=next_sort(db, Message)))
+        recent.add(txt[:120])
+        added += 1
+    if added:
+        db.commit()
+    return added
+
+
 def sync_telegram(db: Session) -> dict:
     """One sync tick (throttled 20s): mirror new Telegram exchange + pull new mp3s."""
     if _time.time() - _sync_guard["t"] < 20:
@@ -578,7 +620,7 @@ def sync_telegram(db: Session) -> dict:
     if entries:
         if st.get("path") != path:
             # new session file: don't backfill history — start from its tail
-            st = {"path": path, "last_id": entries[-1]["id"], "boot": True}
+            st = {"path": path, "last_id": entries[-1]["id"], "boot": True, "out_pos": st.get("out_pos", 0)}
             _save_sync_state(st)
         else:
             seen = {e["id"]: i for i, e in enumerate(entries)}
@@ -587,6 +629,8 @@ def sync_telegram(db: Session) -> dict:
             owner = db.scalar(select(User).where(User.role == "owner")) or db.scalar(select(User))
             for e in entries[start:]:
                 txt = e["text"]
+                if e["role"] == "user":
+                    txt = _TS_PREFIX.sub("", txt)  # bỏ "[Fri … GMT+7] " → hết tin trùng có timestamp
                 if txt.strip()[:120] in recent:  # already in the channel (sent from the app)
                     continue
                 if _is_internal_noise(e["role"], txt):
@@ -606,11 +650,17 @@ def sync_telegram(db: Session) -> dict:
                     added += 1
             if added:
                 db.commit()
-            st = {"path": path, "last_id": entries[-1]["id"]}
+            st = {"path": path, "last_id": entries[-1]["id"], "out_pos": st.get("out_pos", 0)}
             _save_sync_state(st)
+    out_added = 0
+    try:
+        out_added = _mirror_outbound(db, st)
+    except Exception:  # noqa: BLE001
+        pass
+    _save_sync_state(st)
     tracks = sync_generated_tracks(db)
     clips = sync_clips(db)
-    return {"mirrored": added, **tracks, **clips}
+    return {"mirrored": added, "outbound": out_added, **tracks, **clips}
 
 
 def sync_generated_tracks(db: Session) -> dict:
