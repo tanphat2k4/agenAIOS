@@ -547,6 +547,25 @@ def _session_entries() -> tuple[str, list]:
     return path, out
 
 
+# OpenClaw injects runtime plumbing INTO Beat's session as role=user (subagent-completion
+# events, heartbeats, cron wrappers) — that's machinery, not the owner's Telegram words.
+# One leaked verbatim into #am-nhac under the owner's name (10/07). Filter by marker.
+_INTERNAL_MARKS = (
+    "OPENCLAW_INTERNAL_CONTEXT", "OpenClaw runtime context",
+    "[Internal task completion event]", "[Subagent Context]", "[Internal system event]",
+    "<<<BEGIN_", "HEARTBEAT_OK",
+)
+
+
+def _is_internal_noise(role: str, txt: str) -> bool:
+    t = txt.strip()
+    if role == "user" and any(k in t for k in _INTERNAL_MARKS):
+        return True
+    if role == "assistant" and t.strip("* .") == "NO_REPLY":  # heartbeat ack — not a reply
+        return True
+    return False
+
+
 def sync_telegram(db: Session) -> dict:
     """One sync tick (throttled 20s): mirror new Telegram exchange + pull new mp3s."""
     if _time.time() - _sync_guard["t"] < 20:
@@ -570,6 +589,8 @@ def sync_telegram(db: Session) -> dict:
                 txt = e["text"]
                 if txt.strip()[:120] in recent:  # already in the channel (sent from the app)
                     continue
+                if _is_internal_noise(e["role"], txt):
+                    continue  # OpenClaw plumbing (subagent events/heartbeats) — never the user's words
                 if e["role"] == "user" and any(k in txt for k in ("Viết báo cáo sáng", "TÓM TẮT batch week")):
                     continue  # our own outbound prompts, not the user's Telegram words
                 if e["role"] == "user" and owner:
