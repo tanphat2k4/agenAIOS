@@ -164,8 +164,9 @@ export function Channels() {
 
   useEffect(() => { if (composerRef.current && !s.draft) composerRef.current.style.height = 'auto' }, [s.draft])
 
-  // ---- auto-scroll: jump to the "— Tin mới —" marker (first bot reply you haven't seen),
-  //      else open at the latest message; stick to the bottom while new replies stream in ----
+  // ---- auto-scroll: MỞ kênh nào cũng nhảy thẳng xuống TIN MỚI NHẤT (yêu cầu 10/07 — mọi kênh);
+  //      vạch "— Tin mới —" vẫn hiển thị phía trên để biết đọc từ đâu; đang ở gần đáy thì
+  //      tin mới stream về tự dính đáy ----
   const jump = s.unreadJump && s.unreadJump.id === active?.id ? s.unreadJump : null
   const firstNewIdx = jump && allMsgs.length > 0 ? Math.max(0, allMsgs.length - jump.count) : -1
   const showNewMark = firstNewIdx >= 0 && !chatQ
@@ -173,8 +174,7 @@ export function Channels() {
     const el = scrollerRef.current
     if (!el || allMsgs.length === 0) return
     if (jumpDoneFor.current !== active?.id) {
-      if (showNewMark && newMarkRef.current) newMarkRef.current.scrollIntoView({ block: 'start' })
-      else el.scrollTop = el.scrollHeight
+      el.scrollTop = el.scrollHeight
       jumpDoneFor.current = active?.id || null
     } else if (el.scrollHeight - el.scrollTop - el.clientHeight < 160) {
       el.scrollTop = el.scrollHeight

@@ -554,6 +554,7 @@ _INTERNAL_MARKS = (
     "OPENCLAW_INTERNAL_CONTEXT", "OpenClaw runtime context",
     "[Internal task completion event]", "[Subagent Context]", "[Internal system event]",
     "<<<BEGIN_", "HEARTBEAT_OK",
+    "Conversation context (untrusted",  # replay lịch sử hội thoại — rác máy, không có tin thật bên trong
 )
 
 
@@ -569,6 +570,19 @@ def _is_internal_noise(role: str, txt: str) -> bool:
 # OpenClaw prefixes inbound Telegram text with "[Fri 2026-07-10 10:52 GMT+7] " in the session
 # transcript — strip it so the mirror doesn't post a timestamped DUPLICATE of the user's words.
 _TS_PREFIX = re.compile(r"^\[[^\]\n]{3,60}GMT[+-]\d{1,2}\]\s*")
+
+
+def _strip_wrappers(txt: str) -> str:
+    """Bóc các lớp vỏ OpenClaw quấn quanh tin THẬT của user trong transcript:
+    (1) envelope 'Conversation info (untrusted metadata): ```json …``` Sender …``` <tin thật>'
+        (định dạng mới 07/2026 — từng lộ nguyên khối JSON lên kênh dưới tên chủ);
+    (2) prefix '[Fri … GMT+7] '. Vỏ là bao bì — tin thật nằm SAU code-fence cuối."""
+    t = (txt or "").strip()
+    if t.startswith("Conversation info (untrusted metadata)"):
+        i = t.rfind("```")
+        if i != -1:
+            t = t[i + 3:].strip()
+    return _TS_PREFIX.sub("", t)
 
 # Script-sent Telegram messages (delivery, chấm điểm, heartbeat, cổng variant, clip) never pass
 # through Beat's session — scripts log them to outbound.jsonl (via scripts/tg.py) and we mirror
@@ -660,7 +674,7 @@ def sync_telegram(db: Session) -> dict:
             for e in entries[start:]:
                 txt = e["text"]
                 if e["role"] == "user":
-                    txt = _TS_PREFIX.sub("", txt)  # bỏ "[Fri … GMT+7] " → hết tin trùng có timestamp
+                    txt = _strip_wrappers(txt)  # bóc envelope metadata + prefix timestamp → chỉ còn lời user
                 if txt.strip()[:120] in recent:  # already in the channel (sent from the app)
                     continue
                 if _is_internal_noise(e["role"], txt):
