@@ -15,15 +15,16 @@ export function App() {
   const personCard = useStore((s) => s.personCard)
   const bootAuth = useStore((s) => s.bootAuth)
   const pollUnread = useStore((s) => s.pollUnread)
+  const pollActiveMessages = useStore((s) => s.pollActiveMessages)
   const [booting, setBooting] = useState(() => !!getToken())
   useEffect(() => { bootAuth().finally(() => setBooting(false)) }, [bootAuth])
-  // global unread poll — keeps channel badges live (bot replies / new messages) on every screen
+  // global poll — badges live + tin của kênh đang mở tự hiện (mirror Telegram gần-realtime)
   useEffect(() => {
     if (!authed) return
     pollUnread()
-    const iv = setInterval(pollUnread, 5000)
+    const iv = setInterval(() => { pollUnread(); pollActiveMessages() }, 5000)
     return () => clearInterval(iv)
-  }, [authed, pollUnread])
+  }, [authed, pollUnread, pollActiveMessages])
   useEffect(() => {
     const onUnauth = () => {
       const st = useStore.getState()

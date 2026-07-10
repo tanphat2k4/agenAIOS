@@ -608,9 +608,39 @@ def _mirror_outbound(db: Session, st: dict) -> int:
     return added
 
 
+_SYNC_DAEMON = {"on": False}
+
+
+def start_sync_daemon() -> None:
+    """Vòng mirror ~6s/lần (thay vì chờ tick scheduler 30s) — 'realtime' cho yêu cầu
+    TG-có-gì-app-có-đó. Idempotent; sync_telegram vẫn tự throttle 5s nên tick scheduler
+    30s chạy chồng cũng vô hại."""
+    import threading
+
+    if _SYNC_DAEMON["on"]:
+        return
+    _SYNC_DAEMON["on"] = True
+
+    def _loop() -> None:
+        from app.core.database import SessionLocal
+
+        while True:
+            try:
+                db = SessionLocal()
+                try:
+                    sync_telegram(db)
+                finally:
+                    db.close()
+            except Exception:  # noqa: BLE001
+                pass
+            _time.sleep(6)
+
+    threading.Thread(target=_loop, daemon=True).start()
+
+
 def sync_telegram(db: Session) -> dict:
-    """One sync tick (throttled 20s): mirror new Telegram exchange + pull new mp3s."""
-    if _time.time() - _sync_guard["t"] < 20:
+    """One sync tick (throttled 5s): mirror new Telegram exchange + pull new mp3s."""
+    if _time.time() - _sync_guard["t"] < 5:
         return {"skipped": "throttled"}
     _sync_guard["t"] = _time.time()
     ensure_music_channel(db)

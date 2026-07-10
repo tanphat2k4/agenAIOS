@@ -31,3 +31,11 @@ def _start_scheduler() -> None:
     from app.services.scheduler import start_scheduler
 
     start_scheduler()
+
+
+@app.on_event("startup")
+def _start_music_sync() -> None:
+    # near-realtime Telegram↔app mirror for #am-nhac (~6s cadence; scheduler's 30s tick stays as backstop)
+    from app.services.music import start_sync_daemon
+
+    start_sync_daemon()
