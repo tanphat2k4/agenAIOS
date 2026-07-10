@@ -287,10 +287,11 @@ def _watch_stages(since: float) -> None:
         _watcher_active["on"] = False
 
 
-def start_stage_watcher() -> None:
+def start_stage_watcher(since: float | None = None) -> None:
     """Begin realtime per-stage tracking of a batch (idempotent — one watcher at a
     time). Marks the card RUNNING now, then a daemon thread advances it as WSL
-    stage files appear. Call from run_batch AND the chat trigger."""
+    stage files appear. Call from run_batch AND the chat trigger; the reconciler
+    below re-attaches it with an explicit `since` anchor when resuming mid-run."""
     import threading
     import time as _t
 
@@ -301,8 +302,51 @@ def start_stage_watcher() -> None:
         _apply_steps(0, run_state="running")
     except Exception:  # noqa: BLE001
         pass
-    # since = 15' ago so an already-in-progress run (files just written) is caught up.
-    threading.Thread(target=_watch_stages, args=(_t.time() - 900,), daemon=True).start()
+    # default: 15' ago so an already-in-progress run (files just written) is caught up.
+    threading.Thread(target=_watch_stages, args=(since if since is not None else _t.time() - 900,),
+                     daemon=True).start()
+
+
+_resume_check = {"t": 0.0}
+
+
+def maybe_resume_watcher() -> None:
+    """Self-heal the workflow card ↔ real pipeline sync. The single watcher dies after
+    15 min without a new stage file (e.g. research stalled) and nobody restarts it —
+    the card then freezes at 0/10 while the batch keeps running (its Telegram heartbeat
+    comes from the script itself, so only the card drifts). Called from the /workflows
+    poll: throttled + runs in a daemon thread (wsl.exe stat must never block the API).
+    If stage files are actively being written and no watcher is on, re-attach one
+    anchored to this run's FIRST file (not now-900, which would miss older stages)."""
+    import threading
+    import time as _t
+
+    if _watcher_active["on"] or _t.time() - _resume_check["t"] < 45:
+        return
+    _resume_check["t"] = _t.time()
+
+    def _check() -> None:
+        try:
+            batch_dir = (_wsl_cat(f"{_MUSIC_WS}/output/.active_batch") or "").strip().split("\n")[0].strip()
+            if not batch_dir:
+                return
+            first = _wsl_mtime(f"{batch_dir}/{_STAGE_FILES[0]}")
+            if not first:
+                return
+            newest = first
+            for f in _STAGE_FILES[1:]:
+                m = _wsl_mtime(f"{batch_dir}/{f}")
+                if m >= first - 30:
+                    newest = max(newest, m)
+            if _wsl_mtime(f"{batch_dir}/{_STAGE_FILES[-1]}") >= first - 30:
+                return  # run already complete — watcher would only re-finalize (double-count risk)
+            if _t.time() - newest > 900:
+                return  # no recent activity → not an active run
+            start_stage_watcher(since=first - 60)
+        except Exception:  # noqa: BLE001
+            pass
+
+    threading.Thread(target=_check, daemon=True).start()
 
 
 def _parse_lyrics(md: str) -> list:

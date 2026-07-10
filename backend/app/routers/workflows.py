@@ -72,6 +72,12 @@ def _prune_runs(w: Workflow) -> bool:
 
 @router.get("")
 def list_workflows(db: Session = Depends(get_db)):
+    try:  # self-heal music card ↔ real pipeline sync (throttled, background thread)
+        from app.services import music
+
+        music.maybe_resume_watcher()
+    except Exception:  # noqa: BLE001
+        pass
     workflows = db.scalars(select(Workflow).order_by(Workflow.sort, Workflow.id)).all()
     if any([_prune_runs(w) for w in workflows]):  # list first: prune ALL, not short-circuit
         db.commit()
