@@ -15,7 +15,9 @@ from app.models.comms import Channel, Message, Notification
 from app.models.ops import KnowledgeEntry
 from app.services import trading_record as rec
 
-WATCHLIST = ["VIB", "FPT", "VCB", "HPG", "VNM", "MWG"]
+# Watchlist giờ do USER quản (settings.watchlist — card màn Chứng khoán / chat "theo dõi X" /
+# Telegram); rec.get_watchlist(db) đọc của owner, fallback rec.DEFAULT_WATCHLIST. 2 mã ĐẦU
+# (rec.WL_DEEP) được chạy pipeline sâu mỗi sáng (user duyệt 10/07).
 CRON_ID = "cron-morning-ck"
 _BOT = ("Báo cáo sáng", "☀", "#E8A33D")
 
@@ -25,7 +27,7 @@ def ensure_morning_cron(db: Session) -> CronJob:
     if c:
         return c
     c = CronJob(
-        id=CRON_ID, name="Báo cáo sáng CK", target="Watchlist · " + ", ".join(WATCHLIST), expr="0 8 * * *",
+        id=CRON_ID, name="Báo cáo sáng CK", target="Watchlist · " + ", ".join(rec.get_watchlist(db)), expr="0 8 * * *",
         last="—", next="08:00", creator="Hệ thống", creatorInitial="H", creatorColor="#0A7B52",
         enabled=True, spark=[0, 0, 0, 0, 0, 0, 0], sort=-1,
     )
@@ -38,9 +40,9 @@ def _to_raw(text: str) -> list:
     return [{"kind": "para", "rich": [{"v": line, "isText": True}]} for line in (text or "").split("\n")]
 
 
-def _build_prompt() -> str:
+def _build_prompt(watchlist: list) -> str:
     return (
-        "Viết báo cáo sáng chứng khoán VN cho watchlist " + ", ".join(WATCHLIST) + ". "
+        "Viết báo cáo sáng chứng khoán VN cho watchlist " + ", ".join(watchlist) + ". "
         "Mở đầu bằng 1 dòng TÓM TẮT NHANH tâm lý thị trường chung. "
         "Rồi mỗi mã đúng 1 dòng: mã + giá + xu hướng (dùng 📈/📉) + khuyến nghị NGẮN (mua/giữ/bán/quan sát). "
         "Kết bằng 1 dòng tỷ giá USD/VND. "
@@ -49,13 +51,13 @@ def _build_prompt() -> str:
     )
 
 
-def _fallback_briefing(db: Session) -> str:
+def _fallback_briefing(db: Session, watchlist: list) -> str:
     """AgentAIOS builds the briefing itself when OpenClaw is off/unreachable."""
     from app.services import ninerouter
     from app.services import tradingagents as ta
 
     macro = ta.macro()
-    snaps = {t: ta.snapshot(t) for t in WATCHLIST}
+    snaps = {t: ta.snapshot(t) for t in watchlist}
     data = "VĨ MÔ:\n" + macro + "\n\n" + "\n\n".join(f"{t}:\n{s}" for t, s in snaps.items())
     try:
         return ninerouter.chat(
@@ -73,11 +75,12 @@ def run_morning_report(db: Session, *, manual: bool = False) -> str:
     OpenClaw is off/unreachable. Returns the report markdown."""
     from app.services import openclaw
 
-    reply, delivered = openclaw.send_agent(_build_prompt(), deliver=True)
+    watchlist = rec.get_watchlist(db)  # user quản qua card/chat/Telegram — đọc mỗi lần chạy
+    reply, delivered = openclaw.send_agent(_build_prompt(watchlist), deliver=True)
     if reply:
         via = "OpenClaw → Telegram ✓" if delivered else "OpenClaw (Telegram chưa gửi được)"
     else:
-        reply = _fallback_briefing(db)
+        reply = _fallback_briefing(db, watchlist)
         via = "9Router in-app (OpenClaw tắt/lỗi)"
         delivered = False
 
@@ -107,40 +110,43 @@ def run_morning_report(db: Session, *, manual: bool = False) -> str:
         ))
         c = ensure_morning_cron(db)
         c.last = now_hm()
+        c.target = "Watchlist · " + ", ".join(watchlist)  # card cron hiển thị đúng list hiện tại
         c.spark = (list(c.spark or [0, 0, 0, 0, 0, 0, 0]) + [1])[-7:]  # 1 lần chạy (không phải số mã)
         db.commit()
     except Exception:  # noqa: BLE001
         db.rollback()
 
-    # ── the morning RECOMMENDATION — VIB deep-dive (mirrors the Telegram VIB report) ──
-    try:
-        from app.services import ninerouter
+    # ── the morning RECOMMENDATIONS — deep-dive cho WL_DEEP mã ĐẦU watchlist (user duyệt 10/07:
+    # 2 mã). Mỗi mã 1 pipeline + 1 post Sage riêng; mã lỗi không kéo chết mã sau. ──
+    for tk in watchlist[:rec.WL_DEEP]:
+        try:
+            from app.services import ninerouter
 
-        pdb = SessionLocal()  # pipeline on its OWN session (workflow/log/knowledge commit cleanly)
-        try:
-            outputs, _ok, headline = rec.run_pipeline(pdb, "VIB")
-        finally:
-            pdb.close()
-        team = "\n".join(f"[{a['name']} · {a['role']}]: {t}" for a, t in outputs)
-        system = {"role": "system", "content": (f"{rec.ADVISOR['persona']} {rec.ANTI_HALLUCINATION} "
-                  "KHÔNG lặp lại dòng giá đầu (đã có). Công cụ nghiên cứu, KHÔNG phải lời khuyên đầu tư.")}
-        user = {"role": "user", "content": (f"Kết quả team về VIB sáng nay (giá real-time):\n{team[:3200]}\n\n"
-                "Tổng hợp NGẮN: Khuyến nghị (MUA/BÁN/GIỮ) + vùng mua/chốt lời/cắt lỗ + 1 câu rủi ro.")}
-        try:
-            synth = ninerouter.chat([system, user, {"role": "system", "content": headline}],
-                                    temperature=0.3, max_tokens=600)["content"] or ""
+            pdb = SessionLocal()  # pipeline on its OWN session (workflow/log/knowledge commit cleanly)
+            try:
+                outputs, _ok, headline = rec.run_pipeline(pdb, tk)
+            finally:
+                pdb.close()
+            team = "\n".join(f"[{a['name']} · {a['role']}]: {t}" for a, t in outputs)
+            system = {"role": "system", "content": (f"{rec.ADVISOR['persona']} {rec.ANTI_HALLUCINATION} "
+                      "KHÔNG lặp lại dòng giá đầu (đã có). Công cụ nghiên cứu, KHÔNG phải lời khuyên đầu tư.")}
+            user = {"role": "user", "content": (f"Kết quả team về {tk} sáng nay (giá real-time):\n{team[:3200]}\n\n"
+                    "Tổng hợp NGẮN: Khuyến nghị (MUA/BÁN/GIỮ) + vùng mua/chốt lời/cắt lỗ + 1 câu rủi ro.")}
+            try:
+                synth = ninerouter.chat([system, user, {"role": "system", "content": headline}],
+                                        temperature=0.3, max_tokens=600)["content"] or ""
+            except Exception:  # noqa: BLE001
+                synth = outputs[-1][1] if outputs else ""
+            text = f"☀️ **Khuyến nghị sáng — {tk}**\n\n{headline}\n\n{synth}".strip()
+            if db.get(Channel, "chung-khoan"):
+                db.add(Message(
+                    id=uid("m"), channel_id="chung-khoan", authorName=rec.ADVISOR["name"], time=now_hm(),
+                    avatarInitial=rec.ADVISOR["initial"], avatarColor=rec.ADVISOR["color"], isAgent=True,
+                    raw=rec.md_to_blocks(text), sort=next_sort(db, Message),
+                ))
+                db.commit()
         except Exception:  # noqa: BLE001
-            synth = outputs[-1][1] if outputs else ""
-        text = f"☀️ **Khuyến nghị sáng — VIB**\n\n{headline}\n\n{synth}".strip()
-        if db.get(Channel, "chung-khoan"):
-            db.add(Message(
-                id=uid("m"), channel_id="chung-khoan", authorName=rec.ADVISOR["name"], time=now_hm(),
-                avatarInitial=rec.ADVISOR["initial"], avatarColor=rec.ADVISOR["color"], isAgent=True,
-                raw=rec.md_to_blocks(text), sort=next_sort(db, Message),
-            ))
-            db.commit()
-    except Exception:  # noqa: BLE001
-        db.rollback()
+            db.rollback()
 
     # ── gold & silver morning card → #vang-bac (Aurum), NOT the stock channel ──
     try:

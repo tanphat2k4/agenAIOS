@@ -495,6 +495,12 @@ def ensure_channel(db: Session = Depends(get_db), current: User = Depends(get_cu
 def trading_chat(body: ChatIn, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
     cid = body.channel_id or TRADING_CHANNEL_ID
     ensure_trading_channel(db)
+
+    # lệnh watchlist ("theo dõi X" / "bỏ theo dõi X" / "watchlist" / "ưu tiên X" / "chạy lại báo cáo sáng")
+    wl_reply = _handle_watchlist_cmd(db, current, body.text)
+    if wl_reply is not None:
+        return {"messages": [_save_advisor_msg(db, cid, wl_reply)], "analyzing": None}
+
     cmd, ticker = ta.classify(body.text)
 
     # --- Sage: @gọi trong chat → screening / pipeline tư vấn / hội thoại, đều real-time ---
@@ -683,6 +689,141 @@ def remove_holding(ticker: str, db: Session = Depends(get_db), current: User = D
     return _portfolio_pnl(holdings)
 
 
+# ----------------------- watchlist báo cáo sáng (user duyệt 10/07: 2 mã đầu deep-dive) -----------------------
+class WatchlistIn(BaseModel):
+    action: str            # add | remove | top | set
+    ticker: str = ""
+    tickers: list[str] | None = None  # cho action=set (kéo sắp xếp từ UI)
+
+
+def _save_watchlist(db: Session, user: User, wl: list[str]) -> None:
+    user.settings = {**(user.settings or {}), "watchlist": wl[:rec.WL_MAX]}  # reassign → SQLAlchemy tracks
+    db.commit()
+
+
+def _ticker_exists(tk: str) -> bool:
+    """Mã có thật trên sàn? price_board 1 call; fallback snapshot (off-hours/cold).
+    Snapshot mã rởm trả CHUỖI LỖI ('Lỗi khi chạy… No market data…') chứ không rỗng —
+    phải loại tường minh, kẻo mã rác lọt watchlist (bug bắt được khi test 10/07)."""
+    try:
+        if (ta._price_board_batch([tk]) or {}).get(tk, {}).get("price") is not None:
+            return True
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        s = (ta.snapshot(tk) or "").strip()
+        return bool(s) and not s.startswith("Lỗi") and "No market data" not in s and "invalid code" not in s
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _wl_payload(wl: list[str]) -> dict:
+    return {"tickers": wl, "deep": rec.WL_DEEP, "max": rec.WL_MAX}
+
+
+def _wl_render(wl: list[str]) -> str:
+    marks = ["①", "②", "③", "④", "⑤"]
+    lines = [f"{marks[i]} **{t}**" + (" ⭐ phân tích sâu" if i < rec.WL_DEEP else "") for i, t in enumerate(wl)]
+    return ("📋 **Watchlist báo cáo sáng**\n" + "\n".join(lines)
+            + f"\n\n_{rec.WL_DEEP} mã đầu chạy pipeline sâu · tối đa {rec.WL_MAX} mã · áp dụng từ sáng mai_")
+
+
+@router.get("/watchlist")
+def get_watchlist_ep(current: User = Depends(get_current_user)):
+    return _wl_payload(rec.watchlist_of(current))
+
+
+@router.post("/watchlist")
+def edit_watchlist(body: WatchlistIn, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
+    wl = rec.watchlist_of(current)
+    tk = (body.ticker or "").strip().upper()
+    act = (body.action or "").strip()
+    if act == "add":
+        if not tk:
+            raise HTTPException(status_code=400, detail="Thiếu mã")
+        if tk in wl:
+            return _wl_payload(wl)
+        if len(wl) >= rec.WL_MAX:
+            raise HTTPException(status_code=400, detail=f"Watchlist đã đủ {rec.WL_MAX} mã — bỏ bớt rồi thêm.")
+        if not _ticker_exists(tk):
+            raise HTTPException(status_code=400, detail=f"Không tìm thấy mã {tk} trên sàn.")
+        wl = wl + [tk]
+    elif act == "remove":
+        wl = [t for t in wl if t != tk]
+    elif act == "top":
+        if tk not in wl:
+            raise HTTPException(status_code=400, detail=f"{tk} không có trong watchlist.")
+        wl = [tk] + [t for t in wl if t != tk]
+    elif act == "set":
+        new = [str(t).strip().upper() for t in (body.tickers or []) if str(t).strip()]
+        if not new:
+            raise HTTPException(status_code=400, detail="Danh sách rỗng.")
+        wl = list(dict.fromkeys(new))[:rec.WL_MAX]
+    else:
+        raise HTTPException(status_code=400, detail="action phải là add | remove | top | set")
+    _save_watchlist(db, current, wl)
+    return _wl_payload(wl)
+
+
+_WL_TICKER_RE = re.compile(r"\b([A-Z]{3})\b")
+
+
+def _handle_watchlist_cmd(db: Session, user: User, text: str) -> str | None:
+    """Lệnh watchlist bằng chat (app #chung-khoan + Telegram qua relay). Trả reply hoặc None
+    nếu không phải lệnh watchlist. Chỉ nhận CÂU LỆNH (bắt đầu bằng từ khoá) — không hijack câu phân tích dài."""
+    low = " ".join((text or "").lower().split())
+    up = (text or "").upper()
+
+    def _tk() -> str:
+        m = _WL_TICKER_RE.search(up)
+        return m.group(1) if m else ""
+
+    if any(k in low for k in ("chạy lại báo cáo sáng", "chay lai bao cao sang")):
+        import threading as _th
+
+        def _rerun() -> None:
+            from app.services import morning_report as mr
+            rdb = SessionLocal()
+            try:
+                mr.run_morning_report(rdb, manual=True)
+            except Exception:  # noqa: BLE001
+                pass
+            finally:
+                rdb.close()
+
+        _th.Thread(target=_rerun, daemon=True).start()
+        return "⏳ Đang chạy lại **báo cáo sáng** với watchlist hiện tại (~2-3 phút) — kết quả sẽ tự lên kênh + Telegram."
+    if low.rstrip("?") in ("watchlist", "danh sách theo dõi", "danh sach theo doi", "xem watchlist"):
+        return _wl_render(rec.watchlist_of(user))
+    for kws, act in ((("bỏ theo dõi", "bo theo doi", "ngừng theo dõi", "ngung theo doi", "xóa theo dõi", "xoa theo doi"), "remove"),
+                     (("theo dõi", "theo doi"), "add"),
+                     (("ưu tiên", "uu tien"), "top")):
+        if any(low.startswith(k) for k in kws):
+            tk = _tk()
+            if not tk:
+                return "Anh ghi kèm mã 3 chữ nhé (vd: *theo dõi HPG*)."
+            wl = rec.watchlist_of(user)
+            if act == "add":
+                if tk in wl:
+                    return f"**{tk}** đã có trong watchlist rồi.\n\n" + _wl_render(wl)
+                if len(wl) >= rec.WL_MAX:
+                    return f"Watchlist đã đủ {rec.WL_MAX} mã — bỏ bớt 1 mã rồi thêm **{tk}** nhé.\n\n" + _wl_render(wl)
+                if not _ticker_exists(tk):
+                    return f"Em không tìm thấy mã **{tk}** trên sàn — anh kiểm tra lại nhé."
+                wl = wl + [tk]
+            elif act == "remove":
+                if tk not in wl:
+                    return f"**{tk}** không có trong watchlist.\n\n" + _wl_render(wl)
+                wl = [t for t in wl if t != tk]
+            else:  # top
+                if tk not in wl:
+                    return f"**{tk}** chưa có trong watchlist — *theo dõi {tk}* trước đã nhé."
+                wl = [tk] + [t for t in wl if t != tk]
+            _save_watchlist(db, user, wl)
+            return _wl_render(wl)
+    return None
+
+
 # ----------------------- Telegram → app relay (option B) -----------------------
 class RelayIn(BaseModel):
     text: str
@@ -726,6 +867,16 @@ def trading_relay(body: RelayIn, x_relay_key: str = Header(default="")):
 
         cid = TRADING_CHANNEL_ID
         ensure_trading_channel(db)
+
+        # lệnh watchlist từ Telegram (cửa 3) — mirror Q+A vào kênh + trả plain text cho bot
+        owner = db.scalar(select(User).where(User.role == "owner")) or db.scalar(select(User))
+        if owner:
+            wl_reply = _handle_watchlist_cmd(db, owner, text)
+            if wl_reply is not None:
+                _save_user_msg(db, cid, text)
+                _save_advisor_msg(db, cid, wl_reply)
+                return {"reply": wl_reply.replace("**", "").replace("_", "")}
+
         _save_user_msg(db, cid, text)
         cmd, ticker = ta.classify(text)
         # recommendation / analysis intents → run the full pipeline (so the Agent Workflow runs);

@@ -28,7 +28,25 @@ export function Trading() {
   const [pfForm, setPfForm] = useState({ ticker: '', qty: '', avg: '' })
   const [pfBusy, setPfBusy] = useState(false)
 
+  const [wl, setWl] = useState<{ tickers: string[]; deep: number; max: number } | null>(null)
+  const [wlForm, setWlForm] = useState('')
+  const [wlBusy, setWlBusy] = useState(false)
+  const [wlErr, setWlErr] = useState('')
+
   useEffect(() => { api.get('/trading/portfolio').then(setPortfolio).catch(() => {}) }, [])
+  useEffect(() => { api.get('/trading/watchlist').then(setWl).catch(() => {}) }, [])
+
+  const wlAct = async (action: string, tk?: string) => {
+    if (wlBusy) return
+    setWlBusy(true)
+    setWlErr('')
+    try {
+      setWl(await api.post('/trading/watchlist', { action, ticker: tk || '' }))
+      if (action === 'add') setWlForm('')
+    } catch (e) {
+      setWlErr(e instanceof Error ? e.message : 'Lỗi')
+    } finally { setWlBusy(false) }
+  }
 
   const addHolding = async () => {
     const t = pfForm.ticker.trim().toUpperCase()
@@ -205,6 +223,49 @@ export function Trading() {
             <input value={pfForm.qty} onChange={(e) => setPfForm({ ...pfForm, qty: e.target.value.replace(/[^\d]/g, '') })} placeholder={t('Số CP')} inputMode="numeric" style={{ ...pfInput, width: 90 }} />
             <input value={pfForm.avg} onChange={(e) => setPfForm({ ...pfForm, avg: e.target.value.replace(/[^\d.]/g, '') })} onKeyDown={(e) => { if (e.key === 'Enter') addHolding() }} placeholder={t('Giá vốn (nghìn)')} inputMode="decimal" style={{ ...pfInput, width: 120 }} />
             <Hover as="button" onClick={addHolding} disabled={pfBusy} style={{ border: 'none', borderRadius: 10, padding: '9px 18px', font: 'inherit', fontSize: 12.5, fontWeight: 700, cursor: pfBusy ? 'default' : 'pointer', background: 'var(--jade)', color: '#fff', opacity: pfBusy ? 0.6 : 1 }} hover={pfBusy ? {} : { background: 'var(--jade-deep)' }}>＋ {t('Thêm')}</Hover>
+          </div>
+        </div>
+
+        {/* watchlist báo cáo sáng — user quản mã, team CK lập báo cáo 08:00 (2 mã đầu deep-dive) */}
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, padding: '16px 20px', marginBottom: 18 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+            <span style={{ fontSize: 14, fontWeight: 800, letterSpacing: '-.2px' }}>📋 {t('Watchlist báo cáo sáng')}</span>
+            <span style={{ fontSize: 11.5, color: 'var(--placeholder)' }}>{t('Chạy 08:00 mỗi sáng · đổi mã áp dụng từ báo cáo kế tiếp')}</span>
+          </div>
+          {wl && wl.tickers.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
+              {wl.tickers.map((tk, i) => (
+                <div key={tk} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12.5, padding: '7px 10px', background: 'var(--bg)', borderRadius: 10 }}>
+                  <span style={{ fontSize: 14, width: 20, textAlign: 'center', color: i < wl.deep ? 'var(--jade-deep)' : 'var(--placeholder)' }}>{['①', '②', '③', '④', '⑤'][i] || '•'}</span>
+                  <span style={{ fontWeight: 800, width: 48, letterSpacing: '.5px' }}>{tk}</span>
+                  {i < wl.deep && (
+                    <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--jade-deep)', background: 'var(--jade-soft)', padding: '2px 8px', borderRadius: 99 }}>⭐ {t('phân tích sâu')}</span>
+                  )}
+                  <span style={{ flex: 1 }} />
+                  {i > 0 && (
+                    <Hover as="button" title={t('Đưa lên đầu (vào nhóm phân tích sâu)')} onClick={() => wlAct('top', tk)}
+                      style={{ border: '1px solid var(--line)', background: 'var(--surface)', borderRadius: 8, width: 26, height: 26, cursor: 'pointer', fontSize: 13, lineHeight: 1, color: 'var(--ink-2)' }}
+                      hover={{ borderColor: 'var(--jade)', color: 'var(--jade-deep)' }}>↑</Hover>
+                  )}
+                  <Hover as="button" onClick={() => wlAct('remove', tk)}
+                    style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--placeholder)', fontSize: 15, lineHeight: 1, padding: 2 }}
+                    hover={{ color: '#C94F3D' }}>✕</Hover>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ fontSize: 12.5, color: 'var(--placeholder)', marginBottom: 12 }}>{t('Chưa có mã nào — thêm cổ phiếu để team CK phân tích mỗi sáng.')}</div>
+          )}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <input value={wlForm} onChange={(e) => setWlForm(e.target.value.toUpperCase())}
+              onKeyDown={(e) => { if (e.key === 'Enter' && wlForm.trim()) wlAct('add', wlForm.trim()) }}
+              placeholder={t('Mã')} style={{ ...pfInput, width: 80, fontWeight: 700, letterSpacing: '.5px' }} />
+            <Hover as="button" onClick={() => wlForm.trim() && wlAct('add', wlForm.trim())} disabled={wlBusy}
+              style={{ border: 'none', borderRadius: 10, padding: '9px 18px', font: 'inherit', fontSize: 12.5, fontWeight: 700, cursor: wlBusy ? 'default' : 'pointer', background: 'var(--jade)', color: '#fff', opacity: wlBusy ? 0.6 : 1 }}
+              hover={wlBusy ? {} : { background: 'var(--jade-deep)' }}>＋ {t('Thêm')}</Hover>
+            {wlErr && <span style={{ fontSize: 12, color: '#C94F3D', fontWeight: 600 }}>{wlErr}</span>}
+            <span style={{ flex: 1 }} />
+            <span style={{ fontSize: 11, color: 'var(--placeholder)' }}>{t('Tối đa')} {wl?.max ?? 5} {t('mã')} · {wl?.deep ?? 2} {t('mã đầu chạy pipeline sâu')} · {t('gõ "theo dõi HPG" trong kênh hoặc Telegram cũng được')}</span>
           </div>
         </div>
 

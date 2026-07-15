@@ -330,6 +330,31 @@ def record_analysis(db: Session, ticker: str, *, report: str = "", duration: str
         db.rollback()
 
 
+# ----------------------- watchlist báo cáo sáng (nguồn chung router + morning_report) -----------------------
+WL_MAX = 5   # trần số mã — báo cáo đọc trong 1 phút
+WL_DEEP = 2  # 2 mã ĐẦU danh sách được chạy pipeline sâu mỗi sáng (user duyệt 10/07)
+DEFAULT_WATCHLIST = ["VIB", "FPT", "VCB", "HPG", "VNM"]  # seed khi user chưa chỉnh (list cứng cũ, cắt còn 5)
+
+
+def watchlist_of(user) -> list[str]:
+    """Watchlist của user (settings.watchlist), fallback DEFAULT — luôn uppercase, cap WL_MAX."""
+    wl = (getattr(user, "settings", None) or {}).get("watchlist")
+    if isinstance(wl, list) and wl:
+        out = [str(t).strip().upper() for t in wl if str(t).strip()]
+        return out[:WL_MAX] if out else list(DEFAULT_WATCHLIST)
+    return list(DEFAULT_WATCHLIST)
+
+
+def get_watchlist(db: Session) -> list[str]:
+    """Watchlist của OWNER — cho morning_report/scheduler (không có request user)."""
+    from sqlalchemy import select as _select
+
+    from app.models.user import User as _User
+
+    owner = db.scalar(_select(_User).where(_User.role == "owner")) or db.scalar(_select(_User))
+    return watchlist_of(owner) if owner else list(DEFAULT_WATCHLIST)
+
+
 # ----------------------- anti-hallucination grounding (ALL models) -----------------------
 # Every LLM that comments on a stock must reason ONLY from fetched data, must
 # never invent numbers, and must not confuse the current price with target
