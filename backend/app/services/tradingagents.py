@@ -12,6 +12,7 @@ import json
 import os
 import re
 import subprocess
+import time
 
 from app.core.config import settings
 
@@ -340,23 +341,61 @@ _PRICEBOARD_SCRIPT = (
 )
 
 
-def _price_board_batch(tickers: list[str]) -> dict:
-    """All tickers' live quote in ONE price_board call → {ticker: {price,change,vol,foreign_net}}."""
-    if not settings.TRADINGAGENTS_ENABLED or not tickers:
+_PB_CACHE: dict = {}     # {ticker: (epoch, quote)} — subprocess+vnstock mất 2-30s/lần gọi
+_PB_TTL = 20.0           # trong 20s: dùng thẳng (reload/Lưu liên tiếp = 0 subprocess)
+_PB_STALE_OK = 600.0     # 20s-10ph: trả giá cũ NGAY + làm tươi ở NỀN (mở trang không bao giờ ì)
+_PB_INFLIGHT: set = set()  # chống 2 luồng cùng fetch một rổ mã
+
+
+def _pb_fetch(tickers: list[str]) -> dict:
+    """Blocking fetch 1 call gộp + đổ cache. Dùng bởi cả đường chính lẫn refresh nền."""
+    key = ",".join(sorted(tickers))
+    if key in _PB_INFLIGHT:
         return {}
+    _PB_INFLIGHT.add(key)
     try:
         proc = subprocess.run(
             [settings.TRADINGAGENTS_PYTHON, "-c", _PRICEBOARD_SCRIPT, ",".join(tickers)],
             cwd=settings.TRADINGAGENTS_CWD, capture_output=True, text=True,
             encoding="utf-8", errors="replace", timeout=60, env=_CLEAN_ENV,
         )
+        line = next((ln for ln in (proc.stdout or "").splitlines() if ln.startswith("JSON:")), None)
+        out = json.loads(line[5:]) if line else {}
     except Exception:  # noqa: BLE001
+        out = {}
+    finally:
+        _PB_INFLIGHT.discard(key)
+    now = time.time()
+    for t, q in out.items():
+        _PB_CACHE[t] = (now, q)
+    return out
+
+
+def _price_board_batch(tickers: list[str]) -> dict:
+    """All tickers' live quote → {ticker: {price,change,vol,foreign_net}}.
+    Per-ticker cache: <20s dùng thẳng; 20s-10ph trả NGAY giá cũ + refresh nền
+    (stale-while-revalidate); chỉ mã CHƯA TỪNG có mới phải chờ subprocess."""
+    if not settings.TRADINGAGENTS_ENABLED or not tickers:
         return {}
-    line = next((ln for ln in (proc.stdout or "").splitlines() if ln.startswith("JSON:")), None)
-    try:
-        return json.loads(line[5:]) if line else {}
-    except Exception:  # noqa: BLE001
-        return {}
+    import threading as _th
+
+    now = time.time()
+    fresh, stale, missing = {}, {}, []
+    for t in tickers:
+        hit = _PB_CACHE.get(t)
+        age = (now - hit[0]) if hit else None
+        if age is not None and age < _PB_TTL:
+            fresh[t] = hit[1]
+        elif age is not None and age < _PB_STALE_OK:
+            stale[t] = hit[1]
+        else:
+            missing.append(t)
+    if not missing:
+        if stale:  # đủ dữ liệu hiển thị → trả ngay, làm tươi sau
+            _th.Thread(target=_pb_fetch, args=(sorted(set(tickers)),), daemon=True).start()
+        return {**stale, **fresh}
+    out = _pb_fetch(sorted(set(missing) | set(stale)))  # mã chưa từng có → đành chờ 1 lần
+    return {**stale, **fresh, **{t: q for t, q in out.items() if t in tickers}}
 
 
 def screen_watchlist(tickers: list[str] | None = None) -> list[dict]:

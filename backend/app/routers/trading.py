@@ -632,10 +632,10 @@ def _bg_portfolio(channel_id: str, holdings: list, question: str) -> None:
         p = _portfolio_pnl(holdings)
         lines = ["💼 **Danh mục của anh** — giá real-time\n"]
         for r in p["holdings"]:
-            dot = "🟢" if r["pnlM"] >= 0 else "🔴"
+            dot = "🟢" if r["pnlM"] > 0 else ("🔴" if r["pnlM"] < 0 else "🟡")  # lãi/lỗ/hoà vốn (khớp màu UI)
             price = r["price"] if r["price"] is not None else r["avg"]
             lines.append(f"{dot} {r['ticker']}: {r['qty']:,.0f}cp · vốn {r['avg']} → {price} · {r['pnlM']:+}tr ({r['pnlPct']:+}%)")
-        tdot = "🟢" if p["totalPnlM"] >= 0 else "🔴"
+        tdot = "🟢" if p["totalPnlM"] > 0 else ("🔴" if p["totalPnlM"] < 0 else "🟡")
         lines.append(f"\n{tdot} **Tổng**: vốn {p['totalCostM']}tr → {p['totalValueM']}tr · lãi/lỗ {p['totalPnlM']:+}tr ({p['totalPnlPct']:+}%)")
         table = "\n".join(lines)
         # LLM analysis per position + portfolio-level (grounded in the exact P/L above)

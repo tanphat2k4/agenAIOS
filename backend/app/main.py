@@ -39,3 +39,32 @@ def _start_music_sync() -> None:
     from app.services.music import start_sync_daemon
 
     start_sync_daemon()
+
+
+@app.on_event("startup")
+def _warm_price_cache() -> None:
+    # vnstock price_board cold-start mất tới ~30s (import trong system python) — hâm nóng
+    # sẵn giá cho danh mục + watchlist của owner để màn Chứng khoán mở lên là có ngay.
+    import threading
+
+    def _warm() -> None:
+        try:
+            from app.core.database import SessionLocal
+            from app.services import tradingagents as ta
+            from app.services import trading_record as rec
+            from sqlalchemy import select
+            from app.models.user import User
+
+            db = SessionLocal()
+            try:
+                owner = db.scalar(select(User).where(User.role == "owner")) or db.scalar(select(User))
+                holdings = [h["ticker"] for h in ((owner.settings or {}).get("holdings") or [])] if owner else []
+                tickers = sorted(set(holdings) | set(rec.get_watchlist(db)))
+            finally:
+                db.close()
+            if tickers:
+                ta._price_board_batch(tickers)  # đổ cache 20s + trả giá cold-start ngay lúc boot
+        except Exception:  # noqa: BLE001
+            pass
+
+    threading.Thread(target=_warm, daemon=True).start()

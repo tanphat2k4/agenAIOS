@@ -66,6 +66,8 @@ export function Trading() {
     setPfForm({ ticker: h.ticker, qty: String(h.qty), avg: String(h.avg) })
   }
   const cancelEditHolding = () => { setPfEditing(null); setPfForm({ ticker: '', qty: '', avg: '' }) }
+  // màu P/L theo yêu cầu: lãi = XANH LÁ, lỗ = ĐỎ, hoà vốn = VÀNG (không dùng --jade vì theme này nó là xanh dương)
+  const pnlColor = (v: number) => (v > 0 ? '#16A34A' : v < 0 ? '#C94F3D' : '#D97706')
   const removeHolding = async (t: string) => { try { setPortfolio(await api.del('/trading/portfolio/' + t)); if (pfEditing === t) cancelEditHolding() } catch { /* ignore */ } }
   const pfInput = { border: '1.5px solid var(--line)', borderRadius: 10, padding: '8px 10px', font: 'inherit', fontSize: 12.5, background: 'var(--bg)', color: 'var(--ink)', outline: 'none' } as const
 
@@ -203,20 +205,20 @@ export function Trading() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
             <span style={{ fontSize: 14, fontWeight: 800, letterSpacing: '-.2px' }}>💼 {t('Danh mục của tôi')}</span>
             {portfolio && portfolio.holdings.length > 0 && (
-              <span style={{ fontSize: 13, fontWeight: 700, color: portfolio.totalPnlM >= 0 ? 'var(--jade-deep)' : '#C94F3D' }}>
-                {portfolio.totalValueM}tr · P/L {portfolio.totalPnlM >= 0 ? '+' : ''}{portfolio.totalPnlM}tr ({portfolio.totalPnlPct >= 0 ? '+' : ''}{portfolio.totalPnlPct}%)
+              <span style={{ fontSize: 13, fontWeight: 700, color: pnlColor(portfolio.totalPnlM) }}>
+                {portfolio.totalValueM}tr · P/L {portfolio.totalPnlM > 0 ? '+' : ''}{portfolio.totalPnlM}tr ({portfolio.totalPnlPct > 0 ? '+' : ''}{portfolio.totalPnlPct}%)
               </span>
             )}
           </div>
           {portfolio && portfolio.holdings.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
               {portfolio.holdings.map((h) => {
-                const up = h.pnlM >= 0
+                const plus = h.pnlM > 0 ? '+' : ''
                 return (
                   <div key={h.ticker} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12.5, padding: '7px 10px', background: pfEditing === h.ticker ? 'var(--jade-soft)' : 'var(--bg)', borderRadius: 10 }}>
                     <span style={{ fontWeight: 800, width: 44 }}>{h.ticker}</span>
                     <span style={{ color: 'var(--ink-2)', flex: 1, minWidth: 0 }}>{Number(h.qty).toLocaleString()}cp · {t('vốn')} {h.avg} → {h.price ?? '—'}</span>
-                    <span style={{ fontWeight: 700, color: up ? 'var(--jade-deep)' : '#C94F3D' }}>{up ? '+' : ''}{h.pnlM}tr ({up ? '+' : ''}{h.pnlPct}%)</span>
+                    <span style={{ fontWeight: 700, color: pnlColor(h.pnlM) }}>{plus}{h.pnlM}tr ({plus && h.pnlPct > 0 ? '+' : ''}{h.pnlPct}%)</span>
                     <Hover as="button" title={t('Sửa số lượng / giá vốn')} onClick={() => startEditHolding(h)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--placeholder)', fontSize: 13.5, lineHeight: 1, padding: 2 }} hover={{ color: 'var(--jade-deep)' }}>✎</Hover>
                     <Hover as="button" onClick={() => removeHolding(h.ticker)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--placeholder)', fontSize: 15, lineHeight: 1, padding: 2 }} hover={{ color: '#C94F3D' }}>✕</Hover>
                   </div>
