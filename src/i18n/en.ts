@@ -592,6 +592,7 @@ export const EN: Record<string, string> = {
   "Mã CK (vd FPT)": "Ticker (e.g. FPT)",
   "Gợi ý:": "Suggestions:",
   "Danh mục của tôi": "My Portfolio",
+  "Lấy giá khớp mới nhất (~10s)": "Fetch latest matched price (~10s)",
   "vốn": "cost",
   "Chưa có mã nào — thêm cổ phiếu anh đang giữ để theo dõi lãi/lỗ real-time (giá vốn nhập theo nghìn đồng, vd 15.5).": "No holdings yet — add the stocks you own to track real-time profit/loss (enter cost basis in thousands of VND, e.g. 15.5).",
   "Mã": "Ticker",

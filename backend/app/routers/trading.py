@@ -598,10 +598,11 @@ def _save_holdings(db: Session, current: User, holdings: list) -> None:
     db.commit()
 
 
-def _portfolio_pnl(holdings: list) -> dict:
-    """Compute real-time P/L (in million VND) for a list of holdings. One price_board call."""
+def _portfolio_pnl(holdings: list, fresh: bool = False) -> dict:
+    """Compute real-time P/L (in million VND) for a list of holdings. One price_board call.
+    fresh=True: bỏ cache, chờ giá khớp mới nhất (nút ⟳ trên card)."""
     tickers = [h["ticker"] for h in holdings]
-    quotes = ta._price_board_batch(tickers) if tickers else {}
+    quotes = ta._price_board_batch(tickers, fresh=fresh) if tickers else {}
     rows, tcost, tval = [], 0.0, 0.0
     for h in holdings:
         q = quotes.get(h["ticker"], {})
@@ -667,8 +668,8 @@ def _bg_portfolio(channel_id: str, holdings: list, question: str) -> None:
 
 
 @router.get("/portfolio")
-def get_portfolio(current: User = Depends(get_current_user)):
-    return _portfolio_pnl(_get_holdings(current))
+def get_portfolio(fresh: bool = False, current: User = Depends(get_current_user)):
+    return _portfolio_pnl(_get_holdings(current), fresh=fresh)
 
 
 @router.post("/portfolio")

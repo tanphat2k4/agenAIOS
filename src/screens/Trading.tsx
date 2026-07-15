@@ -77,6 +77,13 @@ export function Trading() {
   const cancelEditHolding = () => { setPfEditing(null); setPfForm({ ticker: '', qty: '', avg: '' }) }
   // màu P/L theo yêu cầu: lãi = XANH LÁ, lỗ = ĐỎ, hoà vốn = VÀNG (không dùng --jade vì theme này nó là xanh dương)
   const pnlColor = (v: number) => (v > 0 ? '#16A34A' : v < 0 ? '#C94F3D' : '#D97706')
+  const [pfRefreshing, setPfRefreshing] = useState(false)
+  const refreshPortfolio = async () => {
+    if (pfRefreshing) return
+    setPfRefreshing(true)
+    try { setPortfolio(await api.get('/trading/portfolio?fresh=1')) } catch { /* ignore */ }
+    finally { setPfRefreshing(false) }
+  }
   const removeHolding = async (t: string) => { try { setPortfolio(await api.del('/trading/portfolio/' + t)); if (pfEditing === t) cancelEditHolding() } catch { /* ignore */ } }
   const pfInput = { border: '1.5px solid var(--line)', borderRadius: 10, padding: '8px 10px', font: 'inherit', fontSize: 12.5, background: 'var(--bg)', color: 'var(--ink)', outline: 'none' } as const
 
@@ -213,11 +220,14 @@ export function Trading() {
         <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, padding: '16px 20px', marginBottom: 18 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
             <span style={{ fontSize: 14, fontWeight: 800, letterSpacing: '-.2px' }}>💼 {t('Danh mục của tôi')}</span>
-            {portfolio && portfolio.holdings.length > 0 && (
-              <span style={{ fontSize: 13, fontWeight: 700, color: pnlColor(portfolio.totalPnlM) }}>
-                {portfolio.totalValueM}tr · P/L {portfolio.totalPnlM > 0 ? '+' : ''}{portfolio.totalPnlM}tr ({portfolio.totalPnlPct > 0 ? '+' : ''}{portfolio.totalPnlPct}%)
-              </span>
-            )}
+            <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              {portfolio && portfolio.holdings.length > 0 && (
+                <span style={{ fontSize: 13, fontWeight: 700, color: pnlColor(portfolio.totalPnlM) }}>
+                  {portfolio.totalValueM}tr · P/L {portfolio.totalPnlM > 0 ? '+' : ''}{portfolio.totalPnlM}tr ({portfolio.totalPnlPct > 0 ? '+' : ''}{portfolio.totalPnlPct}%)
+                </span>
+              )}
+              <Hover as="button" title={t('Lấy giá khớp mới nhất (~10s)')} onClick={refreshPortfolio} disabled={pfRefreshing} style={{ border: 'none', background: 'transparent', cursor: pfRefreshing ? 'default' : 'pointer', color: pfRefreshing ? 'var(--jade-deep)' : 'var(--placeholder)', fontSize: 15, lineHeight: 1, padding: 2 }} hover={pfRefreshing ? {} : { color: 'var(--jade-deep)' }}>{pfRefreshing ? '⏳' : '⟳'}</Hover>
+            </span>
           </div>
           {portfolio && portfolio.holdings.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>

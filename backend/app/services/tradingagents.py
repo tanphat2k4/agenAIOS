@@ -347,11 +347,19 @@ _PB_STALE_OK = 600.0     # 20s-10ph: trả giá cũ NGAY + làm tươi ở NỀN
 _PB_INFLIGHT: set = set()  # chống 2 luồng cùng fetch một rổ mã
 
 
-def _pb_fetch(tickers: list[str]) -> dict:
-    """Blocking fetch 1 call gộp + đổ cache. Dùng bởi cả đường chính lẫn refresh nền."""
+def _pb_fetch(tickers: list[str], wait_if_busy: bool = False) -> dict:
+    """Blocking fetch 1 call gộp + đổ cache. Dùng bởi cả đường chính lẫn refresh nền.
+    wait_if_busy (nút ⟳): nếu đúng rổ mã này đang được luồng khác fetch thì ĐỢI nó xong
+    rồi lấy kết quả từ cache (cũng là giá vừa khớp) — không lặng lẽ trả rỗng."""
     key = ",".join(sorted(tickers))
     if key in _PB_INFLIGHT:
-        return {}
+        if not wait_if_busy:
+            return {}
+        for _ in range(300):  # tối đa ~60s, khớp timeout subprocess
+            time.sleep(0.2)
+            if key not in _PB_INFLIGHT:
+                break
+        return {t: _PB_CACHE[t][1] for t in tickers if t in _PB_CACHE}
     _PB_INFLIGHT.add(key)
     try:
         proc = subprocess.run(
@@ -371,12 +379,22 @@ def _pb_fetch(tickers: list[str]) -> dict:
     return out
 
 
-def _price_board_batch(tickers: list[str]) -> dict:
+def _price_board_batch(tickers: list[str], fresh: bool = False) -> dict:
     """All tickers' live quote → {ticker: {price,change,vol,foreign_net}}.
     Per-ticker cache: <20s dùng thẳng; 20s-10ph trả NGAY giá cũ + refresh nền
-    (stale-while-revalidate); chỉ mã CHƯA TỪNG có mới phải chờ subprocess."""
+    (stale-while-revalidate); chỉ mã CHƯA TỪNG có mới phải chờ subprocess.
+    fresh=True (nút ⟳): bỏ qua cache, CHỜ giá khớp mới nhất (~5-10s)."""
     if not settings.TRADINGAGENTS_ENABLED or not tickers:
         return {}
+    if fresh:
+        out = _pb_fetch(sorted(set(tickers)), wait_if_busy=True)
+        # mã nào fetch lỗi thì đành trả giá cache cũ (còn hơn trống)
+        res = {}
+        for t in tickers:
+            q = out.get(t) or (_PB_CACHE.get(t) or (0.0, {}))[1]
+            if q:
+                res[t] = q
+        return res
     import threading as _th
 
     now = time.time()
