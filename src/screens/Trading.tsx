@@ -27,6 +27,7 @@ export function Trading() {
   const [portfolio, setPortfolio] = useState<{ holdings: any[]; totalPnlM: number; totalPnlPct: number; totalValueM: number; totalCostM: number } | null>(null)
   const [pfForm, setPfForm] = useState({ ticker: '', qty: '', avg: '' })
   const [pfBusy, setPfBusy] = useState(false)
+  const [pfEditing, setPfEditing] = useState<string | null>(null) // mã đang sửa (POST upsert theo ticker)
 
   const [wl, setWl] = useState<{ tickers: string[]; deep: number; max: number } | null>(null)
   const [wlForm, setWlForm] = useState('')
@@ -55,11 +56,17 @@ export function Trading() {
     if (!t || !(qty > 0) || !(avg > 0) || pfBusy) return
     setPfBusy(true)
     try {
-      setPortfolio(await api.post('/trading/portfolio', { ticker: t, qty, avg }))
+      setPortfolio(await api.post('/trading/portfolio', { ticker: t, qty, avg }))  // upsert theo mã → dùng chung cho Thêm + Sửa
       setPfForm({ ticker: '', qty: '', avg: '' })
+      setPfEditing(null)
     } catch { /* ignore */ } finally { setPfBusy(false) }
   }
-  const removeHolding = async (t: string) => { try { setPortfolio(await api.del('/trading/portfolio/' + t)) } catch { /* ignore */ } }
+  const startEditHolding = (h: { ticker: string; qty: number; avg: number }) => {
+    setPfEditing(h.ticker)
+    setPfForm({ ticker: h.ticker, qty: String(h.qty), avg: String(h.avg) })
+  }
+  const cancelEditHolding = () => { setPfEditing(null); setPfForm({ ticker: '', qty: '', avg: '' }) }
+  const removeHolding = async (t: string) => { try { setPortfolio(await api.del('/trading/portfolio/' + t)); if (pfEditing === t) cancelEditHolding() } catch { /* ignore */ } }
   const pfInput = { border: '1.5px solid var(--line)', borderRadius: 10, padding: '8px 10px', font: 'inherit', fontSize: 12.5, background: 'var(--bg)', color: 'var(--ink)', outline: 'none' } as const
 
   const runFast = async (key: string, label: string) => {
@@ -206,10 +213,11 @@ export function Trading() {
               {portfolio.holdings.map((h) => {
                 const up = h.pnlM >= 0
                 return (
-                  <div key={h.ticker} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12.5, padding: '7px 10px', background: 'var(--bg)', borderRadius: 10 }}>
+                  <div key={h.ticker} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12.5, padding: '7px 10px', background: pfEditing === h.ticker ? 'var(--jade-soft)' : 'var(--bg)', borderRadius: 10 }}>
                     <span style={{ fontWeight: 800, width: 44 }}>{h.ticker}</span>
                     <span style={{ color: 'var(--ink-2)', flex: 1, minWidth: 0 }}>{Number(h.qty).toLocaleString()}cp · {t('vốn')} {h.avg} → {h.price ?? '—'}</span>
                     <span style={{ fontWeight: 700, color: up ? 'var(--jade-deep)' : '#C94F3D' }}>{up ? '+' : ''}{h.pnlM}tr ({up ? '+' : ''}{h.pnlPct}%)</span>
+                    <Hover as="button" title={t('Sửa số lượng / giá vốn')} onClick={() => startEditHolding(h)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--placeholder)', fontSize: 13.5, lineHeight: 1, padding: 2 }} hover={{ color: 'var(--jade-deep)' }}>✎</Hover>
                     <Hover as="button" onClick={() => removeHolding(h.ticker)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--placeholder)', fontSize: 15, lineHeight: 1, padding: 2 }} hover={{ color: '#C94F3D' }}>✕</Hover>
                   </div>
                 )
@@ -219,10 +227,13 @@ export function Trading() {
             <div style={{ fontSize: 12.5, color: 'var(--placeholder)', marginBottom: 12 }}>{t('Chưa có mã nào — thêm cổ phiếu anh đang giữ để theo dõi lãi/lỗ real-time (giá vốn nhập theo nghìn đồng, vd 15.5).')}</div>
           )}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-            <input value={pfForm.ticker} onChange={(e) => setPfForm({ ...pfForm, ticker: e.target.value.toUpperCase() })} placeholder={t('Mã')} style={{ ...pfInput, width: 70, fontWeight: 700, letterSpacing: '.5px' }} />
+            <input value={pfForm.ticker} disabled={!!pfEditing} onChange={(e) => setPfForm({ ...pfForm, ticker: e.target.value.toUpperCase() })} placeholder={t('Mã')} style={{ ...pfInput, width: 70, fontWeight: 700, letterSpacing: '.5px', opacity: pfEditing ? 0.55 : 1 }} />
             <input value={pfForm.qty} onChange={(e) => setPfForm({ ...pfForm, qty: e.target.value.replace(/[^\d]/g, '') })} placeholder={t('Số CP')} inputMode="numeric" style={{ ...pfInput, width: 90 }} />
             <input value={pfForm.avg} onChange={(e) => setPfForm({ ...pfForm, avg: e.target.value.replace(/[^\d.]/g, '') })} onKeyDown={(e) => { if (e.key === 'Enter') addHolding() }} placeholder={t('Giá vốn (nghìn)')} inputMode="decimal" style={{ ...pfInput, width: 120 }} />
-            <Hover as="button" onClick={addHolding} disabled={pfBusy} style={{ border: 'none', borderRadius: 10, padding: '9px 18px', font: 'inherit', fontSize: 12.5, fontWeight: 700, cursor: pfBusy ? 'default' : 'pointer', background: 'var(--jade)', color: '#fff', opacity: pfBusy ? 0.6 : 1 }} hover={pfBusy ? {} : { background: 'var(--jade-deep)' }}>＋ {t('Thêm')}</Hover>
+            <Hover as="button" onClick={addHolding} disabled={pfBusy} style={{ border: 'none', borderRadius: 10, padding: '9px 18px', font: 'inherit', fontSize: 12.5, fontWeight: 700, cursor: pfBusy ? 'default' : 'pointer', background: 'var(--jade)', color: '#fff', opacity: pfBusy ? 0.6 : 1 }} hover={pfBusy ? {} : { background: 'var(--jade-deep)' }}>{pfEditing ? '✓ ' + t('Lưu') + ' ' + pfEditing : '＋ ' + t('Thêm')}</Hover>
+            {pfEditing && (
+              <Hover as="button" onClick={cancelEditHolding} style={{ border: '1px solid var(--line)', borderRadius: 10, padding: '8px 14px', font: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', background: 'var(--surface)', color: 'var(--ink-2)' }} hover={{ borderColor: 'var(--jade)', color: 'var(--jade-deep)' }}>{t('Hủy')}</Hover>
+            )}
           </div>
         </div>
 

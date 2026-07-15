@@ -117,6 +117,7 @@ export const EN: Record<string, string> = {
   'Hệ điều hành': 'Operating system',
   'Model đang nạp': 'Loaded models',
   'Mở SSH': 'Open SSH',
+  'Sửa số lượng / giá vốn': 'Edit shares / cost basis',
   'Watchlist báo cáo sáng': 'Morning report watchlist',
   'Chạy 08:00 mỗi sáng · đổi mã áp dụng từ báo cáo kế tiếp': 'Runs 08:00 daily · changes apply from the next report',
   'phân tích sâu': 'deep analysis',
