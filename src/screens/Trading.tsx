@@ -36,6 +36,15 @@ export function Trading() {
 
   useEffect(() => { api.get('/trading/portfolio').then(setPortfolio).catch(() => {}) }, [])
   useEffect(() => { api.get('/trading/watchlist').then(setWl).catch(() => {}) }, [])
+  useEffect(() => {
+    // giá danh mục tự làm tươi mỗi 15s khi đang đứng ở màn này (tab ẩn thì thôi);
+    // backend cache 20s + refresh nền nên mỗi nhịp chỉ ~0.1s
+    const t = setInterval(() => {
+      if (document.hidden) return
+      api.get('/trading/portfolio').then(setPortfolio).catch(() => {})
+    }, 15_000)
+    return () => clearInterval(t)
+  }, [])
 
   const wlAct = async (action: string, tk?: string) => {
     if (wlBusy) return
