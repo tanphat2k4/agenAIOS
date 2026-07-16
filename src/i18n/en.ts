@@ -605,6 +605,7 @@ export const EN: Record<string, string> = {
   "Canh": "Watching",
   "quét": "scans every",
   "trong giờ phiên": "during session",
+  "phủ cả HNX·UPCOM": "covers HNX·UPCOM too",
   "Luật": "Rules",
   "rơi nhanh": "fast drop",
   "nằm sàn / kịch trần": "limit-down / limit-up",

@@ -1,6 +1,6 @@
 """Vệ sĩ giá — cảnh báo rủi ro giá cổ phiếu trong phiên (user duyệt 16/07).
 
-Daemon nền: trong giờ giao dịch (T2-T6, 9:00-11:30 & 13:00-14:45, giờ máy = GMT+7)
+Daemon nền: trong giờ giao dịch (T2-T6, 9:00-11:30 & 13:00-15:00, giờ máy = GMT+7)
 mỗi 60s lấy giá TƯƠI (fresh=True, ~7s subprocess — chạy nền nên không ì UI) cho
 holdings ∪ watchlist của owner rồi so bộ luật rủi ro. Vi phạm → gửi 3 nơi cùng lúc:
 #chung-khoan (Sage), Notification (chuông), Telegram (openclaw message send — bot
@@ -66,12 +66,14 @@ def save_alerts(db: Session, user: User, cfg: dict) -> None:
 
 
 def in_session(now: datetime | None = None) -> bool:
-    """Giờ giao dịch HOSE (máy chạy giờ VN): T2-T6, 9:00-11:30 & 13:00-14:45."""
+    """Giờ giao dịch (máy chạy giờ VN): T2-T6, 9:00-11:30 & 13:00-15:00.
+    HOSE khớp lệnh dừng 14:45 (ATC 14:30-14:45) nhưng HNX có PLO 14:45-15:00 và
+    UPCOM khớp liên tục tới 15:00 — canh tới 15:00 phủ đủ 3 sàn (xác minh 16/07)."""
     n = now or datetime.now()
     if n.weekday() >= 5:
         return False
     hm = n.hour * 60 + n.minute
-    return (9 * 60 <= hm <= 11 * 60 + 30) or (13 * 60 <= hm <= 14 * 60 + 45)
+    return (9 * 60 <= hm <= 11 * 60 + 30) or (13 * 60 <= hm <= 15 * 60)
 
 
 def _owner(db: Session) -> User | None:

@@ -345,7 +345,7 @@ export function Trading() {
           {al ? (
             <>
               <div style={{ fontSize: 12.5, color: 'var(--ink-2)', marginBottom: 6 }}>
-                {t('Canh')} <b>{al.watched.length}</b> {t('mã')} ({al.watched.join(', ') || '—'}) · {t('quét')} {al.interval}s {t('trong giờ phiên')} (9:00–11:30 / 13:00–14:45)
+                {t('Canh')} <b>{al.watched.length}</b> {t('mã')} ({al.watched.join(', ') || '—'}) · {t('quét')} {al.interval}s {t('trong giờ phiên')} (9:00–11:30 / 13:00–15:00 {t('phủ cả HNX·UPCOM')})
               </div>
               <div style={{ fontSize: 12, color: 'var(--placeholder)', marginBottom: 10 }}>
                 {t('Luật')}: {t('rơi nhanh')} ≥ −{al.drop_pct}% · {t('nằm sàn / kịch trần')} · {t('thủng vốn & lãi tụt')} {al.trail_pct}đ% {t('từ đỉnh')} · VN-Index −{al.index_pct}% · {t('sự kiện nặng tự chạy phân tích sâu')}
