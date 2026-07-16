@@ -872,7 +872,9 @@ def _alerts_render(db: Session, user: User) -> str:
         lines.append("• Luật riêng: " + " · ".join(parts))
     if cfg["off"]:
         lines.append("• Tạm tắt mã: " + ", ".join(cfg["off"]))
-    lines.append("_Lệnh: cảnh báo VIB dưới 14.5 · VIB vượt 16 thì báo · tắt/bật cảnh báo [MÃ] · cảnh báo lỗ 8% · test cảnh báo_")
+    lines.append("📖 Mẫu lệnh gõ ở đây hoặc Telegram (số chỉ là ví dụ): «cảnh báo VIB dưới 14.5» · "
+                 "«VIB vượt 16 thì báo» · «tắt cảnh báo HPG» / «bật cảnh báo» · «cảnh báo lỗ 8%» · "
+                 "«xem cảnh báo» · «test cảnh báo»")
     return "\n".join(lines)
 
 
