@@ -366,6 +366,15 @@ ANTI_HALLUCINATION = (
     "GIÁ HIỆN TẠI = giá đóng cửa mới nhất trong dữ liệu; KHÔNG nhầm nó với vùng mua / hỗ trợ / mục tiêu (thường thấp hơn)."
 )
 
+# user yêu cầu 16/07: mọi khuyến nghị phải kèm dự đoán giá sàn & giá trần (user gọi theo
+# nghĩa vùng giá dự kiến — hỗ trợ/kháng cự), số cụ thể suy từ kỹ thuật trong báo cáo.
+PRICE_BAND_LINE = (
+    "BẮT BUỘC có 1 dòng: '🎯 Dự đoán vùng giá 1-2 tuần: giá sàn dự kiến ~X · giá trần dự kiến ~Y' — "
+    "X = mức hỗ trợ gần nhất DƯỚI giá hiện tại, Y = mức kháng cự gần nhất TRÊN giá hiện tại, "
+    "suy từ phân tích kỹ thuật trong dữ liệu (SMA50/SMA200, đỉnh/đáy gần đây, vùng mua/chốt lời). "
+    "X, Y phải là CON SỐ cụ thể cùng thang với giá hiện tại, không nói chung chung."
+)
+
 
 def _snap_field(snap: str, label: str) -> str | None:
     m = re.search(rf"{re.escape(label)}\s*\|\s*([\d.,]+)", snap or "")

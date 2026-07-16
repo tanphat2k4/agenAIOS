@@ -273,6 +273,7 @@ def _summarize_for_chat(ticker: str, full: str) -> str:
         "content": (
             f"Rút gọn báo cáo phân tích {ticker} dưới đây thành bản tin ngắn dễ đọc:\n"
             f"Dòng 1: '⭐ {ticker} — Khuyến nghị: <Mua / Tăng tỷ trọng / Giữ / Giảm tỷ trọng / Bán>' kèm 1 câu lý do chính.\n"
+            "Dòng 2: '🎯 Dự đoán vùng giá 1-2 tuần: giá sàn dự kiến ~X · giá trần dự kiến ~Y' — X/Y lấy từ mức hỗ trợ/kháng cự (SMA, đỉnh đáy, vùng mua/chốt lời) CÓ trong báo cáo, số cụ thể.\n"
             "Rồi 4-6 dòng, mỗi dòng bắt đầu bằng '• ': vùng giá mua/bán hợp lý, rủi ro chính, chất xúc tác sắp tới, lưu ý thanh khoản.\n"
             "Tối đa ~10 dòng, chữ thường, tránh biệt ngữ nặng.\n\n" + (full or "")[:6500]
         ),
@@ -402,6 +403,7 @@ def _bg_advise(channel_id: str, ticker: str, question: str) -> None:
                         + f"Kết quả phân tích của team về {ticker} (giá real-time):\n{team[:3200]}\n\n"
                         "Tổng hợp thành lời khuyên có cấu trúc, mỗi mục 1 dòng gạch đầu dòng:\n"
                         "• **Khuyến nghị**: MUA / BÁN / GIỮ\n"
+                        "• **🎯 Dự đoán vùng giá (1-2 tuần)**: giá sàn dự kiến (hỗ trợ) ~X · giá trần dự kiến (kháng cự) ~Y — số cụ thể từ kỹ thuật (SMA/đỉnh đáy gần)\n"
                         "• **Ngắn hạn (lướt sóng)**: vùng mua, chốt lời, cắt lỗ + tín hiệu kỹ thuật (RSI/SMA)\n"
                         "• **Dài hạn (đầu tư)**: định giá (P/E/ROE) + triển vọng — có nên tích lũy không\n"
                         "• **Quản lý vốn**: tỷ trọng đề xuất (đừng all-in)\n"
@@ -898,7 +900,8 @@ def trading_relay(body: RelayIn, x_relay_key: str = Header(default="")):
                       "KHÔNG lặp lại dòng giá đầu (đã có). Công cụ nghiên cứu, KHÔNG phải lời khuyên đầu tư.")}
             user = {"role": "user", "content": (f"Câu hỏi: {text}\n\n" + (f"Thị trường: {mkt}\n\n" if mkt else "")
                     + f"Kết quả team về {ticker} (giá real-time):\n{team[:3200]}\n\n"
-                    "Tổng hợp NGẮN: Khuyến nghị (MUA/BÁN/GIỮ) + vùng mua/chốt lời/cắt lỗ + 1 câu rủi ro.")}
+                    "Tổng hợp NGẮN: Khuyến nghị (MUA/BÁN/GIỮ) + vùng mua/chốt lời/cắt lỗ + 1 câu rủi ro. "
+                    + rec.PRICE_BAND_LINE)}
             try:
                 synth = ninerouter.chat([system, user, {"role": "system", "content": headline}],
                                         temperature=0.3, max_tokens=600)["content"] or ""

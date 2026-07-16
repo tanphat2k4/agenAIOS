@@ -131,7 +131,8 @@ def run_morning_report(db: Session, *, manual: bool = False) -> str:
             system = {"role": "system", "content": (f"{rec.ADVISOR['persona']} {rec.ANTI_HALLUCINATION} "
                       "KHÔNG lặp lại dòng giá đầu (đã có). Công cụ nghiên cứu, KHÔNG phải lời khuyên đầu tư.")}
             user = {"role": "user", "content": (f"Kết quả team về {tk} sáng nay (giá real-time):\n{team[:3200]}\n\n"
-                    "Tổng hợp NGẮN: Khuyến nghị (MUA/BÁN/GIỮ) + vùng mua/chốt lời/cắt lỗ + 1 câu rủi ro.")}
+                    "Tổng hợp NGẮN: Khuyến nghị (MUA/BÁN/GIỮ) + vùng mua/chốt lời/cắt lỗ + 1 câu rủi ro. "
+                    + rec.PRICE_BAND_LINE)}
             try:
                 synth = ninerouter.chat([system, user, {"role": "system", "content": headline}],
                                         temperature=0.3, max_tokens=600)["content"] or ""
