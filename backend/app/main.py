@@ -42,6 +42,14 @@ def _start_music_sync() -> None:
 
 
 @app.on_event("startup")
+def _start_price_guard() -> None:
+    # Vệ sĩ giá: cảnh báo rủi ro trong phiên (60s/lần, chỉ giờ giao dịch) — user duyệt 16/07
+    from app.services.price_guard import start_price_guard
+
+    start_price_guard()
+
+
+@app.on_event("startup")
 def _warm_price_cache() -> None:
     # vnstock price_board cold-start mất tới ~30s (import trong system python) — hâm nóng
     # sẵn giá cho danh mục + watchlist của owner để màn Chứng khoán mở lên là có ngay.

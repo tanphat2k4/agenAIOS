@@ -34,8 +34,29 @@ export function Trading() {
   const [wlBusy, setWlBusy] = useState(false)
   const [wlErr, setWlErr] = useState('')
 
+  type Alerts = { enabled: boolean; drop_pct: number; trail_pct: number; index_pct: number; custom: { ticker: string; below: number }[]; off: string[]; watched: string[]; inSession: boolean; interval: number; testing?: boolean }
+  const [al, setAl] = useState<Alerts | null>(null)
+  const [alForm, setAlForm] = useState({ ticker: '', below: '' })
+  const [alBusy, setAlBusy] = useState(false)
+  const [alErr, setAlErr] = useState('')
+  const [alTested, setAlTested] = useState(false)
+
   useEffect(() => { api.get('/trading/portfolio').then(setPortfolio).catch(() => {}) }, [])
   useEffect(() => { api.get('/trading/watchlist').then(setWl).catch(() => {}) }, [])
+  useEffect(() => { api.get('/trading/alerts').then(setAl).catch(() => {}) }, [])
+
+  const alAct = async (action: string, ticker = '', value?: number) => {
+    if (alBusy) return
+    setAlBusy(true)
+    setAlErr('')
+    try {
+      setAl(await api.post('/trading/alerts', { action, ticker, value }))
+      if (action === 'below') setAlForm({ ticker: '', below: '' })
+      if (action === 'test') { setAlTested(true); setTimeout(() => setAlTested(false), 8000) }
+    } catch (e) {
+      setAlErr(e instanceof Error ? e.message : 'Lỗi')
+    } finally { setAlBusy(false) }
+  }
   useEffect(() => {
     // giá danh mục tự làm tươi mỗi 15s khi đang đứng ở màn này (tab ẩn thì thôi);
     // backend cache 20s + refresh nền nên mỗi nhịp chỉ ~0.1s
@@ -302,6 +323,67 @@ export function Trading() {
             <span style={{ flex: 1 }} />
             <span style={{ fontSize: 11, color: 'var(--placeholder)' }}>{t('Tối đa')} {wl?.max ?? 5} {t('mã')} · {wl?.deep ?? 2} {t('mã đầu chạy pipeline sâu')} · {t('gõ "theo dõi HPG" trong kênh hoặc Telegram cũng được')}</span>
           </div>
+        </div>
+
+        {/* Vệ sĩ giá — cảnh báo rủi ro giá trong phiên (duyệt 16/07): quét 60s, báo kênh + Telegram + chuông */}
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, padding: '16px 20px', marginBottom: 18 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
+            <span style={{ fontSize: 14, fontWeight: 800, letterSpacing: '-.2px', display: 'flex', alignItems: 'center', gap: 8 }}>
+              🛡️ {t('Vệ sĩ giá')}
+              {al && (
+                <span style={{ fontSize: 10.5, fontWeight: 700, color: al.enabled ? 'var(--jade-deep)' : 'var(--placeholder)', background: al.enabled ? 'var(--jade-soft)' : 'var(--bg)', padding: '2px 8px', borderRadius: 99 }}>
+                  {al.enabled ? (al.inSession ? t('ĐANG CANH · trong phiên') : t('BẬT · ngoài phiên')) : t('ĐANG TẮT')}
+                </span>
+              )}
+            </span>
+            {al && (
+              <Hover as="button" onClick={() => alAct(al.enabled ? 'off' : 'on')} disabled={alBusy}
+                style={{ border: '1px solid var(--line)', background: 'var(--surface)', borderRadius: 10, padding: '6px 14px', font: 'inherit', fontSize: 12, fontWeight: 700, cursor: alBusy ? 'default' : 'pointer', color: al.enabled ? '#C94F3D' : 'var(--jade-deep)' }}
+                hover={{ borderColor: al.enabled ? '#C94F3D' : 'var(--jade)' }}>{al.enabled ? t('Tắt canh') : t('Bật canh')}</Hover>
+            )}
+          </div>
+          {al ? (
+            <>
+              <div style={{ fontSize: 12.5, color: 'var(--ink-2)', marginBottom: 6 }}>
+                {t('Canh')} <b>{al.watched.length}</b> {t('mã')} ({al.watched.join(', ') || '—'}) · {t('quét')} {al.interval}s {t('trong giờ phiên')} (9:00–11:30 / 13:00–14:45)
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--placeholder)', marginBottom: 10 }}>
+                {t('Luật')}: {t('rơi nhanh')} ≥ −{al.drop_pct}% · {t('nằm sàn / kịch trần')} · {t('thủng vốn & lãi tụt')} {al.trail_pct}đ% {t('từ đỉnh')} · VN-Index −{al.index_pct}% · {t('sự kiện nặng tự chạy phân tích sâu')}
+              </div>
+              {al.custom.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
+                  {al.custom.map((c) => (
+                    <div key={c.ticker} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12.5, padding: '7px 10px', background: 'var(--bg)', borderRadius: 10 }}>
+                      <span style={{ fontWeight: 800, width: 48, letterSpacing: '.5px' }}>{c.ticker}</span>
+                      <span style={{ color: 'var(--ink-2)', flex: 1 }}>{t('báo khi giá xuống dưới')} <b style={{ color: '#2AA0C4' }}>{c.below}</b></span>
+                      <Hover as="button" onClick={() => alAct('remove_below', c.ticker)}
+                        style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--placeholder)', fontSize: 15, lineHeight: 1, padding: 2 }}
+                        hover={{ color: '#C94F3D' }}>✕</Hover>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                <input value={alForm.ticker} onChange={(e) => setAlForm({ ...alForm, ticker: e.target.value.toUpperCase() })}
+                  placeholder={t('Mã')} style={{ ...pfInput, width: 70, fontWeight: 700, letterSpacing: '.5px' }} />
+                <input value={alForm.below} onChange={(e) => setAlForm({ ...alForm, below: e.target.value })}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && alForm.ticker && alForm.below) alAct('below', alForm.ticker.trim(), parseFloat(alForm.below.replace(',', '.'))) }}
+                  placeholder={t('dưới giá…')} style={{ ...pfInput, width: 90 }} />
+                <Hover as="button" onClick={() => alForm.ticker && alForm.below && alAct('below', alForm.ticker.trim(), parseFloat(alForm.below.replace(',', '.')))} disabled={alBusy}
+                  style={{ border: 'none', borderRadius: 10, padding: '9px 18px', font: 'inherit', fontSize: 12.5, fontWeight: 700, cursor: alBusy ? 'default' : 'pointer', background: 'var(--jade)', color: '#fff', opacity: alBusy ? 0.6 : 1 }}
+                  hover={alBusy ? {} : { background: 'var(--jade-deep)' }}>＋ {t('Đặt mốc')}</Hover>
+                <Hover as="button" onClick={() => alAct('test')} disabled={alBusy}
+                  style={{ border: '1px solid var(--line)', background: 'var(--surface)', borderRadius: 10, padding: '8px 14px', font: 'inherit', fontSize: 12, fontWeight: 700, cursor: alBusy ? 'default' : 'pointer', color: 'var(--ink-2)' }}
+                  hover={{ borderColor: 'var(--jade)', color: 'var(--jade-deep)' }}>🧪 {t('Test quét ngay')}</Hover>
+                {alTested && <span style={{ fontSize: 12, color: 'var(--jade-deep)', fontWeight: 600 }}>{t('Đang quét giá thật — vi phạm sẽ nổ ở kênh + Telegram + chuông trong ~1 phút')}</span>}
+                {alErr && <span style={{ fontSize: 12, color: '#C94F3D', fontWeight: 600 }}>{alErr}</span>}
+                <span style={{ flex: 1 }} />
+                <span style={{ fontSize: 11, color: 'var(--placeholder)' }}>{t('gõ "cảnh báo VIB dưới 14.5" trong kênh hoặc Telegram cũng được')}</span>
+              </div>
+            </>
+          ) : (
+            <div style={{ fontSize: 12.5, color: 'var(--placeholder)' }}>…</div>
+          )}
         </div>
 
         {/* result card */}

@@ -503,6 +503,11 @@ def trading_chat(body: ChatIn, db: Session = Depends(get_db), current: User = De
     if wl_reply is not None:
         return {"messages": [_save_advisor_msg(db, cid, wl_reply)], "analyzing": None}
 
+    # lệnh Vệ sĩ giá ("cảnh báo VIB dưới 14.5" / "tắt cảnh báo" / "xem cảnh báo" / "test cảnh báo")
+    al_reply = _handle_alert_cmd(db, current, body.text)
+    if al_reply is not None:
+        return {"messages": [_save_advisor_msg(db, cid, al_reply)], "analyzing": None}
+
     cmd, ticker = ta.classify(body.text)
 
     # --- Sage: @gọi trong chat → screening / pipeline tư vấn / hội thoại, đều real-time ---
@@ -828,6 +833,138 @@ def _handle_watchlist_cmd(db: Session, user: User, text: str) -> str | None:
     return None
 
 
+# ----------------------- Vệ sĩ giá (price guard) — API + chat cmds -----------------------
+class AlertsIn(BaseModel):
+    action: str                    # on | off | below | remove_below | off_ticker | on_ticker | trail_pct | drop_pct | index_pct | test
+    ticker: str = ""
+    value: float | None = None
+
+
+def _alerts_payload(db: Session, user: User) -> dict:
+    from app.services import price_guard as pg
+
+    cfg = pg.alerts_of(user)
+    holdings = [h["ticker"] for h in ((user.settings or {}).get("holdings") or [])]
+    watched = sorted((set(holdings) | set(rec.get_watchlist(db))) - set(cfg["off"]))
+    return {**cfg, "watched": watched, "inSession": pg.in_session(), "interval": int(pg.PG_INTERVAL)}
+
+
+def _alerts_render(db: Session, user: User) -> str:
+    from app.services import price_guard as pg
+
+    cfg = pg.alerts_of(user)
+    p = _alerts_payload(db, user)
+    lines = [
+        f"🛡️ **Vệ sĩ giá: {'BẬT' if cfg['enabled'] else 'TẮT'}** — canh {len(p['watched'])} mã ({', '.join(p['watched']) or '—'}), quét {p['interval']}s trong phiên" + (" · *đang trong phiên*" if p["inSession"] else " · *ngoài phiên*"),
+        f"• Luật: rơi nhanh ≥ -{cfg['drop_pct']}% · nằm sàn/kịch trần · thủng vốn & lãi tụt {cfg['trail_pct']:.0f}đ% từ đỉnh · VN-Index -{cfg['index_pct']}%",
+    ]
+    if cfg["custom"]:
+        lines.append("• Luật riêng: " + " · ".join(f"{c['ticker']} dưới {c['below']}" for c in cfg["custom"]))
+    if cfg["off"]:
+        lines.append("• Tạm tắt mã: " + ", ".join(cfg["off"]))
+    lines.append("_Lệnh: cảnh báo VIB dưới 14.5 · tắt/bật cảnh báo [MÃ] · cảnh báo lỗ 8% · test cảnh báo_")
+    return "\n".join(lines)
+
+
+@router.get("/alerts")
+def get_alerts_ep(db: Session = Depends(get_db), current: User = Depends(get_current_user)):
+    return _alerts_payload(db, current)
+
+
+@router.post("/alerts")
+def edit_alerts(body: AlertsIn, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
+    from app.services import price_guard as pg
+
+    cfg = pg.alerts_of(current)
+    act = (body.action or "").strip()
+    tk = (body.ticker or "").strip().upper()
+    if act == "on":
+        cfg["enabled"] = True
+    elif act == "off":
+        cfg["enabled"] = False
+    elif act == "below":
+        if not tk or not body.value or body.value <= 0:
+            raise HTTPException(status_code=400, detail="Cần mã + mức giá > 0")
+        if not _ticker_exists(tk):
+            raise HTTPException(status_code=400, detail=f"Không tìm thấy mã {tk} trên sàn.")
+        cfg["custom"] = [c for c in cfg["custom"] if c.get("ticker") != tk] + [{"ticker": tk, "below": float(body.value)}]
+    elif act == "remove_below":
+        cfg["custom"] = [c for c in cfg["custom"] if c.get("ticker") != tk]
+    elif act == "off_ticker":
+        if tk and tk not in cfg["off"]:
+            cfg["off"] = cfg["off"] + [tk]
+    elif act == "on_ticker":
+        cfg["off"] = [t for t in cfg["off"] if t != tk]
+    elif act in ("trail_pct", "drop_pct", "index_pct"):
+        if not body.value or body.value <= 0:
+            raise HTTPException(status_code=400, detail="Ngưỡng phải > 0")
+        cfg[act] = float(body.value)
+    elif act == "test":
+        import threading as _th
+        _th.Thread(target=pg.run_tick, kwargs={"force": True}, daemon=True).start()
+        return {**_alerts_payload(db, current), "testing": True}
+    else:
+        raise HTTPException(status_code=400, detail="action không hợp lệ")
+    pg.save_alerts(db, current, cfg)
+    return _alerts_payload(db, current)
+
+
+_AL_BELOW_RE = re.compile(r"cảnh báo\s+([A-Za-z]{3})\s+dưới\s+([\d.,]+)|canh bao\s+([A-Za-z]{3})\s+duoi\s+([\d.,]+)", re.I)
+_AL_LOSS_RE = re.compile(r"cảnh báo lỗ\s+([\d.,]+)\s*%|canh bao lo\s+([\d.,]+)\s*%", re.I)
+
+
+def _handle_alert_cmd(db: Session, user: User, text: str) -> str | None:
+    """Lệnh Vệ sĩ giá bằng chat (app + Telegram). Trả reply hoặc None nếu không phải lệnh."""
+    from app.services import price_guard as pg
+
+    low = " ".join((text or "").lower().split())
+    cfg = pg.alerts_of(user)
+
+    def _tk() -> str:
+        m = _WL_TICKER_RE.search((text or "").upper())
+        return m.group(1) if m else ""
+
+    if low.rstrip("?") in ("xem cảnh báo", "xem canh bao", "cảnh báo", "canh bao", "vệ sĩ giá", "ve si gia"):
+        return _alerts_render(db, user)
+    if low.startswith(("test cảnh báo", "test canh bao", "thử cảnh báo", "thu canh bao")):
+        import threading as _th
+        _th.Thread(target=pg.run_tick, kwargs={"force": True}, daemon=True).start()
+        return "⏳ Đang quét giá thật một lượt (bỏ cooldown) — có gì vi phạm sẽ nổ cảnh báo ở kênh + Telegram + chuông trong ~1 phút."
+    m = _AL_BELOW_RE.search(text or "")
+    if m:
+        tk = (m.group(1) or m.group(3) or "").upper()
+        val = float((m.group(2) or m.group(4)).replace(",", "."))
+        if not _ticker_exists(tk):
+            return f"Em không tìm thấy mã **{tk}** trên sàn — anh kiểm tra lại nhé."
+        cfg["custom"] = [c for c in cfg["custom"] if c.get("ticker") != tk] + [{"ticker": tk, "below": val}]
+        pg.save_alerts(db, user, cfg)
+        return f"✅ Đã đặt luật riêng: **{tk} dưới {val}** thì báo.\n\n" + _alerts_render(db, user)
+    m = _AL_LOSS_RE.search(text or "")
+    if m:
+        val = float((m.group(1) or m.group(2)).replace(",", "."))
+        cfg["trail_pct"] = val
+        pg.save_alerts(db, user, cfg)
+        return f"✅ Lãi tụt **{val:.0f} điểm %** từ đỉnh phiên là báo.\n\n" + _alerts_render(db, user)
+    if low.startswith(("xóa cảnh báo", "xoa canh bao")):
+        tk = _tk()
+        if not tk:
+            return "Anh ghi kèm mã nhé (vd: *xóa cảnh báo VIB*)."
+        cfg["custom"] = [c for c in cfg["custom"] if c.get("ticker") != tk]
+        pg.save_alerts(db, user, cfg)
+        return f"✅ Đã xóa luật riêng của **{tk}**.\n\n" + _alerts_render(db, user)
+    for kws, on in ((("tắt cảnh báo", "tat canh bao"), False), (("bật cảnh báo", "bat canh bao"), True)):
+        if any(low.startswith(k) for k in kws):
+            tk = _tk()
+            if tk:
+                cfg["off"] = ([t for t in cfg["off"] if t != tk] if on else (cfg["off"] + [tk] if tk not in cfg["off"] else cfg["off"]))
+                pg.save_alerts(db, user, cfg)
+                return f"✅ Đã **{'bật' if on else 'tắt'}** cảnh báo cho **{tk}**.\n\n" + _alerts_render(db, user)
+            cfg["enabled"] = on
+            pg.save_alerts(db, user, cfg)
+            return f"✅ Vệ sĩ giá đã **{'BẬT' if on else 'TẮT'}**.\n\n" + _alerts_render(db, user)
+    return None
+
+
 # ----------------------- Telegram → app relay (option B) -----------------------
 class RelayIn(BaseModel):
     text: str
@@ -880,6 +1017,11 @@ def trading_relay(body: RelayIn, x_relay_key: str = Header(default="")):
                 _save_user_msg(db, cid, text)
                 _save_advisor_msg(db, cid, wl_reply)
                 return {"reply": wl_reply.replace("**", "").replace("_", "")}
+            al_reply = _handle_alert_cmd(db, owner, text)
+            if al_reply is not None:
+                _save_user_msg(db, cid, text)
+                _save_advisor_msg(db, cid, al_reply)
+                return {"reply": al_reply.replace("**", "").replace("_", "")}
 
         _save_user_msg(db, cid, text)
         cmd, ticker = ta.classify(text)
