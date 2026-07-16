@@ -368,7 +368,11 @@ def _llm_reply(db: Session, channel_id: str, _text: str) -> str:
         "content": ("Bạn là trợ lý phân tích chứng khoán Việt Nam, trả lời ngắn gọn bằng tiếng Việt, xưng 'em'. "
                     "Trả lời TRỰC TIẾP đúng câu hỏi mới nhất; KHÔNG lặp lại khuyến nghị/báo cáo cũ trừ khi được hỏi lại. "
                     "Khi được hỏi P/E, P/B, ROE, định giá hoặc tổng quan thị trường, dùng đúng số trong phần dữ liệu cung cấp. "
-                    "Giải thích khái niệm/chỉ báo (RSI, MACD, P/E...) khi được hỏi. " + rec.ANTI_HALLUCINATION +
+                    "Giải thích khái niệm/chỉ báo (RSI, MACD, P/E...) khi được hỏi. "
+                    "Hệ thống ĐÃ CÓ 'Vệ sĩ giá' tự canh giá trong phiên và báo qua kênh + Telegram + chuông — "
+                    "nếu người dùng muốn được báo khi giá chạm mốc, hướng dẫn gõ đúng cú pháp: "
+                    "'cảnh báo <MÃ> dưới <giá>' hoặc '<MÃ> vượt <giá> thì báo'; TUYỆT ĐỐI không nói hệ thống "
+                    "thiếu tính năng cảnh báo giá hay bảo người dùng đi dùng app khác. " + rec.ANTI_HALLUCINATION +
                     " Đây là công cụ nghiên cứu, KHÔNG phải lời khuyên đầu tư."),
     }
     # The price directive goes LAST (most salient) so it overrides stale conversation numbers.
@@ -859,10 +863,16 @@ def _alerts_render(db: Session, user: User) -> str:
         f"• Luật: rơi nhanh ≥ -{cfg['drop_pct']}% · nằm sàn/kịch trần · thủng vốn & lãi tụt {cfg['trail_pct']:.0f}đ% từ đỉnh · VN-Index -{cfg['index_pct']}%",
     ]
     if cfg["custom"]:
-        lines.append("• Luật riêng: " + " · ".join(f"{c['ticker']} dưới {c['below']}" for c in cfg["custom"]))
+        parts = []
+        for c in cfg["custom"]:
+            if c.get("below"):
+                parts.append(f"{c['ticker']} dưới {c['below']}")
+            if c.get("above"):
+                parts.append(f"{c['ticker']} vượt {c['above']}")
+        lines.append("• Luật riêng: " + " · ".join(parts))
     if cfg["off"]:
         lines.append("• Tạm tắt mã: " + ", ".join(cfg["off"]))
-    lines.append("_Lệnh: cảnh báo VIB dưới 14.5 · tắt/bật cảnh báo [MÃ] · cảnh báo lỗ 8% · test cảnh báo_")
+    lines.append("_Lệnh: cảnh báo VIB dưới 14.5 · VIB vượt 16 thì báo · tắt/bật cảnh báo [MÃ] · cảnh báo lỗ 8% · test cảnh báo_")
     return "\n".join(lines)
 
 
@@ -882,13 +892,14 @@ def edit_alerts(body: AlertsIn, db: Session = Depends(get_db), current: User = D
         cfg["enabled"] = True
     elif act == "off":
         cfg["enabled"] = False
-    elif act == "below":
+    elif act in ("below", "above"):
         if not tk or not body.value or body.value <= 0:
             raise HTTPException(status_code=400, detail="Cần mã + mức giá > 0")
         if not _ticker_exists(tk):
             raise HTTPException(status_code=400, detail=f"Không tìm thấy mã {tk} trên sàn.")
-        cfg["custom"] = [c for c in cfg["custom"] if c.get("ticker") != tk] + [{"ticker": tk, "below": float(body.value)}]
-    elif act == "remove_below":
+        mine = next((c for c in cfg["custom"] if c.get("ticker") == tk), {"ticker": tk})
+        cfg["custom"] = [c for c in cfg["custom"] if c.get("ticker") != tk] + [{**mine, act: float(body.value)}]
+    elif act in ("remove_below", "remove_custom"):
         cfg["custom"] = [c for c in cfg["custom"] if c.get("ticker") != tk]
     elif act == "off_ticker":
         if tk and tk not in cfg["off"]:
@@ -909,8 +920,14 @@ def edit_alerts(body: AlertsIn, db: Session = Depends(get_db), current: User = D
     return _alerts_payload(db, current)
 
 
-_AL_BELOW_RE = re.compile(r"cảnh báo\s+([A-Za-z]{3})\s+dưới\s+([\d.,]+)|canh bao\s+([A-Za-z]{3})\s+duoi\s+([\d.,]+)", re.I)
 _AL_LOSS_RE = re.compile(r"cảnh báo lỗ\s+([\d.,]+)\s*%|canh bao lo\s+([\d.,]+)\s*%", re.I)
+# "MÃ vượt/trên/dưới/thủng GIÁ" — bắt cặp (mã, hướng, giá) đứng gần nhau
+_AL_SET_RE = re.compile(
+    r"\b([A-Za-z]{3})\b[^\dA-Za-z]{0,12}(vượt|vuot|trên|tren|lên|len|dưới|duoi|xuống|xuong|thủng|thung)\s*([\d]+(?:[.,]\d+)?)", re.I)
+# câu tự nhiên phải có đuôi ý "báo tôi" (vd 'vib vượt 16 thì báo a nha') — khỏi hijack câu phân tích
+_AL_TAIL_RE = re.compile(r"thì báo|thi bao|thì cảnh báo|thi canh bao|báo anh|bao anh|báo em|bao em|báo a\b|bao a\b|thì nhắn|thi nhan|nhắn anh|nhan anh", re.I)
+# từ đệm tiếng Việt 3 chữ hay bị regex tưởng là mã CK ('bao', 'nha' từng dính thật 16/07)
+_AL_STOPWORDS = {"BAO", "NHA", "ANH", "CHO", "GIA", "THI", "LEN", "KHI", "NEU", "VOI", "CON", "LAI", "MUA", "BAN"}
 
 
 def _handle_alert_cmd(db: Session, user: User, text: str) -> str | None:
@@ -930,15 +947,22 @@ def _handle_alert_cmd(db: Session, user: User, text: str) -> str | None:
         import threading as _th
         _th.Thread(target=pg.run_tick, kwargs={"force": True}, daemon=True).start()
         return "⏳ Đang quét giá thật một lượt (bỏ cooldown) — có gì vi phạm sẽ nổ cảnh báo ở kênh + Telegram + chuông trong ~1 phút."
-    m = _AL_BELOW_RE.search(text or "")
-    if m:
-        tk = (m.group(1) or m.group(3) or "").upper()
-        val = float((m.group(2) or m.group(4)).replace(",", "."))
-        if not _ticker_exists(tk):
-            return f"Em không tìm thấy mã **{tk}** trên sàn — anh kiểm tra lại nhé."
-        cfg["custom"] = [c for c in cfg["custom"] if c.get("ticker") != tk] + [{"ticker": tk, "below": val}]
-        pg.save_alerts(db, user, cfg)
-        return f"✅ Đã đặt luật riêng: **{tk} dưới {val}** thì báo.\n\n" + _alerts_render(db, user)
+    # "cảnh báo VIB dưới 14.5" (lệnh) hoặc "vib vượt 16 thì báo a nha" (câu tự nhiên)
+    if low.startswith(("cảnh báo", "canh bao")) or _AL_TAIL_RE.search(text or ""):
+        for m in _AL_SET_RE.finditer(text or ""):
+            tk = m.group(1).upper()
+            if tk in _AL_STOPWORDS:
+                continue
+            direction = m.group(2).lower()
+            val = float(m.group(3).replace(",", "."))
+            field = "above" if direction in ("vượt", "vuot", "trên", "tren", "lên", "len") else "below"
+            if not _ticker_exists(tk):
+                return f"Em không tìm thấy mã **{tk}** trên sàn — anh kiểm tra lại nhé."
+            mine = next((c for c in cfg["custom"] if c.get("ticker") == tk), {"ticker": tk})
+            cfg["custom"] = [c for c in cfg["custom"] if c.get("ticker") != tk] + [{**mine, field: val}]
+            pg.save_alerts(db, user, cfg)
+            word = "vượt" if field == "above" else "xuống dưới"
+            return f"✅ Đã đặt: **{tk} {word} {val}** là báo anh liền (kênh + Telegram + chuông).\n\n" + _alerts_render(db, user)
     m = _AL_LOSS_RE.search(text or "")
     if m:
         val = float((m.group(1) or m.group(2)).replace(",", "."))

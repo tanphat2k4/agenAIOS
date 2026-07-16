@@ -147,11 +147,16 @@ def _scan(db: Session, *, force: bool = False) -> list[dict]:
                 if peak > 0 and peak - cur >= cfg["trail_pct"]:
                     _hit("trail", tk, False,
                          f"📉 **{tk}: lãi tụt từ +{peak}% còn +{cur}%** (giá {price})", pos)
-        # ⑤ luật riêng "dưới X"
+        # ⑤ luật riêng "dưới X" / "vượt X" (chiều lên thêm 16/07 — user đặt qua chat)
         for c in cfg["custom"]:
-            if str(c.get("ticker", "")).upper() == tk and c.get("below") and price <= float(c["below"]):
+            if str(c.get("ticker", "")).upper() != tk:
+                continue
+            if c.get("below") and price <= float(c["below"]):
                 _hit("below", tk, False,
                      f"🔻 **{tk} chạm mốc anh đặt: {price} ≤ {c['below']}**", pos)
+            if c.get("above") and price >= float(c["above"]):
+                _hit("above", tk, False,
+                     f"🚀 **{tk} vượt mốc anh đặt: {price} ≥ {c['above']}**", pos)
 
     # ④ VN-Index
     m = ta.market_overview()

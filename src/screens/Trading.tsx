@@ -34,9 +34,9 @@ export function Trading() {
   const [wlBusy, setWlBusy] = useState(false)
   const [wlErr, setWlErr] = useState('')
 
-  type Alerts = { enabled: boolean; drop_pct: number; trail_pct: number; index_pct: number; custom: { ticker: string; below: number }[]; off: string[]; watched: string[]; inSession: boolean; interval: number; testing?: boolean }
+  type Alerts = { enabled: boolean; drop_pct: number; trail_pct: number; index_pct: number; custom: { ticker: string; below?: number; above?: number }[]; off: string[]; watched: string[]; inSession: boolean; interval: number; testing?: boolean }
   const [al, setAl] = useState<Alerts | null>(null)
-  const [alForm, setAlForm] = useState({ ticker: '', below: '' })
+  const [alForm, setAlForm] = useState({ ticker: '', below: '', above: '' })
   const [alBusy, setAlBusy] = useState(false)
   const [alErr, setAlErr] = useState('')
   const [alTested, setAlTested] = useState(false)
@@ -51,7 +51,7 @@ export function Trading() {
     setAlErr('')
     try {
       setAl(await api.post('/trading/alerts', { action, ticker, value }))
-      if (action === 'below') setAlForm({ ticker: '', below: '' })
+      if (action === 'below' || action === 'above') setAlForm({ ticker: '', below: '', above: '' })
       if (action === 'test') { setAlTested(true); setTimeout(() => setAlTested(false), 8000) }
     } catch (e) {
       setAlErr(e instanceof Error ? e.message : 'Lỗi')
@@ -355,8 +355,12 @@ export function Trading() {
                   {al.custom.map((c) => (
                     <div key={c.ticker} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12.5, padding: '7px 10px', background: 'var(--bg)', borderRadius: 10 }}>
                       <span style={{ fontWeight: 800, width: 48, letterSpacing: '.5px' }}>{c.ticker}</span>
-                      <span style={{ color: 'var(--ink-2)', flex: 1 }}>{t('báo khi giá xuống dưới')} <b style={{ color: '#2AA0C4' }}>{c.below}</b></span>
-                      <Hover as="button" onClick={() => alAct('remove_below', c.ticker)}
+                      <span style={{ color: 'var(--ink-2)', flex: 1 }}>
+                        {c.below != null && <>{t('báo khi giá xuống dưới')} <b style={{ color: '#2AA0C4' }}>{c.below}</b></>}
+                        {c.below != null && c.above != null && ' · '}
+                        {c.above != null && <>{t('báo khi giá vượt')} <b style={{ color: '#B04BC9' }}>{c.above}</b></>}
+                      </span>
+                      <Hover as="button" onClick={() => alAct('remove_custom', c.ticker)}
                         style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--placeholder)', fontSize: 15, lineHeight: 1, padding: 2 }}
                         hover={{ color: '#C94F3D' }}>✕</Hover>
                     </div>
@@ -367,9 +371,14 @@ export function Trading() {
                 <input value={alForm.ticker} onChange={(e) => setAlForm({ ...alForm, ticker: e.target.value.toUpperCase() })}
                   placeholder={t('Mã')} style={{ ...pfInput, width: 70, fontWeight: 700, letterSpacing: '.5px' }} />
                 <input value={alForm.below} onChange={(e) => setAlForm({ ...alForm, below: e.target.value })}
-                  onKeyDown={(e) => { if (e.key === 'Enter' && alForm.ticker && alForm.below) alAct('below', alForm.ticker.trim(), parseFloat(alForm.below.replace(',', '.'))) }}
-                  placeholder={t('dưới giá…')} style={{ ...pfInput, width: 90 }} />
-                <Hover as="button" onClick={() => alForm.ticker && alForm.below && alAct('below', alForm.ticker.trim(), parseFloat(alForm.below.replace(',', '.')))} disabled={alBusy}
+                  placeholder={t('dưới giá…')} style={{ ...pfInput, width: 84 }} />
+                <input value={alForm.above} onChange={(e) => setAlForm({ ...alForm, above: e.target.value })}
+                  placeholder={t('vượt giá…')} style={{ ...pfInput, width: 84 }} />
+                <Hover as="button" onClick={async () => {
+                    if (!alForm.ticker) return
+                    if (alForm.below) await alAct('below', alForm.ticker.trim(), parseFloat(alForm.below.replace(',', '.')))
+                    if (alForm.above) await alAct('above', alForm.ticker.trim(), parseFloat(alForm.above.replace(',', '.')))
+                  }} disabled={alBusy}
                   style={{ border: 'none', borderRadius: 10, padding: '9px 18px', font: 'inherit', fontSize: 12.5, fontWeight: 700, cursor: alBusy ? 'default' : 'pointer', background: 'var(--jade)', color: '#fff', opacity: alBusy ? 0.6 : 1 }}
                   hover={alBusy ? {} : { background: 'var(--jade-deep)' }}>＋ {t('Đặt mốc')}</Hover>
                 <Hover as="button" onClick={() => alAct('test')} disabled={alBusy}
