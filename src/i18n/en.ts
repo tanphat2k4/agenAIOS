@@ -594,6 +594,8 @@ export const EN: Record<string, string> = {
   "Danh mục của tôi": "My Portfolio",
   "Lấy giá khớp mới nhất (~10s)": "Fetch latest matched price (~10s)",
   "vốn": "cost",
+  "trần": "ceil",
+  "sàn": "floor",
   "Chưa có mã nào — thêm cổ phiếu anh đang giữ để theo dõi lãi/lỗ real-time (giá vốn nhập theo nghìn đồng, vd 15.5).": "No holdings yet — add the stocks you own to track real-time profit/loss (enter cost basis in thousands of VND, e.g. 15.5).",
   "Mã": "Ticker",
   "Số CP": "Shares",

@@ -615,6 +615,7 @@ def _portfolio_pnl(holdings: list, fresh: bool = False) -> dict:
         pnl_m = val_m - cost_m
         rows.append({
             "ticker": h["ticker"], "qty": h["qty"], "avg": h["avg"], "price": price, "change": q.get("change"),
+            "ceiling": q.get("ceiling"), "floor": q.get("floor"),  # trần/sàn biên độ phiên nay (user 16/07)
             "costM": round(cost_m, 2), "valueM": round(val_m, 2), "pnlM": round(pnl_m, 2),
             "pnlPct": round(pnl_m / cost_m * 100, 2) if cost_m else 0,
         })

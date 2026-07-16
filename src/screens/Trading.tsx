@@ -236,7 +236,10 @@ export function Trading() {
                 return (
                   <div key={h.ticker} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12.5, padding: '7px 10px', background: pfEditing === h.ticker ? 'var(--jade-soft)' : 'var(--bg)', borderRadius: 10 }}>
                     <span style={{ fontWeight: 800, width: 44 }}>{h.ticker}</span>
-                    <span style={{ color: 'var(--ink-2)', flex: 1, minWidth: 0 }}>{Number(h.qty).toLocaleString()}cp · {t('vốn')} {h.avg} → {h.price ?? '—'}</span>
+                    <span style={{ color: 'var(--ink-2)', flex: 1, minWidth: 0 }}>
+                      {Number(h.qty).toLocaleString()}cp · {t('vốn')} {h.avg} → {h.price ?? '—'}
+                      {h.ceiling != null && h.floor != null && <span style={{ color: 'var(--placeholder)' }}> · {t('trần')} <span style={{ color: '#B04BC9' }}>{h.ceiling}</span> / {t('sàn')} <span style={{ color: '#2AA0C4' }}>{h.floor}</span></span>}
+                    </span>
                     <span style={{ fontWeight: 700, color: pnlColor(h.pnlM) }}>{plus}{h.pnlM}tr ({plus && h.pnlPct > 0 ? '+' : ''}{h.pnlPct}%)</span>
                     <Hover as="button" title={t('Sửa số lượng / giá vốn')} onClick={() => startEditHolding(h)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--placeholder)', fontSize: 13.5, lineHeight: 1, padding: 2 }} hover={{ color: 'var(--jade-deep)' }}>✎</Hover>
                     <Hover as="button" onClick={() => removeHolding(h.ticker)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--placeholder)', fontSize: 15, lineHeight: 1, padding: 2 }} hover={{ color: '#C94F3D' }}>✕</Hover>

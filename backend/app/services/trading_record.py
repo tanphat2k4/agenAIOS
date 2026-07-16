@@ -432,7 +432,8 @@ def ground(ticker: str) -> tuple[str, str, str, float | None]:
         rsi = _snap_field(snap, "rsi")
         sma50, sma200 = _snap_field(snap, "close_50_sma"), _snap_field(snap, "close_200_sma")
         chs = f"{rt['change']:+}" if rt.get("change") is not None else "?"
-        headline = f"📍 {ticker} đang ở {rt['price']} (real-time, {chs}% từ tham chiếu {rt['ref']})" + (f" · RSI {rsi}" if rsi else "")
+        band = f" · Trần {rt['ceiling']} / Sàn {rt['floor']}" if rt.get("ceiling") and rt.get("floor") else ""
+        headline = f"📍 {ticker} đang ở {rt['price']} (real-time, {chs}% từ tham chiếu {rt['ref']}){band}" + (f" · RSI {rsi}" if rsi else "")
         directive = (
             f"⚠️ GIÁ REAL-TIME ({ticker}) TRONG PHIÊN HÔM NAY: khớp {rt['price']} ({chs}% so với tham chiếu {rt['ref']}). "
             f"Mở {rt['open']} · Cao {rt['high']} · Thấp {rt['low']} · Trần {rt['ceiling']} / Sàn {rt['floor']} · "
