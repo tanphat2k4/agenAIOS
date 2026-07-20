@@ -415,7 +415,7 @@ def _bg_advise(channel_id: str, ticker: str, question: str) -> None:
                         "Kết bằng 1 dòng cảnh báo rủi ro."),
         }
         try:
-            synth = ninerouter.chat([system, user, {"role": "system", "content": headline}], temperature=0.3, max_tokens=650)["content"] or ""
+            synth = ninerouter.chat([system, user, {"role": "system", "content": headline}], temperature=0.3, max_tokens=950)["content"] or ""
         except Exception as exc:  # noqa: BLE001
             synth = f"(không tổng hợp được: {exc})"
         final = f"{headline}\n\n{synth}" if synth.strip() else (f"{headline}\n\n{outputs[-1][1]}" if outputs else f"{headline}\n\nChưa có kết quả.")
@@ -1073,7 +1073,7 @@ def trading_relay(body: RelayIn, x_relay_key: str = Header(default="")):
                     + rec.PRICE_BAND_LINE)}
             try:
                 synth = ninerouter.chat([system, user, {"role": "system", "content": headline}],
-                                        temperature=0.3, max_tokens=600)["content"] or ""
+                                        temperature=0.3, max_tokens=950)["content"] or ""
             except Exception as exc:  # noqa: BLE001
                 synth = (outputs[-1][1] if outputs else f"(không tổng hợp được: {exc})")
             reply = f"{headline}\n\n{synth}".strip() if synth.strip() else headline

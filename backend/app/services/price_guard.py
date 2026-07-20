@@ -242,7 +242,7 @@ def _tier2_deep(ticker: str) -> None:
             + rec.PRICE_BAND_LINE)}
     try:
         synth = ninerouter.chat([system, user, {"role": "system", "content": headline}],
-                                temperature=0.3, max_tokens=600)["content"] or ""
+                                temperature=0.3, max_tokens=950)["content"] or ""
     except Exception:  # noqa: BLE001
         synth = outputs[-1][1] if outputs else ""
     text = f"🛡️ **Phân tích khẩn sau cảnh báo — {ticker}**\n\n{headline}\n\n{synth}".strip()
