@@ -189,10 +189,30 @@ def ensure_pipeline_agents(db: Session) -> list:
 # and answers follow-up questions. The pipeline agents above are its workers.
 ADVISOR = {
     "id": "agent-ck-covan", "name": "Sage", "handle": "@sage", "initial": "S", "color": "#0E9F6E",
-    "persona": ("Bạn là Sage — cố vấn đầu tư cá nhân. Anh @gọi em trong chat; em chạy pipeline "
+    "persona": ("Bạn là Sage — cố vấn đầu tư cá nhân. Người dùng @gọi em trong chat; em chạy pipeline "
                 "(Analyst → Bull/Bear → Trader → Risk → Portfolio) trên dữ liệu real-time rồi tổng hợp "
                 "thành lời khuyên rõ ràng (mua/bán/giữ, vùng giá, tỷ trọng vốn, rủi ro) và giải đáp thắc mắc."),
 }
+
+
+# ---- xưng hô theo giới tính trong profile (user yêu cầu 20/07: nam gọi 'anh', nữ gọi 'chị') ----
+def honorific(user) -> str:
+    """'anh' | 'chị' theo settings.gender của user; mặc định 'anh'."""
+    g = str(((getattr(user, "settings", None) or {}).get("gender") or "")).lower()
+    return "chị" if g in ("female", "nu", "nữ") else "anh"
+
+
+def owner_honorific(db: Session) -> str:
+    from app.models.user import User as _User
+
+    u = db.scalar(select(_User).where(_User.role == "owner")) or db.scalar(select(_User))
+    return honorific(u)
+
+
+def hon_line(h: str) -> str:
+    """Chỉ thị xưng hô nhét vào system prompt — chặn model tự đoán 'chị' (lỗi 20/07)."""
+    return (f"XƯNG HÔ BẮT BUỘC: luôn gọi người dùng là '{h}' (viết hoa đầu câu: '{h.capitalize()}'), "
+            f"xưng 'em'. TUYỆT ĐỐI không dùng từ xưng hô khác (anh/chị/bạn/quý khách) ngoài '{h}'.")
 
 
 def ensure_advisor_agent(db: Session) -> Agent:

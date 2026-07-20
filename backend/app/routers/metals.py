@@ -198,7 +198,7 @@ def metals_chat(body: ChatIn, db: Session = Depends(get_db)):
     )[:3000]
     system = {
         "role": "system",
-        "content": (AURUM["persona"] + " " + rec.ANTI_HALLUCINATION +
+        "content": (AURUM["persona"] + " " + rec.hon_line(rec.owner_honorific(db)) + " " + rec.ANTI_HALLUCINATION +
                     f"\n\nDỮ LIỆU REAL-TIME (VND & USD, nguồn SJC/BTMC/Yahoo):\n{data_block}"),
     }
     try:
@@ -246,7 +246,7 @@ def relay_answer_if_metals(db: Session, text: str) -> str | None:
         else:
             data_block = json.dumps({k: v for k, v in metals.snapshot().items() if k != "errors"},
                                     ensure_ascii=False, default=str)[:3000]
-            system = {"role": "system", "content": (AURUM["persona"] + " " + rec.ANTI_HALLUCINATION +
+            system = {"role": "system", "content": (AURUM["persona"] + " " + rec.hon_line(rec.owner_honorific(db)) + " " + rec.ANTI_HALLUCINATION +
                                                     f"\n\nDỮ LIỆU REAL-TIME:\n{data_block}")}
             try:
                 res = ninerouter.chat([system, {"role": "user", "content": text}], None, max_tokens=600)

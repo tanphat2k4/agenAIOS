@@ -128,7 +128,7 @@ def run_morning_report(db: Session, *, manual: bool = False) -> str:
             finally:
                 pdb.close()
             team = "\n".join(f"[{a['name']} · {a['role']}]: {t}" for a, t in outputs)
-            system = {"role": "system", "content": (f"{rec.ADVISOR['persona']} {rec.ANTI_HALLUCINATION} "
+            system = {"role": "system", "content": (f"{rec.ADVISOR['persona']} {rec.hon_line(rec.owner_honorific(db))} {rec.ANTI_HALLUCINATION} "
                       "KHÔNG lặp lại dòng giá đầu (đã có). Công cụ nghiên cứu, KHÔNG phải lời khuyên đầu tư.")}
             user = {"role": "user", "content": (f"Kết quả team về {tk} sáng nay (giá real-time):\n{team[:3200]}\n\n"
                     "Tổng hợp NGẮN: Khuyến nghị (MUA/BÁN/GIỮ) + vùng mua/chốt lời/cắt lỗ + 1 câu rủi ro. "

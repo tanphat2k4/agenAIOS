@@ -27,6 +27,7 @@ export function Profile() {
     { icon: '📞', label: 'Số điện thoại', value: PD.phone },
     { icon: '💼', label: 'Chức danh', value: PD.title },
     { icon: '📍', label: 'Khu vực', value: PD.location },
+    { icon: '🗣️', label: 'Xưng hô', value: PD.gender === 'female' ? 'Nữ — agent gọi "chị"' : PD.gender === 'male' ? 'Nam — agent gọi "anh"' : 'Chưa đặt (mặc định "anh")' },
   ]
 
   const profileStats = [
@@ -296,6 +297,17 @@ export function Profile() {
                   onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--jade)')}
                   onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--line)')}
                 />
+              </div>
+              {/* giới tính → agent gọi anh/chị (user yêu cầu 20/07) */}
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.4px', textTransform: 'uppercase', color: 'var(--placeholder)', marginBottom: 7 }}>{t('Giới tính (agent xưng hô theo)')}</div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {([['male', 'Nam — gọi "anh"'], ['female', 'Nữ — gọi "chị"']] as const).map(([v, label]) => (
+                    <Hover key={v} as="button" onClick={() => s.onProfileField('gender', v)}
+                      style={{ flex: 1, border: '1px solid ' + ((s.profileForm.gender ?? '') === v ? 'var(--jade)' : 'var(--line)'), background: (s.profileForm.gender ?? '') === v ? 'var(--jade-soft)' : 'var(--bg)', color: (s.profileForm.gender ?? '') === v ? 'var(--jade-deep)' : 'var(--ink-2)', borderRadius: 11, padding: '11px 14px', font: 'inherit', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+                      hover={{ borderColor: 'var(--jade)' }}>{t(label)}</Hover>
+                  ))}
+                </div>
               </div>
               {/* bio */}
               <div>

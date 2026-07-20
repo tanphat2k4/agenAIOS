@@ -372,7 +372,8 @@ def _llm_reply(db: Session, channel_id: str, _text: str) -> str:
                     "Hệ thống ĐÃ CÓ 'Vệ sĩ giá' tự canh giá trong phiên và báo qua kênh + Telegram + chuông — "
                     "nếu người dùng muốn được báo khi giá chạm mốc, hướng dẫn gõ đúng cú pháp: "
                     "'cảnh báo <MÃ> dưới <giá>' hoặc '<MÃ> vượt <giá> thì báo'; TUYỆT ĐỐI không nói hệ thống "
-                    "thiếu tính năng cảnh báo giá hay bảo người dùng đi dùng app khác. " + rec.ANTI_HALLUCINATION +
+                    "thiếu tính năng cảnh báo giá hay bảo người dùng đi dùng app khác. "
+                    + rec.hon_line(rec.owner_honorific(db)) + " " + rec.ANTI_HALLUCINATION +
                     " Đây là công cụ nghiên cứu, KHÔNG phải lời khuyên đầu tư."),
     }
     # The price directive goes LAST (most salient) so it overrides stale conversation numbers.
@@ -395,14 +396,15 @@ def _bg_advise(channel_id: str, ticker: str, question: str) -> None:
         outputs, _ok, headline = rec.run_pipeline(db, ticker)
         team = "\n".join(f"[{a['name']} · {a['role']}]: {txt}" for a, txt in outputs)
         mkt = ta.market_overview_text()
+        hon = rec.owner_honorific(db)
         system = {
             "role": "system",
-            "content": (f"{rec.ADVISOR['persona']} {rec.ANTI_HALLUCINATION} "
+            "content": (f"{rec.ADVISOR['persona']} {rec.hon_line(hon)} {rec.ANTI_HALLUCINATION} "
                         "KHÔNG lặp lại dòng giá đầu (đã có sẵn). Đây là công cụ nghiên cứu, KHÔNG phải lời khuyên đầu tư."),
         }
         user = {
             "role": "user",
-            "content": (f"Câu hỏi của anh: {question}\n\n"
+            "content": (f"Câu hỏi của {hon}: {question}\n\n"
                         + (f"Bối cảnh thị trường: {mkt}\n\n" if mkt else "")
                         + f"Kết quả phân tích của team về {ticker} (giá real-time):\n{team[:3200]}\n\n"
                         "Tổng hợp thành lời khuyên có cấu trúc, mỗi mục 1 dòng gạch đầu dòng:\n"
@@ -433,9 +435,10 @@ def _bg_screen(channel_id: str, question: str) -> None:
     key = _key("SCREEN", None)
     db = SessionLocal()
     try:
+        hon = rec.owner_honorific(db)
         scr = ta.market_screen()
         if not scr or not scr.get("finalists"):
-            _save_advisor_msg(db, channel_id, "Chưa lấy được dữ liệu sàn, anh thử lại sau nhé.")
+            _save_advisor_msg(db, channel_id, f"Chưa lấy được dữ liệu sàn, {hon} thử lại sau nhé.")
             _jobs[key] = {"status": "done", "result": "empty"}
             return
         mkt = ta.market_overview_text()
@@ -447,12 +450,12 @@ def _bg_screen(channel_id: str, question: str) -> None:
         )
         system = {
             "role": "system",
-            "content": (f"{rec.ADVISOR['persona']} {rec.ANTI_HALLUCINATION} "
+            "content": (f"{rec.ADVISOR['persona']} {rec.hon_line(hon)} {rec.ANTI_HALLUCINATION} "
                         "Chỉ dùng các mã + số trong danh sách, KHÔNG bịa mã ngoài danh sách. Công cụ nghiên cứu, KHÔNG phải lời khuyên đầu tư."),
         }
         user = {
             "role": "user",
-            "content": (f"Câu hỏi của anh: {question}\n\n"
+            "content": (f"Câu hỏi của {hon}: {question}\n\n"
                         + (f"Bối cảnh: {mkt}\n\n" if mkt else "")
                         + f"Ngành MẠNH nhất sàn hôm nay:\n{sectors}\n\n"
                         + f"Ứng viên (đã lọc {scr['nLiquid']} mã thanh khoản toàn sàn HOSE):\n{fin}\n\n"
@@ -521,7 +524,7 @@ def trading_chat(body: ChatIn, db: Session = Depends(get_db), current: User = De
         if _wants_portfolio(body.text):
             holdings = _get_holdings(current)
             if not holdings:
-                return {"messages": [_save_advisor_msg(db, cid, "Anh chưa có mã nào trong danh mục. Thêm ở mục **Danh mục của tôi** (màn Chứng khoán) rồi hỏi lại em nhé.")], "analyzing": None}
+                return {"messages": [_save_advisor_msg(db, cid, f"{rec.honorific(current).capitalize()} chưa có mã nào trong danh mục. Thêm ở mục **Danh mục của tôi** (màn Chứng khoán) rồi hỏi lại em nhé.")], "analyzing": None}
             key = _key("PORTFOLIO", None)
             job = _jobs.get(key)
             if not (job and job["status"] == "running"):
@@ -570,14 +573,14 @@ def trading_chat(body: ChatIn, db: Session = Depends(get_db), current: User = De
 
     if cmd == "analyze":
         if not ticker:
-            return {"messages": [_save_agent_msg(db, cid, "Anh cho em mã cổ phiếu để phân tích nhé (vd FPT).")], "analyzing": None}
+            return {"messages": [_save_agent_msg(db, cid, f"{rec.honorific(current).capitalize()} cho em mã cổ phiếu để phân tích nhé (vd FPT).")], "analyzing": None}
         interim = _save_agent_msg(db, cid, f"⏳ Đang chạy phân tích đầy đủ {ticker} (analyst → tranh luận → trader → rủi ro → PM), vài phút nhé…")
         threading.Thread(target=_bg_analyze, args=(cid, ticker), daemon=True).start()
         return {"messages": [interim], "analyzing": ticker}
 
     if cmd in ("snapshot", "news", "extras", "macro"):
         if cmd != "macro" and not ticker:
-            return {"messages": [_save_agent_msg(db, cid, "Anh cho em mã cổ phiếu nhé (vd FPT).")], "analyzing": None}
+            return {"messages": [_save_agent_msg(db, cid, f"{rec.honorific(current).capitalize()} cho em mã cổ phiếu nhé (vd FPT).")], "analyzing": None}
         if cmd == "snapshot":
             text = ta.snapshot(ticker)
         elif cmd == "news":
@@ -643,7 +646,8 @@ def _bg_portfolio(channel_id: str, holdings: list, question: str) -> None:
     db = SessionLocal()
     try:
         p = _portfolio_pnl(holdings)
-        lines = ["💼 **Danh mục của anh** — giá real-time\n"]
+        hon = rec.owner_honorific(db)
+        lines = [f"💼 **Danh mục của {hon}** — giá real-time\n"]
         for r in p["holdings"]:
             dot = "🟢" if r["pnlM"] > 0 else ("🔴" if r["pnlM"] < 0 else "🟡")  # lãi/lỗ/hoà vốn (khớp màu UI)
             price = r["price"] if r["price"] is not None else r["avg"]
@@ -658,11 +662,11 @@ def _bg_portfolio(channel_id: str, holdings: list, question: str) -> None:
             f"{r['ticker']}: P/L {r['pnlPct']:+}% (vốn {r['avg']} → {r['price']}, phiên {(r['change'] or 0):+}%), tỷ trọng {round(r['valueM'] / tv * 100)}%"
             for r in p["holdings"]
         )
-        system = {"role": "system", "content": (f"{rec.ADVISOR['persona']} {rec.ANTI_HALLUCINATION} "
+        system = {"role": "system", "content": (f"{rec.ADVISOR['persona']} {rec.hon_line(hon)} {rec.ANTI_HALLUCINATION} "
                                                  "Chỉ dùng số đã cho, KHÔNG bịa. Công cụ nghiên cứu, KHÔNG phải lời khuyên đầu tư.")}
         user = {"role": "user", "content": (
             (f"Bối cảnh: {mkt}\n\n" if mkt else "")
-            + f"Danh mục của anh (tổng P/L {p['totalPnlPct']:+}%):\n{data}\n\n"
+            + f"Danh mục của {hon} (tổng P/L {p['totalPnlPct']:+}%):\n{data}\n\n"
             "Với TỪNG mã, cho 1 hành động: **GIỮ / BÁN bớt / MUA THÊM** + lý do 1 câu (dựa P/L, đà giá phiên, tỷ trọng). "
             "Rồi 1-2 câu nhận định tổng danh mục (đa dạng hoá, mã cần chú ý gấp). Gọn, gạch đầu dòng.")}
         try:
@@ -814,7 +818,7 @@ def _handle_watchlist_cmd(db: Session, user: User, text: str) -> str | None:
         if any(low.startswith(k) for k in kws):
             tk = _tk()
             if not tk:
-                return "Anh ghi kèm mã 3 chữ nhé (vd: *theo dõi HPG*)."
+                return f"{rec.honorific(user).capitalize()} ghi kèm mã 3 chữ nhé (vd: *theo dõi HPG*)."
             wl = rec.watchlist_of(user)
             if act == "add":
                 if tk in wl:
@@ -822,7 +826,7 @@ def _handle_watchlist_cmd(db: Session, user: User, text: str) -> str | None:
                 if len(wl) >= rec.WL_MAX:
                     return f"Watchlist đã đủ {rec.WL_MAX} mã — bỏ bớt 1 mã rồi thêm **{tk}** nhé.\n\n" + _wl_render(wl)
                 if not _ticker_exists(tk):
-                    return f"Em không tìm thấy mã **{tk}** trên sàn — anh kiểm tra lại nhé."
+                    return f"Em không tìm thấy mã **{tk}** trên sàn — {rec.honorific(user)} kiểm tra lại nhé."
                 wl = wl + [tk]
             elif act == "remove":
                 if tk not in wl:
@@ -959,12 +963,12 @@ def _handle_alert_cmd(db: Session, user: User, text: str) -> str | None:
             val = float(m.group(3).replace(",", "."))
             field = "above" if direction in ("vượt", "vuot", "trên", "tren", "lên", "len") else "below"
             if not _ticker_exists(tk):
-                return f"Em không tìm thấy mã **{tk}** trên sàn — anh kiểm tra lại nhé."
+                return f"Em không tìm thấy mã **{tk}** trên sàn — {rec.honorific(user)} kiểm tra lại nhé."
             mine = next((c for c in cfg["custom"] if c.get("ticker") == tk), {"ticker": tk})
             cfg["custom"] = [c for c in cfg["custom"] if c.get("ticker") != tk] + [{**mine, field: val}]
             pg.save_alerts(db, user, cfg)
             word = "vượt" if field == "above" else "xuống dưới"
-            return f"✅ Đã đặt: **{tk} {word} {val}** là báo anh liền (kênh + Telegram + chuông).\n\n" + _alerts_render(db, user)
+            return f"✅ Đã đặt: **{tk} {word} {val}** là báo {rec.honorific(user)} liền (kênh + Telegram + chuông).\n\n" + _alerts_render(db, user)
     m = _AL_LOSS_RE.search(text or "")
     if m:
         val = float((m.group(1) or m.group(2)).replace(",", "."))
@@ -974,7 +978,7 @@ def _handle_alert_cmd(db: Session, user: User, text: str) -> str | None:
     if low.startswith(("xóa cảnh báo", "xoa canh bao")):
         tk = _tk()
         if not tk:
-            return "Anh ghi kèm mã nhé (vd: *xóa cảnh báo VIB*)."
+            return f"{rec.honorific(user).capitalize()} ghi kèm mã nhé (vd: *xóa cảnh báo VIB*)."
         cfg["custom"] = [c for c in cfg["custom"] if c.get("ticker") != tk]
         pg.save_alerts(db, user, cfg)
         return f"✅ Đã xóa luật riêng của **{tk}**.\n\n" + _alerts_render(db, user)
@@ -1065,7 +1069,7 @@ def trading_relay(body: RelayIn, x_relay_key: str = Header(default="")):
                 pdb.close()
             team = "\n".join(f"[{a['name']} · {a['role']}]: {txt}" for a, txt in outputs)
             mkt = ta.market_overview_text()
-            system = {"role": "system", "content": (f"{rec.ADVISOR['persona']} {rec.ANTI_HALLUCINATION} "
+            system = {"role": "system", "content": (f"{rec.ADVISOR['persona']} {rec.hon_line(rec.honorific(owner))} {rec.ANTI_HALLUCINATION} "
                       "KHÔNG lặp lại dòng giá đầu (đã có). Công cụ nghiên cứu, KHÔNG phải lời khuyên đầu tư.")}
             user = {"role": "user", "content": (f"Câu hỏi: {text}\n\n" + (f"Thị trường: {mkt}\n\n" if mkt else "")
                     + f"Kết quả team về {ticker} (giá real-time):\n{team[:3200]}\n\n"

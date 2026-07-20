@@ -31,6 +31,7 @@ class ProfileUpdate(BaseModel):
     title: str | None = None
     bio: str | None = None
     location: str | None = None
+    gender: str | None = None  # male|female — agents gọi 'anh'/'chị' theo trường này (20/07)
 
 
 class PasswordChange(BaseModel):
@@ -59,6 +60,10 @@ def update_profile(
         val = getattr(body, field)
         if val is not None:
             setattr(current, field, val)
+    if body.gender is not None:
+        if body.gender not in ("male", "female", ""):
+            raise HTTPException(status_code=400, detail="gender phải là male | female")
+        current.settings = {**(current.settings or {}), "gender": body.gender}  # reassign → SQLAlchemy tracks
     db.commit()
     return row_to_dict(current)
 

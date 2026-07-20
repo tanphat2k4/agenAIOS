@@ -102,6 +102,7 @@ def _scan(db: Session, *, force: bool = False) -> list[dict]:
     tickers = sorted((set(by_tk) | set(wl)) - set(cfg["off"]))
     if not tickers:
         return []
+    hon = rec.honorific(owner)
     quotes = ta._price_board_batch(tickers, fresh=True)
     day = _day()
     events: list[dict] = []
@@ -111,7 +112,7 @@ def _scan(db: Session, *, force: bool = False) -> list[dict]:
         if key in _fired and not force:
             return
         _fired.add(key)
-        events.append({"rule": rule, "ticker": tk, "severe": severe, "title": title, "fact": fact})
+        events.append({"rule": rule, "ticker": tk, "severe": severe, "title": title, "fact": fact, "hon": hon})
 
     for tk in tickers:
         q = quotes.get(tk) or {}
@@ -126,7 +127,7 @@ def _scan(db: Session, *, force: bool = False) -> list[dict]:
             pnl_pct = round((price - h["avg"]) / h["avg"] * 100, 2)
             pk = f"{day}:{tk}"
             _peak_pnl[pk] = max(_peak_pnl.get(pk, pnl_pct), pnl_pct)
-            pos = f"Anh giữ {h['qty']:,.0f}cp vốn {h['avg']} → lãi/lỗ {pnl_pct:+}%."
+            pos = f"{hon.capitalize()} giữ {h['qty']:,.0f}cp vốn {h['avg']} → lãi/lỗ {pnl_pct:+}%."
         # ① rơi nhanh so tham chiếu
         if chg is not None and chg <= -cfg["drop_pct"]:
             _hit("drop", tk, False, f"⚠️ **{tk} {chg:+}%** còn {price} (tham chiếu {ref})", pos)
@@ -153,10 +154,10 @@ def _scan(db: Session, *, force: bool = False) -> list[dict]:
                 continue
             if c.get("below") and price <= float(c["below"]):
                 _hit("below", tk, False,
-                     f"🔻 **{tk} chạm mốc anh đặt: {price} ≤ {c['below']}**", pos)
+                     f"🔻 **{tk} chạm mốc {hon} đặt: {price} ≤ {c['below']}**", pos)
             if c.get("above") and price >= float(c["above"]):
                 _hit("above", tk, False,
-                     f"🚀 **{tk} vượt mốc anh đặt: {price} ≥ {c['above']}**", pos)
+                     f"🚀 **{tk} vượt mốc {hon} đặt: {price} ≥ {c['above']}**", pos)
 
     # ④ VN-Index
     m = ta.market_overview()
@@ -175,7 +176,7 @@ def _tier1_line(ev: dict) -> str:
 
     try:
         out = ninerouter.chat(
-            [{"role": "system", "content": (f"{rec.ADVISOR['persona']} {rec.ANTI_HALLUCINATION} "
+            [{"role": "system", "content": (f"{rec.ADVISOR['persona']} {rec.hon_line(ev.get('hon', 'anh'))} {rec.ANTI_HALLUCINATION} "
               "Trả lời 2-3 câu NGẮN, hành động cụ thể kèm mức giá (giữ/hạ tỷ trọng/cắt/quan sát), "
               "KHÔNG markdown, KHÔNG lặp lại con số tiêu đề. Kết: 'Nghiên cứu, không phải lời khuyên đầu tư.'")},
              {"role": "user", "content": f"Cảnh báo vừa nổ: {ev['title']}. {ev['fact']} Khuyên hành động ngay?"}],
@@ -230,11 +231,12 @@ def _tier2_deep(ticker: str) -> None:
 
     pdb = SessionLocal()
     try:
+        hon = rec.owner_honorific(pdb)
         outputs, _ok, headline = rec.run_pipeline(pdb, ticker)
     finally:
         pdb.close()
     team = "\n".join(f"[{a['name']} · {a['role']}]: {t}" for a, t in outputs)
-    system = {"role": "system", "content": (f"{rec.ADVISOR['persona']} {rec.ANTI_HALLUCINATION} "
+    system = {"role": "system", "content": (f"{rec.ADVISOR['persona']} {rec.hon_line(hon)} {rec.ANTI_HALLUCINATION} "
               "KHÔNG lặp lại dòng giá đầu (đã có). Công cụ nghiên cứu, KHÔNG phải lời khuyên đầu tư.")}
     user = {"role": "user", "content": (f"CẢNH BÁO RỦI RO vừa nổ với {ticker} — phân tích lại NGAY.\n"
             f"Kết quả team (giá real-time):\n{team[:3200]}\n\n"

@@ -97,7 +97,7 @@ export interface AppState {
   // ----- profile / account -----
   profileTab: string
   personCard: PersonCard | null
-  profileData: { name: string; email: string; phone: string; title: string; bio: string; location: string }
+  profileData: { name: string; email: string; phone: string; title: string; bio: string; location: string; gender?: string }
   profileForm: Record<string, string>
   twoFA: boolean
   profileSessions: { id: string; device: string; where: string; time: string; current: boolean; icon: string }[]
@@ -680,7 +680,7 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
       activeId: [...channels.public, ...channels.private, ...channels.direct].find((c: { id: string }) => c.id === get().activeId) ? get().activeId : (channels.public[0]?.id || channels.private[0]?.id || channels.direct[0]?.id || ''),
       rolesData: roles, rolePerms, usersData: users, invitesData: invites,
       signupsData: signups, notifsData: notifs, billMonths: bill, recentActivity: activity, unread,
-      profileData: { name: profile.name, email: profile.email, phone: profile.phone, title: profile.title, bio: profile.bio, location: profile.location },
+      profileData: { name: profile.name, email: profile.email, phone: profile.phone, title: profile.title, bio: profile.bio, location: profile.location, gender: (profile.settings || {}).gender || '' },
       activeLang: settings.activeLang || 'vi', agentLang: settings.agentLang || 'user',
       timeFormat: settings.timeFormat || '24h', dateFormat: settings.dateFormat || 'dmy',
       weekStart: settings.weekStart || 'mon', timezone: settings.timezone || 'hcm', currency: settings.currency || 'vnd',
@@ -920,7 +920,7 @@ export const useStore = create<AppState & AppActions>((set: Set, get: Get) => ({
   setProfileTab: (t) => set({ profileTab: t }),
   openEditProfile: () => set((s) => ({ overlay: 'editProfile', profileForm: { ...s.profileData } })),
   onProfileField: (k, v) => set((s) => ({ profileForm: { ...s.profileForm, [k]: v } })),
-  saveProfile: () => { const f = get().profileForm; if (!(f.name || '').trim()) return; persist(api.patch('/profile', { name: f.name, email: f.email, phone: f.phone, title: f.title, bio: f.bio, location: f.location })); set((s) => ({ profileData: { ...s.profileData, ...f }, overlay: null })); get().fireToast('Đã cập nhật hồ sơ') },
+  saveProfile: () => { const f = get().profileForm; if (!(f.name || '').trim()) return; persist(api.patch('/profile', { name: f.name, email: f.email, phone: f.phone, title: f.title, bio: f.bio, location: f.location, gender: f.gender ?? '' })); set((s) => ({ profileData: { ...s.profileData, ...f }, overlay: null })); get().fireToast('Đã cập nhật hồ sơ') },
   toggle2FA: () => { persist(api.post('/profile/2fa/toggle')); set((s) => ({ twoFA: !s.twoFA })); get().fireToast(get().twoFA ? 'Đã bật xác thực 2 lớp' : 'Đã tắt xác thực 2 lớp') },
   openChangePw: () => set({ overlay: 'changePw', pwForm: { cur: '', next: '', confirm: '' } }),
   onPwField: (k, v) => set((s) => ({ pwForm: { ...s.pwForm, [k]: v } as AppState['pwForm'] })),
