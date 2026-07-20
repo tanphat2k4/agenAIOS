@@ -443,7 +443,24 @@ def ground(ticker: str) -> tuple[str, str, str, float | None]:
             f"Các mức thấp hơn {rt['price']} là vùng mua/hỗ trợ, không phải giá hiện tại. Đưa ra khuyến nghị vùng giá rõ ràng."
         )
         return snap, headline, directive, rt["price"]
-    return snap, price_headline(ticker, snap), live_directive(ticker, snap), None
+    # Trước giờ mở / ngoài phiên: chưa có giá khớp nhưng listing (tham chiếu/trần/sàn
+    # của phiên) đã công bố qua price_board — gắn vào headline để báo cáo sáng 8h
+    # vẫn hiện biên độ ngày mới (user duyệt 20/07).
+    band = ""
+    q: dict = {}
+    try:
+        q = (ta._price_board_batch([ticker]) or {}).get(ticker) or {}
+        if q.get("ceiling") and q.get("floor"):
+            band = f" · Trần {q['ceiling']} / Sàn {q['floor']} (biên độ phiên)"
+    except Exception:  # noqa: BLE001
+        band = ""
+    headline = price_headline(ticker, snap)
+    directive = live_directive(ticker, snap)
+    if band:
+        headline = (headline + band) if headline else f"📍 {ticker}{band}"
+        if directive:
+            directive += f" Biên độ phiên nay: tham chiếu {q.get('ref')} · trần {q.get('ceiling')} · sàn {q.get('floor')}."
+    return snap, headline, directive, None
 
 
 # ----------------------- the full TradingAgents-style pipeline -----------------------
