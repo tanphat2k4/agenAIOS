@@ -227,14 +227,36 @@ def relay_answer_if_metals(db: Session, text: str) -> str | None:
     asset = _detect_asset(low)
 
     if any(k in low for k in _ADVICE_KW):
-        pdb = SessionLocal()  # pipeline on its OWN session so workflow/log/knowledge commits cleanly
-        try:
-            outputs, _ok, _h = mp.run_pipeline(pdb, text)
-        finally:
-            pdb.close()
-        by_name = {a["name"]: t for a, t in outputs}
-        final = (by_name.get("Aurum") or "").strip() or "(pipeline không trả kết luận)"
-        reply = metals.headline(metals.snapshot(), asset) + "\n\n" + final
+        # pipeline Bull/Bear/Risk chạy Ở NỀN — trả interim ngay để relay.sh không timeout
+        # (chạy đồng bộ từng làm bot Telegram bỏ relay → mất đồng bộ kênh, 21/07)
+        import threading as _th
+
+        hon = rec.owner_honorific(db)
+        interim = (f"🥇 **Aurum** đang hỏi team Bull/Bear/Risk trên giá {('bạc' if asset == 'silver' else 'vàng')} real-time — "
+                   f"kết quả gửi lại đây + kênh #vang-bac trong ~1-2 phút, {hon} chờ chút nhé…")
+        _save_aurum_msg(db, METALS_CHANNEL_ID, interim)
+
+        def _bg_metal_advice() -> None:
+            bdb = SessionLocal()
+            try:
+                pdb = SessionLocal()  # pipeline on its OWN session so workflow/log/knowledge commits cleanly
+                try:
+                    outputs, _ok, _h = mp.run_pipeline(pdb, text)
+                finally:
+                    pdb.close()
+                by_name = {a["name"]: t for a, t in outputs}
+                final = (by_name.get("Aurum") or "").strip() or "(pipeline không trả kết luận)"
+                rep = metals.headline(metals.snapshot(), asset) + "\n\n" + final
+                _save_aurum_msg(bdb, METALS_CHANNEL_ID, rep)
+                from app.services.price_guard import _tg_send
+                _tg_send(rep, account="metals")
+            except Exception:  # noqa: BLE001
+                bdb.rollback()
+            finally:
+                bdb.close()
+
+        _th.Thread(target=_bg_metal_advice, daemon=True).start()
+        return interim.replace("**", "")
     else:
         snap = metals.snapshot()
         head = metals.headline(snap, asset)

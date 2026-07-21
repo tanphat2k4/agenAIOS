@@ -1001,6 +1001,41 @@ class RelayIn(BaseModel):
     sender: str = "Telegram"
 
 
+def _bg_relay_deep(channel_id: str, ticker: str, question: str) -> None:
+    """Pipeline 5-agent cho câu hỏi sâu từ Telegram — chạy nền, xong post kênh + ĐẨY
+    thẳng kết quả về Telegram (openclaw message send). Relay vì thế trả lời tức thì,
+    không bao giờ đụng timeout 180s của relay.sh nữa."""
+    db = SessionLocal()
+    try:
+        hon = rec.owner_honorific(db)
+        pdb = SessionLocal()  # pipeline on its OWN session (workflow/log/knowledge commit cleanly)
+        try:
+            outputs, _ok, headline = rec.run_pipeline(pdb, ticker)
+        finally:
+            pdb.close()
+        team = "\n".join(f"[{a['name']} · {a['role']}]: {txt}" for a, txt in outputs)
+        mkt = ta.market_overview_text()
+        system = {"role": "system", "content": (f"{rec.ADVISOR['persona']} {rec.hon_line(hon)} {rec.ANTI_HALLUCINATION} "
+                  "KHÔNG lặp lại dòng giá đầu (đã có). Công cụ nghiên cứu, KHÔNG phải lời khuyên đầu tư.")}
+        user = {"role": "user", "content": (f"Câu hỏi: {question}\n\n" + (f"Thị trường: {mkt}\n\n" if mkt else "")
+                + f"Kết quả team về {ticker} (giá real-time):\n{team[:3200]}\n\n"
+                "Tổng hợp NGẮN: Khuyến nghị (MUA/BÁN/GIỮ) + vùng mua/chốt lời/cắt lỗ + 1 câu rủi ro. "
+                + rec.PRICE_BAND_LINE)}
+        try:
+            synth = ninerouter.chat([system, user, {"role": "system", "content": headline}],
+                                    temperature=0.3, max_tokens=950)["content"] or ""
+        except Exception as exc:  # noqa: BLE001
+            synth = (outputs[-1][1] if outputs else f"(không tổng hợp được: {exc})")
+        reply = f"{headline}\n\n{synth}".strip() if synth.strip() else headline
+        _save_advisor_msg(db, channel_id, reply)
+        from app.services.price_guard import _tg_send
+        _tg_send(reply)
+    except Exception:  # noqa: BLE001
+        db.rollback()
+    finally:
+        db.close()
+
+
 def _save_user_msg(db: Session, channel_id: str, text: str) -> None:
     """Mirror an inbound Telegram message as the workspace OWNER (it's their own Telegram chat)."""
     owner = db.scalar(select(User).where(User.role == "owner")) or db.scalar(select(User))
@@ -1055,34 +1090,18 @@ def trading_relay(body: RelayIn, x_relay_key: str = Header(default="")):
 
         _save_user_msg(db, cid, text)
         cmd, ticker = ta.classify(text)
-        # recommendation / analysis intents → run the full pipeline (so the Agent Workflow runs);
-        # quick price/news/greeting → conversational reply.
+        # recommendation / analysis intents → pipeline chạy Ở NỀN + trả interim NGAY.
+        # Trước đây chạy đồng bộ 2-5 phút → relay.sh (timeout 180s) chết → bot Telegram
+        # tự trả lời một mình → kênh #chung-khoan mất hội thoại (user báo 21/07).
         deep = any(k in text.lower() for k in _DEEP_KW)
         if ticker and (cmd == "analyze" or ta.is_opinion(text) or deep):
-            # run the pipeline on its OWN session (like the in-app thread) so its workflow/log/knowledge
-            # writes commit cleanly — sharing this request's session (after _save_user_msg) made
-            # _record_pipeline roll back, so the Agent Workflow never updated.
-            pdb = SessionLocal()
-            try:
-                outputs, _ok, headline = rec.run_pipeline(pdb, ticker)  # runs the 5-agent workflow
-            finally:
-                pdb.close()
-            team = "\n".join(f"[{a['name']} · {a['role']}]: {txt}" for a, txt in outputs)
-            mkt = ta.market_overview_text()
-            system = {"role": "system", "content": (f"{rec.ADVISOR['persona']} {rec.hon_line(rec.honorific(owner))} {rec.ANTI_HALLUCINATION} "
-                      "KHÔNG lặp lại dòng giá đầu (đã có). Công cụ nghiên cứu, KHÔNG phải lời khuyên đầu tư.")}
-            user = {"role": "user", "content": (f"Câu hỏi: {text}\n\n" + (f"Thị trường: {mkt}\n\n" if mkt else "")
-                    + f"Kết quả team về {ticker} (giá real-time):\n{team[:3200]}\n\n"
-                    "Tổng hợp NGẮN: Khuyến nghị (MUA/BÁN/GIỮ) + vùng mua/chốt lời/cắt lỗ + 1 câu rủi ro. "
-                    + rec.PRICE_BAND_LINE)}
-            try:
-                synth = ninerouter.chat([system, user, {"role": "system", "content": headline}],
-                                        temperature=0.3, max_tokens=950)["content"] or ""
-            except Exception as exc:  # noqa: BLE001
-                synth = (outputs[-1][1] if outputs else f"(không tổng hợp được: {exc})")
-            reply = f"{headline}\n\n{synth}".strip() if synth.strip() else headline
-        else:
-            reply = _llm_reply(db, cid, text)
+            hon = rec.honorific(owner)
+            interim = (f"💼 **{rec.ADVISOR['name']}** đang hỏi team (Analyst → Bull/Bear → Trader → Risk → Portfolio) "
+                       f"cho **{ticker}** trên giá real-time — kết quả gửi lại đây + kênh #chung-khoan trong ~1-3 phút, {hon} chờ chút nhé…")
+            _save_advisor_msg(db, cid, interim)
+            threading.Thread(target=_bg_relay_deep, args=(cid, ticker, text), daemon=True).start()
+            return {"reply": interim.replace("**", "")}
+        reply = _llm_reply(db, cid, text)
         _save_advisor_msg(db, cid, reply)
         return {"reply": reply}
     except Exception as exc:  # noqa: BLE001

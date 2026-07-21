@@ -187,14 +187,14 @@ def _tier1_line(ev: dict) -> str:
         return ""
 
 
-def _tg_send(text: str) -> bool:
-    """Đẩy thẳng tin ra Telegram (bot trading) — plain send, không agent turn."""
+def _tg_send(text: str, account: str = "trading") -> bool:
+    """Đẩy thẳng tin ra Telegram — plain send, không agent turn (account = bot gửi)."""
     if not settings.OPENCLAW_ENABLED:
         return False
     plain = re.sub(r"\*\*|__|`", "", text)[:3800]
     import shlex
 
-    cmd = ("openclaw message send --channel telegram --account trading "
+    cmd = (f"openclaw message send --channel telegram --account {shlex.quote(account)} "
            f"--target {shlex.quote(settings.OPENCLAW_TELEGRAM_CHAT)} --message {shlex.quote(plain)}")
     try:
         r = subprocess.run(["wsl.exe", "-e", "bash", "-lc", cmd + " 2>/dev/null"],
