@@ -42,6 +42,15 @@ def _start_music_sync() -> None:
 
 
 @app.on_event("startup")
+def _start_trading_tg_sync() -> None:
+    # parity Telegram↔#chung-khoan/#vang-bac VÔ ĐIỀU KIỆN: tail transcript phiên OpenClaw
+    # (bot bỏ relay vẫn không mất tin) — thêm 21/07 sau sự cố bot "nhớ" relay hỏng
+    from app.services.trading_tg_sync import start_trading_tg_sync
+
+    start_trading_tg_sync()
+
+
+@app.on_event("startup")
 def _start_price_guard() -> None:
     # Vệ sĩ giá: cảnh báo rủi ro trong phiên (60s/lần, chỉ giờ giao dịch) — user duyệt 16/07
     from app.services.price_guard import start_price_guard

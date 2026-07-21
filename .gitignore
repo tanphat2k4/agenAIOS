@@ -9,3 +9,4 @@ dist-ssr
 *.tsbuildinfo
 __pycache__/
 backend/tg_outbound.log
+backend/.trading_sync.json
