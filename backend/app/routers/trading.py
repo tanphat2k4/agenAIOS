@@ -307,6 +307,8 @@ def _bg_analyze(channel_id: str, ticker: str) -> None:
         else:
             chat_text = text
         _save_agent_msg(db, channel_id, chat_text)
+        from app.services.price_guard import _tg_send
+        _tg_send(chat_text)  # parity kênh→TG cho phân tích đầy đủ
         _jobs[key] = {"status": "done", "result": text}
         rec.record_analysis(db, ticker, report=text, duration=f"{int(time.time() - t0)}s", ok=ok)
     finally:
@@ -422,6 +424,8 @@ def _bg_advise(channel_id: str, ticker: str, question: str) -> None:
             synth = f"(không tổng hợp được: {exc})"
         final = f"{headline}\n\n{synth}" if synth.strip() else (f"{headline}\n\n{outputs[-1][1]}" if outputs else f"{headline}\n\nChưa có kết quả.")
         _save_advisor_msg(db, channel_id, final)
+        from app.services.price_guard import _tg_send
+        _tg_send(final)  # parity kênh→TG cho kết quả chạy nền
         _jobs[key] = {"status": "done", "result": "ok"}
     except Exception as exc:  # noqa: BLE001
         _save_advisor_msg(db, channel_id, f"{rec.ADVISOR['name']} gặp lỗi khi phân tích {ticker}: {exc}")
@@ -469,6 +473,8 @@ def _bg_screen(channel_id: str, question: str) -> None:
             synth = f"(không tổng hợp được: {exc})"
         head = f"📊 Lọc toàn sàn HOSE ({scr['nLiquid']} mã thanh khoản)" + (f" · {mkt}" if mkt else "")
         _save_advisor_msg(db, channel_id, f"{head}\n\n{synth}")
+        from app.services.price_guard import _tg_send
+        _tg_send(f"{head}\n\n{synth}")
         _jobs[key] = {"status": "done", "result": "ok"}
     except Exception as exc:  # noqa: BLE001
         _save_advisor_msg(db, channel_id, f"{rec.ADVISOR['name']} gặp lỗi khi lọc mã: {exc}")
@@ -500,8 +506,31 @@ def ensure_channel(db: Session = Depends(get_db), current: User = Depends(get_cu
     return _channel_dict(db, ch)
 
 
+def _mirror_chat_to_tg(question: str, res: dict) -> None:
+    """Parity kênh→Telegram (user yêu cầu 21/07): hỏi–đáp trong app cũng hiện bên TG.
+    Gộp câu hỏi + các reply đồng bộ thành 1 tin (kết quả chạy nền tự đẩy trong hàm _bg_*)."""
+    try:
+        parts = [f"💬 (app) {question}"]
+        for m in res.get("messages") or []:
+            t = _text_from_raw(m.get("raw") or []) if isinstance(m, dict) else ""
+            if t:
+                parts.append(t)
+        if len(parts) > 1:
+            from app.services.price_guard import _tg_send
+            threading.Thread(target=_tg_send, args=("\n\n".join(parts)[:3500],), daemon=True).start()
+    except Exception:  # noqa: BLE001
+        pass
+
+
 @router.post("/chat")
 def trading_chat(body: ChatIn, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
+    res = _trading_chat_inner(body, db, current)
+    if (body.channel_id or TRADING_CHANNEL_ID) == TRADING_CHANNEL_ID:
+        _mirror_chat_to_tg(body.text, res)
+    return res
+
+
+def _trading_chat_inner(body: ChatIn, db: Session, current: User):
     cid = body.channel_id or TRADING_CHANNEL_ID
     ensure_trading_channel(db)
 
@@ -675,6 +704,8 @@ def _bg_portfolio(channel_id: str, holdings: list, question: str) -> None:
             comm = f"(không phân tích được: {exc})"
         final = table + (f"\n\n💬 **Nhận định:**\n{comm}" if comm.strip() else "") + "\n\n⚠️ Công cụ nghiên cứu, không phải lời khuyên đầu tư."
         _save_advisor_msg(db, channel_id, final)
+        from app.services.price_guard import _tg_send
+        _tg_send(final)
         _jobs[key] = {"status": "done", "result": "ok"}
     except Exception as exc:  # noqa: BLE001
         _save_advisor_msg(db, channel_id, f"{rec.ADVISOR['name']} gặp lỗi khi xem danh mục: {exc}")

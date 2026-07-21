@@ -8,3 +8,4 @@ dist-ssr
 .claude/
 *.tsbuildinfo
 __pycache__/
+backend/tg_outbound.log

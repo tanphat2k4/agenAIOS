@@ -196,12 +196,20 @@ def _tg_send(text: str, account: str = "trading") -> bool:
 
     cmd = (f"openclaw message send --channel telegram --account {shlex.quote(account)} "
            f"--target {shlex.quote(settings.OPENCLAW_TELEGRAM_CHAT)} --message {shlex.quote(plain)}")
+    ok = False
     try:
         r = subprocess.run(["wsl.exe", "-e", "bash", "-lc", cmd + " 2>/dev/null"],
                            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=90)
-        return "Sent via telegram" in ((r.stdout or "") + (r.stderr or ""))
+        ok = "Sent via telegram" in ((r.stdout or "") + (r.stderr or ""))
     except Exception:  # noqa: BLE001
-        return False
+        ok = False
+    try:  # biên nhận để soi khi nghi mất đồng bộ (tail backend/tg_outbound.log)
+        import os
+        with open(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "tg_outbound.log"), "a", encoding="utf-8") as f:
+            f.write(f"{datetime.now().isoformat(timespec='seconds')} ok={ok} acc={account} | {plain[:80].replace(chr(10), ' ')}\n")
+    except Exception:  # noqa: BLE001
+        pass
+    return ok
 
 
 def _post_channel(db: Session, text: str) -> None:
