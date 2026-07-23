@@ -51,7 +51,7 @@ def chat(
     if max_tokens:
         payload["max_tokens"] = max_tokens + _REASONING_RESERVE
 
-    def _once() -> tuple[str, dict]:
+    def _once() -> tuple[str, str, dict]:
         with httpx.Client(timeout=120) as cli:
             r = cli.post(
                 f"{settings.NINEROUTER_BASE_URL}/chat/completions",
@@ -60,18 +60,22 @@ def chat(
             )
             r.raise_for_status()
             data = r.json()
-        msg = (data.get("choices") or [{}])[0].get("message") or {}
+        choice = (data.get("choices") or [{}])[0]
+        msg = choice.get("message") or {}
         content = msg.get("content") or ""
         if not content:  # thinking models may put text in reasoning_content
             content = msg.get("reasoning_content") or ""
-        return _THINK_RE.sub("", content).strip(), data
+        return _THINK_RE.sub("", content).strip(), str(choice.get("finish_reason") or ""), data
 
-    content, data = _once()
-    if not content and payload.get("max_tokens"):
-        # reasoning length varies wildly run-to-run — a spike can still eat the whole
-        # budget (finish=length, empty answer). One retry with a much bigger ceiling.
+    content, finish, data = _once()
+    if payload.get("max_tokens") and (not content or finish == "length"):
+        # reasoning length varies wildly run-to-run — a spike can eat the budget và trả
+        # về RỖNG hoặc CỤT GIỮA CÂU (finish=length: '📆 T+3: giá dự kiến 2-' 23/07).
+        # One retry with a much bigger ceiling; giữ bản đầu nếu retry tệ hơn.
         payload["max_tokens"] += 4000
-        content, data = _once()
+        content2, finish2, data2 = _once()
+        if content2 and (finish2 != "length" or len(content2) > len(content)):
+            content, data = content2, data2
     return {
         "content": content,
         "model": data.get("model"),
