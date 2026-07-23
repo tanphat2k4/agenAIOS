@@ -274,6 +274,7 @@ def _summarize_for_chat(ticker: str, full: str) -> str:
             f"Rút gọn báo cáo phân tích {ticker} dưới đây thành bản tin ngắn dễ đọc:\n"
             f"Dòng 1: '⭐ {ticker} — Khuyến nghị: <Mua / Tăng tỷ trọng / Giữ / Giảm tỷ trọng / Bán>' kèm 1 câu lý do chính.\n"
             "Dòng 2: '🎯 Dự đoán vùng giá 1-2 tuần: giá sàn dự kiến ~X · giá trần dự kiến ~Y' — X/Y lấy từ mức hỗ trợ/kháng cự (SMA, đỉnh đáy, vùng mua/chốt lời) CÓ trong báo cáo, số cụ thể.\n"
+            "Dòng 3 (chỉ khi khuyến nghị Mua/Tăng tỷ trọng): '📆 Dự tính T+3 (hàng về): ~A–B' — vùng giá 2-3 phiên tới ước từ đà giá trong báo cáo + nửa câu biên an toàn khi hàng về mới bán được.\n"
             "Rồi 4-6 dòng, mỗi dòng bắt đầu bằng '• ': vùng giá mua/bán hợp lý, rủi ro chính, chất xúc tác sắp tới, lưu ý thanh khoản.\n"
             "Tối đa ~10 dòng, chữ thường, tránh biệt ngữ nặng.\n\n" + (full or "")[:6500]
         ),
@@ -437,6 +438,7 @@ def _bg_advise(channel_id: str, ticker: str, question: str) -> None:
                         "Tổng hợp thành lời khuyên có cấu trúc, mỗi mục 1 dòng gạch đầu dòng:\n"
                         "• **Khuyến nghị**: MUA / BÁN / GIỮ\n"
                         "• **🎯 Dự đoán vùng giá (1-2 tuần)**: giá sàn dự kiến (hỗ trợ) ~X · giá trần dự kiến (kháng cự) ~Y — số cụ thể từ kỹ thuật (SMA/đỉnh đáy gần)\n"
+                        "• **📆 T+3 (hàng về, bán được)**: nếu khuyến nghị MUA — giá dự kiến 2-3 phiên tới ~A–B (ước tính từ đà giá + hỗ trợ/kháng cự gần nhất) + biên an toàn còn lại; nhắc hàng về chiều T+2, trong lúc chờ không cắt lỗ được\n"
                         "• **Ngắn hạn (lướt sóng)**: vùng mua, chốt lời, cắt lỗ + tín hiệu kỹ thuật (RSI/SMA)\n"
                         "• **Dài hạn (đầu tư)**: định giá (P/E/ROE) + triển vọng — có nên tích lũy không\n"
                         "• **Quản lý vốn**: tỷ trọng đề xuất (đừng all-in)\n"

@@ -392,7 +392,14 @@ PRICE_BAND_LINE = (
     "BẮT BUỘC có 1 dòng: '🎯 Dự đoán vùng giá 1-2 tuần: giá sàn dự kiến ~X · giá trần dự kiến ~Y' — "
     "X = mức hỗ trợ gần nhất DƯỚI giá hiện tại, Y = mức kháng cự gần nhất TRÊN giá hiện tại, "
     "suy từ phân tích kỹ thuật trong dữ liệu (SMA50/SMA200, đỉnh/đáy gần đây, vùng mua/chốt lời). "
-    "X, Y phải là CON SỐ cụ thể cùng thang với giá hiện tại, không nói chung chung."
+    "X, Y phải là CON SỐ cụ thể cùng thang với giá hiện tại, không nói chung chung. "
+    # user yêu cầu 23/07: khuyến nghị MUA phải dự tính giá tại mốc T+3 (hàng về, bán được)
+    "Nếu khuyến nghị là MUA (hoặc người dùng đang cân nhắc mua): thêm 1 dòng "
+    "'📆 Dự tính T+3 (hàng về, bán được): ~A–B' — A–B là vùng giá dự kiến 2-3 phiên tới, "
+    "suy từ đà giá hiện tại (xu hướng, RSI, hỗ trợ/kháng cự GẦN NHẤT — hẹp hơn vùng 1-2 tuần), "
+    "kèm nửa câu: mua hôm nay thì tới lúc bán được biên an toàn còn bao nhiêu (nhắc: cổ phiếu về "
+    "tài khoản chiều T+2, bán sớm nhất phiên chiều T+2/sáng T+3 — trong lúc chờ KHÔNG cắt lỗ được). "
+    "Ghi rõ là ƯỚC TÍNH."
 )
 
 
