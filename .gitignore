@@ -10,3 +10,4 @@ dist-ssr
 __pycache__/
 backend/tg_outbound.log
 backend/.trading_sync.json
+backend/.foreign_history.json

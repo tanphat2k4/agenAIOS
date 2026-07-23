@@ -104,6 +104,11 @@ def _scan(db: Session, *, force: bool = False) -> list[dict]:
         return []
     hon = rec.honorific(owner)
     quotes = ta._price_board_batch(tickers, fresh=True)
+    try:  # nuôi sổ lịch sử khối ngoại (foreign_flows) — mỗi lượt quét ghi đè số trong ngày
+        from app.services.foreign_flows import record_today
+        record_today({t: (quotes.get(t) or {}).get("foreign_net") for t in tickers})
+    except Exception:  # noqa: BLE001
+        pass
     day = _day()
     events: list[dict] = []
 

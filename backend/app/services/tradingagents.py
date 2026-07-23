@@ -633,6 +633,53 @@ def market_screen(top_n: int = 16, min_vol: int = 300_000) -> dict:
     return {"sectors": sectors[:6], "weakSectors": sectors[-3:], "finalists": finalists, "nLiquid": len(rows)}
 
 
+def foreign_market_scan(focus: list[str] | None = None) -> dict:
+    """Khối ngoại TOÀN SÀN hôm nay (1 price_board call như market_screen): tổng ròng
+    (tỷ VND ước tính = ròng cp × giá khớp), top mua/bán ròng, gộp ngành, chi tiết mã
+    focus (holdings ∪ watchlist). Never raises — {} khi thiếu dữ liệu."""
+    uni = _hose_universe()
+    if not uni:
+        return {}
+    quotes = _price_board_batch(list(uni.keys()))
+    rows = []
+    for tk, q in quotes.items():
+        fn = q.get("foreign_net")
+        if not q.get("price") or fn is None:
+            continue
+        rows.append({"ticker": tk, "industry": uni.get(tk, "Khác"), "price": q["price"],
+                     "change": q.get("change"), "net": fn,
+                     "netB": round(fn * q["price"] * 1000 / 1e9, 2)})  # tỷ VND
+    if not rows:
+        return {}
+    sec: dict = {}
+    for r in rows:
+        s = sec.setdefault(r["industry"], {"industry": r["industry"], "netB": 0.0, "n": 0})
+        s["netB"] += r["netB"]
+        s["n"] += 1
+    sectors = sorted(({**s, "netB": round(s["netB"], 1)} for s in sec.values()),
+                     key=lambda s: s["netB"], reverse=True)
+    focus_set = [t.upper() for t in (focus or [])]
+    focus_rows = []
+    for tk in focus_set:
+        r = next((x for x in rows if x["ticker"] == tk), None)
+        if not r and tk in quotes:
+            q = quotes[tk]
+            fn = q.get("foreign_net") or 0
+            r = {"ticker": tk, "industry": uni.get(tk, "Khác"), "price": q.get("price"),
+                 "change": q.get("change"), "net": fn,
+                 "netB": round(fn * (q.get("price") or 0) * 1000 / 1e9, 2)}
+        if r:
+            focus_rows.append(r)
+    return {
+        "totalB": round(sum(r["netB"] for r in rows), 1),
+        "nBuy": sum(1 for r in rows if r["netB"] > 0), "nSell": sum(1 for r in rows if r["netB"] < 0),
+        "buys": sorted(rows, key=lambda r: r["netB"], reverse=True)[:8],
+        "sells": sorted(rows, key=lambda r: r["netB"])[:8],
+        "sectors": sectors[:5], "weakSectors": sectors[-5:][::-1],
+        "focus": focus_rows, "n": len(rows),
+    }
+
+
 def news(ticker: str, days: int = 7) -> str:
     return _run(["news", ticker, str(days)], timeout=150)
 

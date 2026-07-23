@@ -389,6 +389,31 @@ def _llm_reply(db: Session, channel_id: str, _text: str) -> str:
     return (headline + "\n\n" + out) if headline else out
 
 
+_FOREIGN_KW = ("khối ngoại", "khoi ngoai", "nước ngoài mua", "nuoc ngoai mua",
+               "nước ngoài bán", "nuoc ngoai ban", "room ngoại", "room ngoai", "dòng tiền ngoại", "dong tien ngoai")
+
+
+def _bg_foreign(channel_id: str, question: str) -> None:
+    """Workflow Điều tra khối ngoại (đa-agent) chạy nền → post Sage + đẩy Telegram."""
+    from app.services import foreign_flows as ff
+
+    key = _key("FOREIGN", None)
+    db = SessionLocal()
+    try:
+        outputs, ok, headline = ff.run_foreign_pipeline(db, question)
+        sage = next((txt for a, txt in outputs if a.get("id") == "agent-ck-covan"), "")
+        final = f"{headline}\n\n{sage}".strip() if sage else (headline or "Không lấy được dữ liệu khối ngoại.")
+        _save_advisor_msg(db, channel_id, final)
+        from app.services.price_guard import _tg_send
+        _tg_send(final)
+        _jobs[key] = {"status": "done", "result": "ok" if ok else "partial"}
+    except Exception as exc:  # noqa: BLE001
+        _save_advisor_msg(db, channel_id, f"{rec.ADVISOR['name']} gặp lỗi khi điều tra khối ngoại: {exc}")
+        _jobs[key] = {"status": "error", "result": str(exc)}
+    finally:
+        db.close()
+
+
 def _bg_advise(channel_id: str, ticker: str, question: str) -> None:
     """Sage: run the 5-agent pipeline on REAL-TIME data, then synthesize a clear
     advisory that answers the user's question. Posts as the advisor agent."""
@@ -544,7 +569,25 @@ def _trading_chat_inner(body: ChatIn, db: Session, current: User):
     if al_reply is not None:
         return {"messages": [_save_advisor_msg(db, cid, al_reply)], "analyzing": None}
 
+    # "khối ngoại…" → workflow Điều tra khối ngoại (đa-agent, không cần mã — 22/07);
+    # hết cảnh 'khối ngoại mua lại chưa?' bị đòi 'cho em mã cổ phiếu'
+    if any(k in " ".join(body.text.lower().split()) for k in _FOREIGN_KW):
+        key = _key("FOREIGN", None)
+        job = _jobs.get(key)
+        if not (job and job["status"] == "running"):
+            _jobs[key] = {"status": "running", "result": None}
+            hon = rec.honorific(current)
+            interim = _save_advisor_msg(db, cid, f"🌏 **{rec.ADVISOR['name']}** đang điều tra khối ngoại: toàn sàn HOSE → ngành → các mã của {hon} + sổ lịch sử, ~30-60 giây…")
+            threading.Thread(target=_bg_foreign, args=(cid, body.text), daemon=True).start()
+            return {"messages": [interim], "analyzing": "FOREIGN"}
+        return {"messages": [_save_advisor_msg(db, cid, "Em đang điều tra khối ngoại rồi, chờ chút nhé.")], "analyzing": "FOREIGN"}
+
     cmd, ticker = ta.classify(body.text)
+    if not ticker and cmd in ("analyze", "snapshot", "news", "extras"):
+        # câu follow-up không nêu mã → suy mã đang bàn gần nhất trong kênh
+        history = list(db.scalars(select(Message).where(Message.channel_id == cid)
+                                  .order_by(Message.sort, Message.id)))[-12:]
+        ticker = _recent_ticker(history, body.text)
 
     # --- Sage: @gọi trong chat → screening / pipeline tư vấn / hội thoại, đều real-time ---
     if _is_advisor_call(body.text):
@@ -1120,7 +1163,27 @@ def trading_relay(body: RelayIn, x_relay_key: str = Header(default="")):
                 return {"reply": al_reply.replace("**", "").replace("_", "")}
 
         _save_user_msg(db, cid, text)
+
+        # "khối ngoại…" từ Telegram → cùng workflow điều tra, interim tức thì (22/07)
+        if any(k in " ".join(text.lower().split()) for k in _FOREIGN_KW):
+            key = _key("FOREIGN", None)
+            job = _jobs.get(key)
+            if not (job and job["status"] == "running"):
+                _jobs[key] = {"status": "running", "result": None}
+                hon = rec.honorific(owner) if owner else "anh"
+                interim = (f"🌏 {rec.ADVISOR['name']} đang điều tra khối ngoại: toàn sàn HOSE → ngành → các mã của {hon} "
+                           "+ sổ lịch sử — kết quả gửi lại đây + kênh #chung-khoan trong ~1 phút…")
+                _save_advisor_msg(db, cid, interim)
+                threading.Thread(target=_bg_foreign, args=(cid, text), daemon=True).start()
+                return {"reply": interim}
+            return {"reply": "Em đang điều tra khối ngoại rồi, chờ chút nhé."}
+
         cmd, ticker = ta.classify(text)
+        if not ticker and cmd in ("analyze", "snapshot", "news", "extras"):
+            # follow-up Telegram không nêu mã → suy mã đang bàn gần nhất (như in-app)
+            history = list(db.scalars(select(Message).where(Message.channel_id == cid)
+                                      .order_by(Message.sort, Message.id)))[-12:]
+            ticker = _recent_ticker(history, text)
         # recommendation / analysis intents → pipeline chạy Ở NỀN + trả interim NGAY.
         # Trước đây chạy đồng bộ 2-5 phút → relay.sh (timeout 180s) chết → bot Telegram
         # tự trả lời một mình → kênh #chung-khoan mất hội thoại (user báo 21/07).
