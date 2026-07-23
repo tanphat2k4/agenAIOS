@@ -41,7 +41,8 @@ ALERTS_DEFAULT = {
     "drop_pct": 3.0,    # luật ①: -3% so tham chiếu
     "trail_pct": 10.0,  # luật ③b: lãi tụt ≥10 điểm % từ đỉnh phiên
     "index_pct": 2.0,   # luật ④: VN-Index -2%
-    "custom": [],       # luật ⑤: [{"ticker": "VIB", "below": 14.5}]
+    "custom": [],       # luật ⑤: [{"ticker": "VIB", "below": 14.5, "above": 16}]
+    "foreign_b": 5.0,   # luật ⑥ (bật 23/07): khối ngoại gom/xả ròng ≥ X tỷ VND trong phiên
     "off": [],          # mã tạm tắt cảnh báo
 }
 
@@ -163,6 +164,34 @@ def _scan(db: Session, *, force: bool = False) -> list[dict]:
             if c.get("above") and price >= float(c["above"]):
                 _hit("above", tk, False,
                      f"🚀 **{tk} vượt mốc {hon} đặt: {price} ≥ {c['above']}**", pos)
+        # ⑥ khối ngoại gom / xả LỚN + đảo chiều MUA LẠI (user hỏi 23/07) — giá trị ròng
+        # trong phiên = ròng(cp) × giá khớp; ngưỡng cfg['foreign_b'] tỷ VND
+        fnet = q.get("foreign_net")
+        if fnet is not None and price:
+            net_b = round(fnet * price * 1000 / 1e9, 2)  # tỷ VND
+            if net_b <= -cfg["foreign_b"]:
+                _hit("foreign_dump", tk, False,
+                     f"🌏🔻 **{tk}: khối ngoại XẢ {abs(net_b)} tỷ** ({fnet:+,}cp trong phiên)", pos)
+            elif net_b >= cfg["foreign_b"]:
+                _hit("foreign_buy", tk, False,
+                     f"🌏💰 **{tk}: khối ngoại GOM {net_b} tỷ** ({fnet:+,}cp trong phiên)", pos)
+            elif net_b >= 1.0:
+                # mua ròng chưa lớn nhưng ĐẢO CHIỀU sau chuỗi phiên bán ròng (sổ lịch sử)
+                try:
+                    from app.services.foreign_flows import _load_ledger
+                    led = _load_ledger()
+                    prev = [d for d in sorted(led) if d < day and led[d].get(tk) is not None]
+                    streak = 0
+                    for d in reversed(prev):
+                        if led[d][tk] < 0:
+                            streak += 1
+                        else:
+                            break
+                    if streak >= 2:
+                        _hit("foreign_reversal", tk, False,
+                             f"🌏🔄 **{tk}: khối ngoại MUA LẠI (+{net_b} tỷ) sau {streak} phiên bán ròng**", pos)
+                except Exception:  # noqa: BLE001
+                    pass
 
     # ④ VN-Index
     m = ta.market_overview()

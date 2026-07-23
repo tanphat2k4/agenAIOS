@@ -34,7 +34,7 @@ export function Trading() {
   const [wlBusy, setWlBusy] = useState(false)
   const [wlErr, setWlErr] = useState('')
 
-  type Alerts = { enabled: boolean; drop_pct: number; trail_pct: number; index_pct: number; custom: { ticker: string; below?: number; above?: number }[]; off: string[]; watched: string[]; inSession: boolean; interval: number; testing?: boolean }
+  type Alerts = { enabled: boolean; drop_pct: number; trail_pct: number; index_pct: number; foreign_b?: number; custom: { ticker: string; below?: number; above?: number }[]; off: string[]; watched: string[]; inSession: boolean; interval: number; testing?: boolean }
   const [al, setAl] = useState<Alerts | null>(null)
   const [alForm, setAlForm] = useState({ ticker: '', below: '', above: '' })
   const [alBusy, setAlBusy] = useState(false)
@@ -348,7 +348,7 @@ export function Trading() {
                 {t('Canh')} <b>{al.watched.length}</b> {t('mã')} ({al.watched.join(', ') || '—'}) · {t('quét')} {al.interval}s {t('trong giờ phiên')} (9:00–11:30 / 13:00–15:00 {t('phủ cả HNX·UPCOM')})
               </div>
               <div style={{ fontSize: 12, color: 'var(--placeholder)', marginBottom: 10 }}>
-                {t('Luật')}: {t('rơi nhanh')} ≥ −{al.drop_pct}% · {t('nằm sàn / kịch trần')} · {t('thủng vốn & lãi tụt')} {al.trail_pct}đ% {t('từ đỉnh')} · VN-Index −{al.index_pct}% · {t('sự kiện nặng tự chạy phân tích sâu')}
+                {t('Luật')}: {t('rơi nhanh')} ≥ −{al.drop_pct}% · {t('nằm sàn / kịch trần')} · {t('thủng vốn & lãi tụt')} {al.trail_pct}đ% {t('từ đỉnh')} · VN-Index −{al.index_pct}% · {t('khối ngoại gom/xả')} ≥ {al.foreign_b ?? 5} {t('tỷ + mua lại sau ≥2 phiên xả')} · {t('sự kiện nặng tự chạy phân tích sâu')}
               </div>
               {al.custom.length > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>

@@ -615,6 +615,8 @@ export const EN: Record<string, string> = {
   "thủng vốn & lãi tụt": "below cost & profit drop",
   "từ đỉnh": "from peak",
   "sự kiện nặng tự chạy phân tích sâu": "severe events auto-run deep analysis",
+  "khối ngoại gom/xả": "foreign net buy/sell",
+  "tỷ + mua lại sau ≥2 phiên xả": "bn VND + buy-back after ≥2 selling days",
   "báo khi giá xuống dưới": "alert when price falls below",
   "báo khi giá vượt": "alert when price rises above",
   "dưới giá…": "below price…",

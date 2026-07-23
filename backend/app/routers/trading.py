@@ -938,7 +938,7 @@ def _alerts_render(db: Session, user: User) -> str:
     p = _alerts_payload(db, user)
     lines = [
         f"🛡️ **Vệ sĩ giá: {'BẬT' if cfg['enabled'] else 'TẮT'}** — canh {len(p['watched'])} mã ({', '.join(p['watched']) or '—'}), quét {p['interval']}s trong phiên" + (" · *đang trong phiên*" if p["inSession"] else " · *ngoài phiên*"),
-        f"• Luật: rơi nhanh ≥ -{cfg['drop_pct']}% · nằm sàn/kịch trần · thủng vốn & lãi tụt {cfg['trail_pct']:.0f}đ% từ đỉnh · VN-Index -{cfg['index_pct']}%",
+        f"• Luật: rơi nhanh ≥ -{cfg['drop_pct']}% · nằm sàn/kịch trần · thủng vốn & lãi tụt {cfg['trail_pct']:.0f}đ% từ đỉnh · VN-Index -{cfg['index_pct']}% · khối ngoại gom/xả ≥ {cfg.get('foreign_b', 5.0):g} tỷ + mua lại sau ≥2 phiên xả",
     ]
     if cfg["custom"]:
         parts = []
@@ -951,8 +951,8 @@ def _alerts_render(db: Session, user: User) -> str:
     if cfg["off"]:
         lines.append("• Tạm tắt mã: " + ", ".join(cfg["off"]))
     lines.append("📖 Mẫu lệnh gõ ở đây hoặc Telegram (số chỉ là ví dụ): «cảnh báo VIB dưới 14.5» · "
-                 "«VIB vượt 16 thì báo» · «tắt cảnh báo HPG» / «bật cảnh báo» · «cảnh báo lỗ 8%» · "
-                 "«xem cảnh báo» · «test cảnh báo»")
+                 "«VIB vượt 16 thì báo» · «cảnh báo khối ngoại 3 tỷ» · «tắt cảnh báo HPG» / «bật cảnh báo» · "
+                 "«cảnh báo lỗ 8%» · «xem cảnh báo» · «test cảnh báo»")
     return "\n".join(lines)
 
 
@@ -986,7 +986,7 @@ def edit_alerts(body: AlertsIn, db: Session = Depends(get_db), current: User = D
             cfg["off"] = cfg["off"] + [tk]
     elif act == "on_ticker":
         cfg["off"] = [t for t in cfg["off"] if t != tk]
-    elif act in ("trail_pct", "drop_pct", "index_pct"):
+    elif act in ("trail_pct", "drop_pct", "index_pct", "foreign_b"):
         if not body.value or body.value <= 0:
             raise HTTPException(status_code=400, detail="Ngưỡng phải > 0")
         cfg[act] = float(body.value)
@@ -1001,6 +1001,7 @@ def edit_alerts(body: AlertsIn, db: Session = Depends(get_db), current: User = D
 
 
 _AL_LOSS_RE = re.compile(r"cảnh báo lỗ\s+([\d.,]+)\s*%|canh bao lo\s+([\d.,]+)\s*%", re.I)
+_AL_FOREIGN_RE = re.compile(r"cảnh báo khối ngoại\s+([\d.,]+)\s*tỷ?|canh bao khoi ngoai\s+([\d.,]+)\s*ty?", re.I)
 # "MÃ vượt/trên/dưới/thủng GIÁ" — bắt cặp (mã, hướng, giá) đứng gần nhau
 _AL_SET_RE = re.compile(
     r"\b([A-Za-z]{3})\b[^\dA-Za-z]{0,12}(vượt|vuot|trên|tren|lên|len|dưới|duoi|xuống|xuong|thủng|thung)\s*([\d]+(?:[.,]\d+)?)", re.I)
@@ -1049,6 +1050,12 @@ def _handle_alert_cmd(db: Session, user: User, text: str) -> str | None:
         cfg["trail_pct"] = val
         pg.save_alerts(db, user, cfg)
         return f"✅ Lãi tụt **{val:.0f} điểm %** từ đỉnh phiên là báo.\n\n" + _alerts_render(db, user)
+    m = _AL_FOREIGN_RE.search(text or "")
+    if m:
+        val = float((m.group(1) or m.group(2)).replace(",", "."))
+        cfg["foreign_b"] = val
+        pg.save_alerts(db, user, cfg)
+        return f"✅ Khối ngoại gom/xả ròng ≥ **{val:g} tỷ** trong phiên là báo (kèm luật mua-lại sau ≥2 phiên xả).\n\n" + _alerts_render(db, user)
     if low.startswith(("xóa cảnh báo", "xoa canh bao")):
         tk = _tk()
         if not tk:
