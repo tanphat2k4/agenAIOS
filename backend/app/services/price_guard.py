@@ -282,11 +282,10 @@ def _tier2_deep(ticker: str) -> None:
               "KHÔNG lặp lại dòng giá đầu (đã có). Công cụ nghiên cứu, KHÔNG phải lời khuyên đầu tư.")}
     user = {"role": "user", "content": (f"CẢNH BÁO RỦI RO vừa nổ với {ticker} — phân tích lại NGAY.\n"
             f"Kết quả team (giá real-time):\n{team[:3200]}\n\n"
-            "Tổng hợp NGẮN: Khuyến nghị (MUA/BÁN/GIỮ) + vùng mua/chốt lời/cắt lỗ + 1 câu rủi ro. "
-            + rec.PRICE_BAND_LINE)}
+            + rec.KN_FORMAT + "\n" + rec.PRICE_BAND_LINE)}
     try:
         synth = ninerouter.chat([system, user, {"role": "system", "content": headline}],
-                                temperature=0.3, max_tokens=950)["content"] or ""
+                                temperature=0.3, max_tokens=1300)["content"] or ""
     except Exception:  # noqa: BLE001
         synth = outputs[-1][1] if outputs else ""
     text = f"🛡️ **Phân tích khẩn sau cảnh báo — {ticker}**\n\n{headline}\n\n{synth}".strip()

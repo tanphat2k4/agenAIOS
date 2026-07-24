@@ -386,6 +386,23 @@ ANTI_HALLUCINATION = (
     "GIÁ HIỆN TẠI = giá đóng cửa mới nhất trong dữ liệu; KHÔNG nhầm nó với vùng mua / hỗ trợ / mục tiêu (thường thấp hơn)."
 )
 
+# user duyệt định dạng 23/07 (theo mẫu Hermes lab): bảng 🟢 tín hiệu / 🔴 rủi ro
+# + chốt ✅ khuyến nghị. Kênh chat render bảng markdown '| a | b |' thành table thật.
+KN_FORMAT = (
+    "ĐỊNH DẠNG BẮT BUỘC (markdown; bảng dùng đúng cú pháp | ô | ô |, có dòng |---|---|):\n"
+    "Dòng đầu: 'Dữ liệu phiên <ngày>: Close <giá> (<±điểm>, <±%> so hôm trước) — <nửa câu nhận xét>'\n"
+    "### 🟢 Tín hiệu tích cực\n"
+    "| Chỉ tiêu | Hôm qua | Hôm nay | Nhận xét | — 3-5 dòng (Close, RSI(14), Khối ngoại, VN-Index…). "
+    "CHỈ ghi chỉ tiêu CÓ SỐ THẬT trong dữ liệu; thiếu số hôm qua thì ghi '—'. Không có tín hiệu tích cực nào thì ghi 1 dòng 'Chưa có'.\n"
+    "### 🔴 Rủi ro còn đó\n"
+    "| Chỉ tiêu | Giá trị | Ý nghĩa | — 3-5 dòng (MACD, SMA50, SMA200, thanh khoản, khối ngoại nếu xấu…).\n"
+    "### ✅ Khuyến nghị: <MUA / CANH MUA / GIỮ / BÁN + mức độ (vd RẤT THẬN TRỌNG)>\n"
+    "1 đoạn 2-3 câu giải thích tự nhiên như đang trò chuyện.\n"
+    "Sau đó mỗi dòng một mục: 🎯 vùng giá 1-2 tuần · 📆 T+3 (khi MUA/CANH MUA) · "
+    "Vùng mua / Chốt lời / Cắt lỗ (3 số) · ⚠️ Rủi ro chính 1 câu.\n"
+    "Kết: 'Nghiên cứu, không phải lời khuyên đầu tư.'"
+)
+
 # user yêu cầu 16/07: mọi khuyến nghị phải kèm dự đoán giá sàn & giá trần (user gọi theo
 # nghĩa vùng giá dự kiến — hỗ trợ/kháng cự), số cụ thể suy từ kỹ thuật trong báo cáo.
 PRICE_BAND_LINE = (

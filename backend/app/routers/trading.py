@@ -435,18 +435,12 @@ def _bg_advise(channel_id: str, ticker: str, question: str) -> None:
             "content": (f"Câu hỏi của {hon}: {question}\n\n"
                         + (f"Bối cảnh thị trường: {mkt}\n\n" if mkt else "")
                         + f"Kết quả phân tích của team về {ticker} (giá real-time):\n{team[:3200]}\n\n"
-                        "Tổng hợp thành lời khuyên có cấu trúc, mỗi mục 1 dòng gạch đầu dòng:\n"
-                        "• **Khuyến nghị**: MUA / BÁN / GIỮ\n"
-                        "• **🎯 Dự đoán vùng giá (1-2 tuần)**: giá sàn dự kiến (hỗ trợ) ~X · giá trần dự kiến (kháng cự) ~Y — số cụ thể từ kỹ thuật (SMA/đỉnh đáy gần)\n"
-                        "• **📆 T+3 (hàng về, bán được)**: nếu khuyến nghị MUA — giá dự kiến 2-3 phiên tới ~A–B (ước tính từ đà giá + hỗ trợ/kháng cự gần nhất) + biên an toàn còn lại; nhắc hàng về chiều T+2, trong lúc chờ không cắt lỗ được\n"
-                        "• **Ngắn hạn (lướt sóng)**: vùng mua, chốt lời, cắt lỗ + tín hiệu kỹ thuật (RSI/SMA)\n"
-                        "• **Dài hạn (đầu tư)**: định giá (P/E/ROE) + triển vọng — có nên tích lũy không\n"
-                        "• **Quản lý vốn**: tỷ trọng đề xuất (đừng all-in)\n"
-                        "• **Thị trường**: 1 câu VN-Index ảnh hưởng thế nào tới quyết định\n"
-                        "Kết bằng 1 dòng cảnh báo rủi ro."),
+                        + rec.KN_FORMAT + "\n"
+                        "Thêm sau phần ✅: 1 dòng **Dài hạn** (P/E/ROE — có nên tích lũy) và 1 dòng **Quản lý vốn** (tỷ trọng, đừng all-in).\n"
+                        + rec.PRICE_BAND_LINE),
         }
         try:
-            synth = ninerouter.chat([system, user, {"role": "system", "content": headline}], temperature=0.3, max_tokens=950)["content"] or ""
+            synth = ninerouter.chat([system, user, {"role": "system", "content": headline}], temperature=0.3, max_tokens=1300)["content"] or ""
         except Exception as exc:  # noqa: BLE001
             synth = f"(không tổng hợp được: {exc})"
         final = f"{headline}\n\n{synth}" if synth.strip() else (f"{headline}\n\n{outputs[-1][1]}" if outputs else f"{headline}\n\nChưa có kết quả.")
@@ -1102,11 +1096,10 @@ def _bg_relay_deep(channel_id: str, ticker: str, question: str) -> None:
                   "KHÔNG lặp lại dòng giá đầu (đã có). Công cụ nghiên cứu, KHÔNG phải lời khuyên đầu tư.")}
         user = {"role": "user", "content": (f"Câu hỏi: {question}\n\n" + (f"Thị trường: {mkt}\n\n" if mkt else "")
                 + f"Kết quả team về {ticker} (giá real-time):\n{team[:3200]}\n\n"
-                "Tổng hợp NGẮN: Khuyến nghị (MUA/BÁN/GIỮ) + vùng mua/chốt lời/cắt lỗ + 1 câu rủi ro. "
-                + rec.PRICE_BAND_LINE)}
+                + rec.KN_FORMAT + "\n" + rec.PRICE_BAND_LINE)}
         try:
             synth = ninerouter.chat([system, user, {"role": "system", "content": headline}],
-                                    temperature=0.3, max_tokens=950)["content"] or ""
+                                    temperature=0.3, max_tokens=1300)["content"] or ""
         except Exception as exc:  # noqa: BLE001
             synth = (outputs[-1][1] if outputs else f"(không tổng hợp được: {exc})")
         reply = f"{headline}\n\n{synth}".strip() if synth.strip() else headline
