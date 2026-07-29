@@ -27,6 +27,25 @@ app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 
 @app.on_event("startup")
+def _single_instance_guard() -> None:
+    # 29/07: launcher cũ AgentAIOS.cmd + vbs mới cùng chạy lúc logon → 2 backend
+    # chung sống (một bind 0.0.0.0, một 127.0.0.1) → scheduler bắn ĐÔI báo cáo sáng,
+    # Vệ sĩ giá nhân đôi cảnh báo. Khóa độc quyền: instance thứ hai THOÁT NGAY
+    # trước khi bất kỳ daemon nào kịp khởi động. (Hook này phải đứng ĐẦU TIÊN.)
+    import msvcrt
+    import os as _os
+
+    global _INSTANCE_LOCK_FH
+    path = _os.path.join(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))), ".instance.lock")
+    try:
+        _INSTANCE_LOCK_FH = open(path, "w")
+        msvcrt.locking(_INSTANCE_LOCK_FH.fileno(), msvcrt.LK_NBLCK, 1)
+    except OSError:
+        print("AgentAIOS backend đã chạy ở process khác — instance này tự thoát để tránh chạy đôi.")
+        _os._exit(0)
+
+
+@app.on_event("startup")
 def _start_scheduler() -> None:
     from app.services.scheduler import start_scheduler
 
