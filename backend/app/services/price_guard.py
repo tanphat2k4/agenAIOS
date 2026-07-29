@@ -112,13 +112,15 @@ def _scan(db: Session, *, force: bool = False) -> list[dict]:
         pass
     day = _day()
     events: list[dict] = []
+    ctx_of: dict = {}  # {ticker: dòng SỐ GỐC} — Sage cần giá/biên độ để khuyên cụ thể (29/07)
 
     def _hit(rule: str, tk: str, severe: bool, title: str, fact: str) -> None:
         key = f"{day}:{rule}:{tk}"
         if key in _fired and not force:
             return
         _fired.add(key)
-        events.append({"rule": rule, "ticker": tk, "severe": severe, "title": title, "fact": fact, "hon": hon})
+        events.append({"rule": rule, "ticker": tk, "severe": severe, "title": title, "fact": fact,
+                       "hon": hon, "ctx": ctx_of.get(tk, "")})
 
     for tk in tickers:
         q = quotes.get(tk) or {}
@@ -131,9 +133,17 @@ def _scan(db: Session, *, force: bool = False) -> list[dict]:
         pos = ""
         if h and h.get("avg"):
             pnl_pct = round((price - h["avg"]) / h["avg"] * 100, 2)
+            pnl_m = round((price - h["avg"]) * h["qty"] / 1000.0, 2)  # triệu VND
             pk = f"{day}:{tk}"
             _peak_pnl[pk] = max(_peak_pnl.get(pk, pnl_pct), pnl_pct)
-            pos = f"{hon.capitalize()} giữ {h['qty']:,.0f}cp vốn {h['avg']} → lãi/lỗ {pnl_pct:+}%."
+            pos = (f"{hon.capitalize()} giữ {h['qty']:,.0f}cp vốn {h['avg']} → giá {price} · "
+                   f"lãi/lỗ {pnl_pct:+}% ({pnl_m:+}tr).")
+        # SỐ GỐC gửi kèm mọi cảnh báo — trước đây Sage chỉ nhận tiêu đề + vị thế nên
+        # phải nói 'thiếu dữ liệu giá hiện tại' (user hỏi 29/07). Giá đã có sẵn, 0 tốn thêm.
+        ctx_of[tk] = (f"{tk}: giá {price} · {(chg if chg is not None else 0):+}% so tham chiếu {ref} · "
+                      f"trần {ceil_} / sàn {floor_} · KL {q.get('vol') or 0:,} · "
+                      f"khối ngoại ròng {q.get('foreign_net') or 0:+,}cp"
+                      + (f" · {pos}" if pos else ""))
         # ① rơi nhanh so tham chiếu
         if chg is not None and chg <= -cfg["drop_pct"]:
             _hit("drop", tk, False, f"⚠️ **{tk} {chg:+}%** còn {price} (tham chiếu {ref})", pos)
@@ -204,17 +214,45 @@ def _scan(db: Session, *, force: bool = False) -> list[dict]:
 
 
 # ----------------------------- delivery -----------------------------
+_IND_CACHE: dict = {}  # {ticker: (epoch, dict)} — chỉ báo đổi theo phiên, cache 10 phút là dư
+_IND_TTL = 600.0
+
+
+def _indicators_text(ticker: str) -> str:
+    """RSI/SMA50/SMA200 cho cảnh báo (~6.5s, cache 10ph) — '' nếu không lấy được."""
+    if not ticker:
+        return ""
+    hit = _IND_CACHE.get(ticker)
+    if hit and time.time() - hit[0] < _IND_TTL:
+        ind = hit[1]
+    else:
+        try:
+            ind = ta.indicators(ticker) or {}
+        except Exception:  # noqa: BLE001
+            ind = {}
+        _IND_CACHE[ticker] = (time.time(), ind)
+    if not ind.get("rsi"):
+        return ""
+    return f"RSI(14) {ind['rsi']} · SMA50 {ind.get('sma50')} · SMA200 {ind.get('sma200')}"
+
+
 def _tier1_line(ev: dict) -> str:
-    """2-3 câu hành động của Sage — 1 call 9Router nhỏ, chỉ dùng số trong event."""
+    """2-3 câu hành động của Sage — 1 call 9Router nhỏ, GROUNDED trên số thật:
+    giá/biên độ/khối ngoại (ev['ctx'], sẵn có) + RSI/SMA (fetch ~6.5s, cache 10ph)."""
     from app.services import ninerouter
 
+    ctx = ev.get("ctx") or ""
+    ind = _indicators_text(ev.get("ticker") or "")
+    data = "\n".join(filter(None, [ctx, ind])) or ev.get("fact") or ""
     try:
         out = ninerouter.chat(
             [{"role": "system", "content": (f"{rec.ADVISOR['persona']} {rec.hon_line(ev.get('hon', 'anh'))} {rec.ANTI_HALLUCINATION} "
-              "Trả lời 2-3 câu NGẮN, hành động cụ thể kèm mức giá (giữ/hạ tỷ trọng/cắt/quan sát), "
+              "Trả lời 2-3 câu NGẮN, hành động cụ thể kèm MỨC GIÁ CỤ THỂ (giữ/hạ tỷ trọng/cắt/quan sát) "
+              "suy từ số đã cho — TUYỆT ĐỐI không nói 'thiếu dữ liệu giá' vì giá hiện tại đã có bên dưới. "
               "KHÔNG markdown, KHÔNG lặp lại con số tiêu đề. Kết: 'Nghiên cứu, không phải lời khuyên đầu tư.'")},
-             {"role": "user", "content": f"Cảnh báo vừa nổ: {ev['title']}. {ev['fact']} Khuyên hành động ngay?"}],
-            temperature=0.3, max_tokens=220,
+             {"role": "user", "content": (f"Cảnh báo vừa nổ: {ev['title']}\n\nSỐ LIỆU THẬT LÚC NÀY:\n{data}\n\n"
+                                          "Khuyên hành động ngay, nêu mức giá cụ thể để hành động.")}],
+            temperature=0.3, max_tokens=260,
         )["content"] or ""
         return out.strip()
     except Exception:  # noqa: BLE001
